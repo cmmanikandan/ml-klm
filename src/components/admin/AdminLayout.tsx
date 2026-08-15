@@ -15,7 +15,6 @@ import {
   ShieldAlert,
   Sparkles,
   LogOut,
-  UserCheck,
   Globe
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
@@ -34,8 +33,8 @@ export const AdminLayout: React.FC = () => {
 
   const adminNavItems = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
-    { to: '/admin/enquiries', label: 'Enquiries', icon: MessageSquare, badge: 'New' },
-    { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, badge: '2 Active' },
+    { to: '/admin/enquiries', label: 'Enquiries', icon: MessageSquare, badge: null },
+    { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, badge: null },
     { to: '/admin/products', label: 'Products', icon: Package, badge: null },
     { to: '/admin/categories', label: 'Categories', icon: FolderTree, badge: null },
     { to: '/admin/import', label: 'CSV Import', icon: Upload, badge: null },
@@ -47,6 +46,9 @@ export const AdminLayout: React.FC = () => {
     await signOut();
     navigate('/admin/login');
   };
+
+  const adminEmail = user?.email || 'manikandanlatheklm@gmail.com';
+  const adminName = user?.full_name || 'MANIKANDAN LATHE Admin';
 
   return (
     <div className="min-h-screen bg-warm-bg flex flex-col">
@@ -73,15 +75,23 @@ export const AdminLayout: React.FC = () => {
               </span>
             </div>
 
-            {/* Right: Admin Profile Avatar & Shop Owner Badge */}
+            {/* Right: Real Admin Profile Email & Badge */}
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex flex-col text-right">
-                <span className="text-xs font-black text-white">{user?.full_name || 'Shop Owner'}</span>
-                <span className="text-[10px] font-bold text-brand-400">Master Admin</span>
+                <span className="text-xs font-black text-white">{adminName}</span>
+                <span className="text-[10px] font-bold text-brand-400 font-mono">{adminEmail}</span>
               </div>
-              <div className="w-9 h-9 rounded-full bg-brand-600 border-2 border-brand-400 flex items-center justify-center text-white font-extrabold text-xs shadow-md">
-                {(user?.full_name || 'A').charAt(0).toUpperCase()}
-              </div>
+              {user?.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={adminName}
+                  className="w-9 h-9 rounded-full object-cover border-2 border-brand-400 shadow-md"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-brand-600 border-2 border-brand-400 flex items-center justify-center text-white font-extrabold text-xs shadow-md">
+                  {adminName.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
 
           </div>
@@ -120,28 +130,30 @@ export const AdminLayout: React.FC = () => {
 
                 {adminNavItems.map((item) => {
                   const Icon = item.icon;
-                  const isActive = location.pathname.startsWith(item.to);
+                  const isActive = location.pathname === item.to;
 
                   return (
                     <NavLink
                       key={item.to}
                       to={item.to}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-sm font-bold transition-all ${
+                      className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
                         isActive
-                          ? 'bg-brand-600 text-white shadow-md shadow-brand-600/30'
+                          ? 'bg-brand-600 text-white shadow-md'
                           : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className="w-4 h-4" />
+                        <Icon className="w-4 h-4 shrink-0" />
                         <span>{item.label}</span>
                       </div>
 
-                      {item.badge && (
-                        <span className="bg-amber-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full">
+                      {item.badge ? (
+                        <span className="bg-amber-500 text-black text-[10px] font-extrabold px-2 py-0.5 rounded-full">
                           {item.badge}
                         </span>
+                      ) : (
+                        <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-gray-500'}`} />
                       )}
                     </NavLink>
                   );
@@ -149,52 +161,67 @@ export const AdminLayout: React.FC = () => {
               </div>
             </div>
 
-            {/* Mobile Drawer Footer (Back to Website & Logout in Sidenav) */}
+            {/* Mobile Drawer Bottom Navigation Section */}
             <div className="pt-4 border-t border-gray-800 space-y-2">
+              <div className="bg-gray-800/80 p-3 rounded-2xl border border-gray-700 space-y-1 mb-2">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold text-brand-400">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>Master Admin Active</span>
+                </div>
+                <p className="text-[11px] text-gray-300 font-mono truncate">
+                  {adminEmail}
+                </p>
+              </div>
+
               <Link
                 to="/"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-brand-400 py-3 rounded-2xl font-bold text-xs border border-gray-700 transition-colors shadow-sm"
+                className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-brand-600 text-white font-extrabold py-3 px-4 rounded-2xl text-xs border border-gray-700 transition-all shadow-sm"
               >
-                <Globe className="w-4 h-4 text-brand-500" />
+                <Globe className="w-4 h-4 text-brand-400" />
                 <span>Back to Website</span>
               </Link>
 
               <button
-                onClick={handleAdminLogout}
-                className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 py-3 rounded-2xl font-bold text-xs border border-red-500/20 transition-all shadow-sm"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleAdminLogout();
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-red-900/40 hover:bg-red-900/70 text-red-300 font-extrabold py-3 px-4 rounded-2xl text-xs border border-red-800 transition-all shadow-sm"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Admin Logout</span>
               </button>
             </div>
+
           </div>
         </div>
       )}
 
-      {/* Main Admin SaaS Body */}
-      <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 gap-6">
+      {/* Main SaaS Layout Grid */}
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex-1 flex gap-8">
         
-        {/* Desktop SaaS Sticky Sidebar Navigation */}
-        <aside className="hidden lg:flex w-64 sticky top-20 h-[calc(100vh-6rem)] bg-white rounded-3xl border border-warm-border p-4 shadow-card shrink-0 flex-col justify-between overflow-y-auto">
+        {/* Desktop Sticky Sidebar Navigation */}
+        <aside className="hidden lg:flex flex-col w-64 shrink-0 justify-between bg-white rounded-3xl p-4 border border-warm-border shadow-card h-[calc(100vh-6rem)] sticky top-20">
           <div className="space-y-1">
-            <div className="px-3 py-2 text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest flex items-center justify-between pb-2">
-              <span>SaaS Management</span>
-              <UserCheck className="w-3.5 h-3.5 text-brand-600" />
+            <div className="px-3 py-2 mb-2 border-b border-warm-muted">
+              <span className="text-[10px] font-extrabold text-brand-600 uppercase tracking-widest block">
+                ADMIN NAVIGATION
+              </span>
             </div>
 
             {adminNavItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname.startsWith(item.to);
+              const isActive = location.pathname === item.to;
 
               return (
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-sm font-bold transition-all ${
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-extrabold transition-all ${
                     isActive
-                      ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25 ring-2 ring-brand-400/40'
-                      : 'text-charcoal-700 hover:bg-warm-hover hover:text-brand-600'
+                      ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
+                      : 'text-charcoal-700 hover:bg-warm-bg hover:text-brand-600'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -214,15 +241,15 @@ export const AdminLayout: React.FC = () => {
             })}
           </div>
 
-          {/* Desktop Sidebar Footer: Back to Website before Admin Logout */}
+          {/* Desktop Sidebar Footer: Real Admin Email + Back to Website before Admin Logout */}
           <div className="pt-4 border-t border-warm-border space-y-2">
             <div className="bg-warm-bg p-3 rounded-2xl border border-warm-border space-y-1 mb-2">
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-brand-600">
                 <ShieldAlert className="w-3.5 h-3.5" />
-                <span>Shop Admin Active</span>
+                <span>Master Admin Active</span>
               </div>
-              <p className="text-[11px] text-charcoal-500 font-medium leading-snug">
-                Live Workshop Database Sync Active
+              <p className="text-[11px] text-charcoal-700 font-mono font-bold truncate">
+                {adminEmail}
               </p>
             </div>
 

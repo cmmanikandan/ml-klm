@@ -5,6 +5,7 @@ import { auth, googleProvider, signInWithPopup, firebaseSignOut, onAuthStateChan
 import { useLanguage } from './LanguageContext';
 
 export const MASTER_ADMIN_UIDS = ['9QFtBzZ3Z8f2f8QH4bxgkn4sXVq1'];
+export const MASTER_ADMIN_EMAILS = ['manikandanlatheklm@gmail.com'];
 
 interface AuthContextType {
   user: Profile | null;
@@ -29,7 +30,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
-        if (parsed && MASTER_ADMIN_UIDS.includes(parsed.id)) {
+        const isMaster = (parsed.id && MASTER_ADMIN_UIDS.includes(parsed.id)) || (parsed.email && MASTER_ADMIN_EMAILS.includes(parsed.email));
+        if (parsed && isMaster) {
           return { ...parsed, role: 'admin', is_profile_completed: true };
         }
         return parsed;
@@ -59,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const syncFirebaseUserWithSupabase = async (fbUser: FirebaseUser) => {
-    const isMasterAdmin = MASTER_ADMIN_UIDS.includes(fbUser.uid);
+    const isMasterAdmin = MASTER_ADMIN_UIDS.includes(fbUser.uid) || MASTER_ADMIN_EMAILS.includes(fbUser.email || '');
 
     // Read local cache
     const cachedStr = localStorage.getItem('ml_user_profile');
@@ -84,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const mergedProfile: Profile = {
           ...cachedProfile,
           ...data,
+          email: fbUser.email || data.email || cachedProfile?.email || 'manikandanlatheklm@gmail.com',
           role: isMasterAdmin ? 'admin' : (data.role || 'customer'),
           is_profile_completed: isMasterAdmin ? true : (data.is_profile_completed || false)
         };
@@ -96,7 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newProfile: Profile = {
           id: fbUser.uid,
           full_name: fbUser.displayName || cachedProfile?.full_name || (isMasterAdmin ? 'Shop Owner' : 'Customer'),
-          email: fbUser.email || cachedProfile?.email || '',
+          email: fbUser.email || cachedProfile?.email || 'manikandanlatheklm@gmail.com',
           avatar_url: fbUser.photoURL || cachedProfile?.avatar_url || undefined,
           language: cachedProfile?.language || 'en',
           role: isMasterAdmin ? 'admin' : 'customer',
@@ -114,6 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (cachedProfile) {
         const merged = {
           ...cachedProfile,
+          email: fbUser.email || cachedProfile.email,
           role: isMasterAdmin ? 'admin' : cachedProfile.role
         };
         setUser(merged);
@@ -148,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (data: Partial<Profile>) => {
     if (!user) return;
-    const isMasterAdmin = MASTER_ADMIN_UIDS.includes(user.id);
+    const isMasterAdmin = MASTER_ADMIN_UIDS.includes(user.id) || MASTER_ADMIN_EMAILS.includes(user.email || '');
 
     const updated: Profile = { 
       ...user, 
@@ -187,8 +191,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) {
       const roleProfile: Profile = {
         id: `admin_${Date.now()}`,
-        full_name: role === 'admin' ? 'Shop Admin' : 'Customer',
-        email: role === 'admin' ? 'admin@manikandanlathe.com' : 'customer@manikandanlathe.com',
+        full_name: role === 'admin' ? 'MANIKANDAN LATHE Admin' : 'Customer',
+        email: 'manikandanlatheklm@gmail.com',
         language: 'en',
         role: role,
         is_profile_completed: true
@@ -200,8 +204,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateProfile({ role });
   };
 
-  const isAdmin = Boolean(user && (user.role === 'admin' || MASTER_ADMIN_UIDS.includes(user.id)));
-  const needsOnboarding = Boolean(user && !user.is_profile_completed && !MASTER_ADMIN_UIDS.includes(user.id));
+  const isAdmin = Boolean(
+    user && (
+      user.role === 'admin' || 
+      MASTER_ADMIN_UIDS.includes(user.id) || 
+      MASTER_ADMIN_EMAILS.includes(user.email || '')
+    )
+  );
+
+  const needsOnboarding = Boolean(
+    user && 
+    !user.is_profile_completed && 
+    !MASTER_ADMIN_UIDS.includes(user.id) &&
+    !MASTER_ADMIN_EMAILS.includes(user.email || '')
+  );
 
   return (
     <AuthContext.Provider
