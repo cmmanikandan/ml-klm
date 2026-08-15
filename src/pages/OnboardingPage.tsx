@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, ArrowRight, Globe, User, MapPin, Sparkles } from 'lucide-react';
+import { Check, ArrowRight, Globe, User, MapPin, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Logo } from '../components/common/Logo';
 import { Button } from '../components/common/Button';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +12,7 @@ export const OnboardingPage: React.FC = () => {
   const { setLanguage } = useLanguage();
   const navigate = useNavigate();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedLang, setSelectedLang] = useState<Language>('en');
 
   const [fullName, setFullName] = useState(user?.full_name || '');
@@ -41,7 +41,7 @@ export const OnboardingPage: React.FC = () => {
       language: selectedLang
     });
     setLoading(false);
-    navigate('/home');
+    setStep(4);
   };
 
   return (
@@ -52,16 +52,18 @@ export const OnboardingPage: React.FC = () => {
         <div className="text-center space-y-3">
           <Logo size="md" className="justify-center" />
           
-          <div className="flex items-center justify-center gap-2 pt-2">
-            {[1, 2, 3].map((s) => (
-              <div
-                key={s}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  step === s ? 'w-8 bg-brand-600' : step > s ? 'w-3 bg-brand-300' : 'w-3 bg-gray-200'
-                }`}
-              />
-            ))}
-          </div>
+          {step < 4 && (
+            <div className="flex items-center justify-center gap-2 pt-2">
+              {[1, 2, 3].map((s) => (
+                <div
+                  key={s}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    step === s ? 'w-8 bg-brand-600' : step > s ? 'w-3 bg-brand-300' : 'w-3 bg-gray-200'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* STEP 1: WELCOME */}
@@ -245,10 +247,42 @@ export const OnboardingPage: React.FC = () => {
 
             <div className="pt-2">
               <Button type="submit" variant="primary" size="lg" loading={loading} fullWidth>
-                {selectedLang === 'ta' ? 'சுயவிவரத்தைப் பதிவு செய்க' : 'Save & Continue to Shop'}
+                {selectedLang === 'ta' ? 'சுயவிவரத்தைப் பதிவு செய்க' : 'Save & Complete Profile'}
               </Button>
             </div>
           </form>
+        )}
+
+        {/* STEP 4: SUCCESS WELCOME CARD */}
+        {step === 4 && (
+          <div className="text-center space-y-5 animate-bounce-subtle py-4">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto border-2 border-emerald-300 shadow-lg">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h2 className="text-2xl font-black text-charcoal-900">
+                {selectedLang === 'ta' ? 'மணிகண்டன் லேத் குடும்பத்திற்கு நல்வரவு!' : 'Welcome to MANIKANDAN LATHE!'}
+              </h2>
+              <p className="text-xs text-emerald-800 font-bold max-w-sm mx-auto">
+                {selectedLang === 'ta'
+                  ? 'உங்களின் சுயவிவரம் வெற்றிகரமாக பதிவு செய்யப்பட்டது.'
+                  : 'Your profile setup is complete. Enjoy exploring our workshop catalogue!'}
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <Button
+                onClick={() => navigate('/home')}
+                variant="primary"
+                size="lg"
+                fullWidth
+                icon={<ArrowRight className="w-4 h-4" />}
+              >
+                {selectedLang === 'ta' ? 'கடைக்கு செல்லவும்' : 'Go to Workshop Home'}
+              </Button>
+            </div>
+          </div>
         )}
 
       </div>

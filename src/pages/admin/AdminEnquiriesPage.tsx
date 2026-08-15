@@ -4,6 +4,7 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { INITIAL_PRODUCTS, DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
+import { getNextOrderId } from '../../lib/idGenerator';
 
 export const AdminEnquiriesPage: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected' | 'converted'>('all');
@@ -67,7 +68,7 @@ export const AdminEnquiriesPage: React.FC = () => {
     if (!selectedEnquiry) return;
 
     const deliveryDate = new Date(Date.now() + estimatedDays * 86400000).toISOString().slice(0, 10);
-    const newOrderNumber = `MNK-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newOrderNumber = await getNextOrderId();
 
     const newOrderRecord = {
       order_number: newOrderNumber,

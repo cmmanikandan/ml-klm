@@ -7,6 +7,7 @@ import { Product } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, DEFAULT_SHOP_INFO } from '../../lib/supabase';
+import { getNextEnquiryId } from '../../lib/idGenerator';
 
 interface EnquiryModalProps {
   isOpen: boolean;
@@ -33,7 +34,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pro
     e.preventDefault();
     setLoading(true);
 
-    const generatedId = `MNK-ENQ-${Math.floor(100000 + Math.random() * 900000)}`;
+    const generatedId = await getNextEnquiryId();
 
     const enquiryRecord = {
       enquiry_number: generatedId,
