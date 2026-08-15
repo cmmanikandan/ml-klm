@@ -23,59 +23,53 @@ export const AdminPaymentsPage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       const { data: dbOrders } = await supabase.from('orders').select('*');
-      const orderMap = new Map((dbOrders || []).map((o: any) => [o.id, o]));
+      const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+      const allOrders = (dbOrders && dbOrders.length > 0) ? dbOrders : localOrders;
+      const orderMap = new Map((allOrders || []).map((o: any) => [o.id, o]));
 
       const { data: profilesData } = await supabase.from('profiles').select('*');
       const profileMap = new Map((profilesData || []).map((prof: any) => [prof.id, prof]));
 
       let rawPayments = dbPayments && dbPayments.length > 0 ? dbPayments : [];
 
-      // Fallback payments if table is empty
-      if (rawPayments.length === 0) {
-        rawPayments = [
-          {
-            id: 'pay_101',
-            order_id: 'MNK-ORD-1',
-            amount: 5000,
-            payment_mode: 'UPI / Razorpay QR',
-            transaction_id: 'pay_Rzp98231450',
-            user_id: 'cust_01',
-            status: 'completed',
-            created_at: '2026-08-15T10:30:00Z'
-          },
-          {
-            id: 'pay_102',
-            order_id: 'MNK-ORD-2',
-            amount: 10000,
-            payment_mode: 'Workshop Cash Counter',
-            transaction_id: 'CASH-MNK-7841',
-            user_id: 'cust_02',
-            status: 'completed',
-            created_at: '2026-08-14T14:15:00Z'
-          },
-          {
-            id: 'pay_103',
-            order_id: 'MNK-ORD-3',
-            amount: 3500,
-            payment_mode: 'UPI Direct',
-            transaction_id: 'UPI-98421-1102',
-            user_id: 'cust_03',
-            status: 'completed',
-            created_at: '2026-08-12T09:00:00Z'
-          }
-        ];
+      // If no explicit transactions in payments table, check real orders for advance payments
+      if (rawPayments.length === 0 && allOrders.length > 0) {
+        rawPayments = allOrders
+          .filter((ord: any) => {
+            const total = ord.total_amount || 0;
+            const remaining = ord.remaining_amount || 0;
+            const advance = Math.max(0, total - remaining);
+            return advance > 0 || (ord.advance_amount && ord.advance_amount > 0);
+          })
+          .map((ord: any) => {
+            const total = ord.total_amount || 0;
+            const remaining = ord.remaining_amount || 0;
+            const advance = ord.advance_amount || Math.max(0, total - remaining);
+
+            return {
+              id: `pay_ord_${ord.id}`,
+              order_id: ord.id,
+              order_number: ord.order_number || ord.id,
+              amount: advance,
+              payment_mode: 'UPI / Online Advance',
+              transaction_id: `ADV-${ord.order_number || ord.id}`,
+              user_id: ord.user_id,
+              status: 'completed',
+              created_at: ord.created_at || new Date().toISOString()
+            };
+          });
       }
 
-      // Hydrate missing customer name, phone, order number
+      // Hydrate customer name, phone, order number
       const hydratedPayments = rawPayments.map((p: any) => {
-        const ord = orderMap.get(p.order_id);
-        const prof = profileMap.get(p.user_id || ord?.user_id);
+        const ord: any = orderMap.get(p.order_id) || {};
+        const prof: any = profileMap.get(p.user_id || ord?.user_id) || {};
 
         return {
           ...p,
-          orderNumber: p.order_number || ord?.order_number || p.order_id || 'MNK-ORD-1',
-          customerName: p.customerName || p.user_name || prof?.full_name || ord?.customerName || 'Karthik Kumar',
-          customerPhone: p.customerPhone || prof?.phone || ord?.customerPhone || '+91 98421 54321',
+          orderNumber: p.order_number || ord?.order_number || p.order_id,
+          customerName: p.customerName || p.user_name || prof?.full_name || ord?.customerName || ord?.customer_name || 'Customer',
+          customerPhone: p.customerPhone || prof?.phone || ord?.customerPhone || ord?.customer_phone || '+91 96592 86268',
           paymentMode: p.payment_mode || p.payment_type || 'UPI / Razorpay',
           formattedDate: p.created_at ? new Date(p.created_at).toLocaleString('en-IN', {
             day: '2-digit',
@@ -84,7 +78,7 @@ export const AdminPaymentsPage: React.FC = () => {
             hour: '2-digit',
             minute: '2-digit',
             hour12: true
-          }) : '15 Aug 2026, 04:30 PM'
+          }) : 'Recent'
         };
       });
 
