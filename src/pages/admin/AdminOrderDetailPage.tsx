@@ -913,84 +913,87 @@ export const AdminOrderDetailPage: React.FC = () => {
             <div className="space-y-3 pt-1">
               
               {/* Option 1: Send Request to Customer Panel */}
-              <div className="p-3.5 bg-brand-50/60 rounded-2xl border border-brand-200 flex items-center justify-between gap-3">
+              <div className="p-4 bg-brand-50/80 rounded-2xl border border-brand-200 flex items-center justify-between gap-3">
                 <div>
                   <h4 className="text-xs font-extrabold text-brand-900">Send Payment Request to Customer Portal</h4>
                   <p className="text-[10px] text-brand-700 font-medium">Customer will see ₹{customPayAmount.toLocaleString('en-IN')} due in their app</p>
                 </div>
-                <Button
+                <button
+                  type="button"
                   onClick={handleSetCustomerRequestMoney}
-                  variant="primary"
-                  size="sm"
-                  icon={<Send className="w-3.5 h-3.5" />}
+                  className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-3.5 py-2 rounded-xl text-xs shadow-md transition-colors flex items-center gap-1.5 shrink-0"
                 >
-                  Set Request Money
-                </Button>
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Set Request Money</span>
+                </button>
               </div>
 
-              {/* Option 2: Generate & Show Dynamic UPI QR Code for ₹X */}
-              <div className="p-3.5 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-3">
+              {/* Option 2: Generate & Show Dynamic UPI QR Code (BLUE THEME) */}
+              <div className="p-4 bg-blue-50/90 rounded-2xl border border-blue-200 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h4 className="text-xs font-extrabold text-emerald-900">Show Dynamic Amount UPI QR Code (₹{customPayAmount.toLocaleString('en-IN')})</h4>
-                    <p className="text-[10px] text-emerald-700 font-medium">Customer scans QR to pay exact amount directly to shop</p>
+                    <h4 className="text-xs font-extrabold text-blue-900">Show Dynamic Amount UPI QR Code (₹{customPayAmount.toLocaleString('en-IN')})</h4>
+                    <p className="text-[10px] text-blue-700 font-medium">Customer scans QR to pay exact amount directly to shop</p>
                   </div>
-                  <Button
+                  <button
+                    type="button"
                     onClick={() => setShowGeneratedQr(!showGeneratedQr)}
-                    variant="secondary"
-                    size="sm"
-                    className="bg-emerald-600 text-white hover:bg-emerald-700 border-none"
-                    icon={<QrCode className="w-3.5 h-3.5" />}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-3.5 py-2 rounded-xl text-xs shadow-md transition-colors flex items-center gap-1.5 shrink-0"
                   >
-                    {showGeneratedQr ? 'Hide QR' : 'Show UPI QR'}
-                  </Button>
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>{showGeneratedQr ? 'Hide QR' : 'Show UPI QR'}</span>
+                  </button>
                 </div>
 
                 {/* Render Dynamic QR Code */}
                 {showGeneratedQr && (
-                  <div className="bg-white p-4 rounded-2xl border-2 border-emerald-400 text-center space-y-3 shadow-md animate-fadeIn">
+                  <div className="bg-white p-4 rounded-2xl border-2 border-blue-400 text-center space-y-3 shadow-md animate-fadeIn">
                     <img
                       src={dynamicQrCodeImg}
                       alt={`UPI QR Code for ₹${customPayAmount}`}
                       className="w-48 h-48 mx-auto object-contain"
                     />
                     <div className="text-xs font-bold text-charcoal-700">
-                      Amount Encoded: <span className="text-emerald-700 font-black font-mono">₹{customPayAmount.toLocaleString('en-IN')}</span><br/>
+                      Amount Encoded: <span className="text-blue-700 font-black font-mono">₹{customPayAmount.toLocaleString('en-IN')}</span><br/>
                       <span className="text-[10px] text-charcoal-400 font-mono">UPI ID: {DEFAULT_SHOP_INFO.upi_id}</span>
                     </div>
 
-                    <Button
+                    <button
+                      type="button"
                       onClick={() => handleRecordPayment('UPI QR Code')}
-                      variant="primary"
-                      className="bg-emerald-600 hover:bg-emerald-700"
-                      fullWidth
-                      icon={<CheckCircle2 className="w-4 h-4" />}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-2.5 px-4 rounded-xl text-xs shadow-md transition-colors flex items-center justify-center gap-2"
                     >
-                      Mark as Paid via UPI (₹{customPayAmount.toLocaleString('en-IN')})
-                    </Button>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Mark as Paid via UPI (₹{customPayAmount.toLocaleString('en-IN')})</span>
+                    </button>
                   </div>
                 )}
               </div>
 
-              {/* Option 3: Workshop Cash Counter */}
-              <div className="p-3.5 bg-warm-bg rounded-2xl border border-warm-border space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-extrabold text-charcoal-900">Collect Cash at Workshop Counter</h4>
-                  <Button
+              {/* Option 3: Workshop Cash Counter (GREEN THEME) */}
+              <div className="p-4 bg-emerald-50/90 rounded-2xl border border-emerald-200 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-extrabold text-emerald-900">Collect Cash at Workshop Counter</h4>
+                    <p className="text-[10px] text-emerald-700 font-medium">Record instant cash payment at shop counter</p>
+                  </div>
+
+                  <button
+                    type="button"
                     onClick={() => handleRecordPayment('Workshop Cash Counter')}
-                    variant="secondary"
-                    size="sm"
-                    icon={<DollarSign className="w-3.5 h-3.5 text-emerald-600" />}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-3.5 py-2 rounded-xl text-xs shadow-md transition-colors flex items-center gap-1.5 shrink-0"
                   >
-                    Mark as Paid (Cash)
-                  </Button>
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span>Mark as Paid (Cash)</span>
+                  </button>
                 </div>
+
                 <input
                   type="text"
                   value={customPayNotes}
                   onChange={(e) => setCustomPayNotes(e.target.value)}
                   placeholder="Optional payment notes (e.g. Cash received at Kallimandhayam counter)"
-                  className="w-full px-3 py-1.5 text-xs border border-warm-border rounded-xl bg-white"
+                  className="w-full px-3.5 py-2 text-xs border border-emerald-200 rounded-xl bg-white text-charcoal-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
