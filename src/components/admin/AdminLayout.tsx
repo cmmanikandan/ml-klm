@@ -35,6 +35,18 @@ export const AdminLayout: React.FC = () => {
     fetchCounts();
   }, [location.pathname]);
 
+  // Lock body scroll when mobile drawer is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
   const fetchCounts = async () => {
     try {
       const { data: enqData } = await supabase.from('enquiries').select('*').eq('status', 'pending');
@@ -48,7 +60,7 @@ export const AdminLayout: React.FC = () => {
     }
   };
 
-  // Protect Admin Portal: redirect non-admin users to normal login page
+  // Protect Admin Portal: redirect non-admin users to login
   if (!isAdmin) {
     return <Navigate to="/login" replace />;
   }
@@ -73,232 +85,172 @@ export const AdminLayout: React.FC = () => {
   const adminEmail = user?.email || 'manikandanlatheklm@gmail.com';
   const adminName = user?.full_name || 'MANIKANDAN LATHE Admin';
 
-  return (
-    <div className="min-h-screen bg-warm-bg flex flex-col">
-      {/* Admin SaaS Top Header */}
-      <header className="sticky top-0 z-40 bg-charcoal-900 text-white border-b-2 border-brand-600 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            
-            {/* Left: Mobile Drawer Trigger + Brand Logo */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 text-gray-300 hover:text-white rounded-xl hover:bg-gray-800 transition-colors focus:outline-none"
-                aria-label="Toggle Admin Menu"
-              >
-                {mobileMenuOpen ? <X className="w-6 h-6 text-brand-500" /> : <Menu className="w-6 h-6" />}
-              </button>
-
-              <Logo size="md" variant="dark" />
-              
-              <span className="hidden sm:inline-flex items-center gap-1.5 bg-brand-600 text-white text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Shop Admin SaaS</span>
-              </span>
-            </div>
-
-            {/* Right: Real Admin Profile Email & Google DP Avatar */}
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex flex-col text-right">
-                <span className="text-xs font-black text-white">{adminName}</span>
-                <span className="text-[10px] font-bold text-brand-400 font-mono">{adminEmail}</span>
-              </div>
-              {user?.avatar_url || (user as any)?.photoURL ? (
-                <img
-                  src={user?.avatar_url || (user as any)?.photoURL}
-                  alt={adminName}
-                  className="w-9 h-9 rounded-full object-cover border-2 border-brand-400 shadow-md"
-                />
-              ) : (
-                <div className="w-9 h-9 rounded-full bg-brand-600 border-2 border-brand-400 flex items-center justify-center text-white font-extrabold text-xs shadow-md">
-                  {adminName.charAt(0).toUpperCase()}
-                </div>
-              )}
-            </div>
-
-          </div>
+  const renderSidebarContent = (onItemClick?: () => void) => (
+    <div className="flex flex-col h-full bg-slate-900 text-white p-5 justify-between select-none">
+      <div className="space-y-6 flex-1 overflow-y-auto pr-1">
+        {/* Brand Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+          <Logo size="md" variant="dark" />
+          {onItemClick && (
+            <button
+              onClick={onItemClick}
+              className="lg:hidden p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
-      </header>
 
-      {/* Mobile Overlay Navigation Drawer */}
+        {/* Section Title & Navigation List */}
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest block mb-3 px-3">
+            MANIKANDAN LATHE OPERATIONS
+          </span>
+
+          {adminNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.to;
+
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={onItemClick}
+                className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-extrabold transition-all ${
+                  isActive
+                    ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/30'
+                    : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  <span>{item.label}</span>
+                </div>
+
+                {item.badge ? (
+                  <span className="bg-amber-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full">
+                    {item.badge}
+                  </span>
+                ) : (
+                  <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-600'}`} />
+                )}
+              </NavLink>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bottom Controls */}
+      <div className="pt-4 border-t border-slate-800 space-y-2.5 shrink-0 mt-4">
+        <div className="bg-slate-800/90 p-3.5 rounded-2xl border border-slate-700/80 space-y-1">
+          <div className="flex items-center gap-1.5 text-xs font-extrabold text-brand-400">
+            <ShieldAlert className="w-3.5 h-3.5" />
+            <span>Master Admin Active</span>
+          </div>
+          <p className="text-[11px] text-slate-300 font-mono font-bold truncate">
+            {adminEmail}
+          </p>
+        </div>
+
+        <Link
+          to="/home"
+          onClick={onItemClick}
+          className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-extrabold py-3 px-4 rounded-2xl text-xs border border-slate-700 transition-colors shadow-sm"
+        >
+          <Globe className="w-4 h-4 text-brand-400" />
+          <span>Back to Website</span>
+        </Link>
+
+        <button
+          onClick={() => {
+            if (onItemClick) onItemClick();
+            handleAdminLogout();
+          }}
+          className="w-full flex items-center justify-center gap-2 bg-red-950/50 hover:bg-red-900/80 text-red-300 font-extrabold py-3 px-4 rounded-2xl text-xs border border-red-800/80 transition-colors shadow-sm"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Admin Logout</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-warm-bg flex">
+      {/* 1. DESKTOP PERMANENT FIXED LEFT SIDEBAR (Width: 280px) */}
+      <aside className="hidden lg:block fixed left-0 top-0 bottom-0 w-[280px] h-[100dvh] bg-slate-900 z-40 shadow-2xl border-r border-slate-800">
+        {renderSidebarContent()}
+      </aside>
+
+      {/* 2. MOBILE DRAWER SIDEBAR (Slide-in Left Drawer) */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           {/* Backdrop Blur */}
           <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/65 backdrop-blur-sm transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
           />
 
-          {/* Drawer Menu Panel */}
-          <div className="relative flex-1 max-w-xs w-full bg-charcoal-900 text-white p-5 flex flex-col justify-between shadow-2xl z-10 animate-fade-in">
-            <div className="space-y-6">
-              
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between border-b border-gray-800 pb-4">
-                <Logo size="md" variant="dark" />
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-800"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Navigation Items List */}
-              <div className="space-y-1">
-                <span className="text-[10px] font-extrabold text-brand-500 uppercase tracking-widest block mb-2 px-3">
-                  MANIKANDAN LATHE OPERATIONS
-                </span>
-
-                {adminNavItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = location.pathname === item.to;
-
-                  return (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
-                        isActive
-                          ? 'bg-brand-600 text-white shadow-md'
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="w-4 h-4 shrink-0" />
-                        <span>{item.label}</span>
-                      </div>
-
-                      {item.badge ? (
-                        <span className="bg-amber-500 text-black text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                          {item.badge}
-                        </span>
-                      ) : (
-                        <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-gray-500'}`} />
-                      )}
-                    </NavLink>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Mobile Drawer Bottom Navigation Section */}
-            <div className="pt-4 border-t border-gray-800 space-y-2">
-              <div className="bg-gray-800/80 p-3 rounded-2xl border border-gray-700 space-y-1 mb-2">
-                <div className="flex items-center gap-1.5 text-xs font-extrabold text-brand-400">
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  <span>Master Admin Active</span>
-                </div>
-                <p className="text-[11px] text-gray-300 font-mono truncate">
-                  {adminEmail}
-                </p>
-              </div>
-
-              <Link
-                to="/home"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-brand-600 text-white font-extrabold py-3 px-4 rounded-2xl text-xs border border-gray-700 transition-all shadow-sm"
-              >
-                <Globe className="w-4 h-4 text-brand-400" />
-                <span>Back to Website</span>
-              </Link>
-
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  handleAdminLogout();
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-red-900/40 hover:bg-red-900/70 text-red-300 font-extrabold py-3 px-4 rounded-2xl text-xs border border-red-800 transition-all shadow-sm"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Admin Logout</span>
-              </button>
-            </div>
-
+          {/* Mobile Drawer Panel */}
+          <div className="relative w-[80vw] max-w-[340px] h-[100dvh] bg-slate-900 z-50 shadow-2xl animate-fade-in">
+            {renderSidebarContent(() => setMobileMenuOpen(false))}
           </div>
         </div>
       )}
 
-      {/* Main SaaS Layout Grid */}
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex-1 flex gap-8">
-        
-        {/* Desktop Sticky Sidebar Navigation */}
-        <aside className="hidden lg:flex flex-col w-64 shrink-0 justify-between bg-white rounded-3xl p-4 border border-warm-border shadow-card h-[calc(100vh-6rem)] sticky top-20">
-          <div className="space-y-1">
-            <div className="px-3 py-2 mb-2 border-b border-warm-muted">
-              <span className="text-[10px] font-extrabold text-brand-600 uppercase tracking-widest block">
-                ADMIN NAVIGATION
-              </span>
-            </div>
-
-            {adminNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.to;
-
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-extrabold transition-all ${
-                    isActive
-                      ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
-                      : 'text-charcoal-700 hover:bg-warm-bg hover:text-brand-600'
-                  }`}
+      {/* 3. MAIN CONTENT CONTAINER (Margin Left 280px on Desktop) */}
+      <div className="flex-1 lg:ml-[280px] min-h-screen flex flex-col min-w-0">
+        {/* Top Header Bar */}
+        <header className="sticky top-0 z-30 bg-charcoal-900 text-white border-b-2 border-brand-600 shadow-md">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="lg:hidden p-2 text-slate-300 hover:text-white rounded-xl hover:bg-slate-800 transition-colors focus:outline-none"
+                  aria-label="Toggle Admin Menu"
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{item.label}</span>
-                  </div>
+                  {mobileMenuOpen ? <X className="w-6 h-6 text-brand-500" /> : <Menu className="w-6 h-6" />}
+                </button>
 
-                  {item.badge ? (
-                    <span className="bg-amber-500 text-black text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                      {item.badge}
-                    </span>
-                  ) : (
-                    <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-charcoal-300'}`} />
-                  )}
-                </NavLink>
-              );
-            })}
-          </div>
-
-          {/* Desktop Sidebar Footer: Real Admin Email + Back to Website before Admin Logout */}
-          <div className="pt-4 border-t border-warm-border space-y-2">
-            <div className="bg-warm-bg p-3 rounded-2xl border border-warm-border space-y-1 mb-2">
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-brand-600">
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>Master Admin Active</span>
+                <div className="lg:hidden">
+                  <Logo size="md" variant="dark" />
+                </div>
+                
+                <span className="hidden sm:inline-flex items-center gap-1.5 bg-brand-600 text-white text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Shop Admin SaaS</span>
+                </span>
               </div>
-              <p className="text-[11px] text-charcoal-700 font-mono font-bold truncate">
-                {adminEmail}
-              </p>
+
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex flex-col text-right">
+                  <span className="text-xs font-black text-white">{adminName}</span>
+                  <span className="text-[10px] font-bold text-brand-400 font-mono">{adminEmail}</span>
+                </div>
+                {user?.avatar_url || (user as any)?.photoURL ? (
+                  <img
+                    src={user?.avatar_url || (user as any)?.photoURL}
+                    alt={adminName}
+                    className="w-9 h-9 rounded-full object-cover border-2 border-brand-400 shadow-md"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-brand-600 border-2 border-brand-400 flex items-center justify-center text-white font-extrabold text-xs shadow-md">
+                    {adminName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+
             </div>
-
-            <Link
-              to="/home"
-              className="w-full flex items-center justify-center gap-2 bg-warm-bg hover:bg-brand-50 text-brand-700 font-extrabold py-3 px-4 rounded-2xl text-xs border border-brand-200 transition-all shadow-sm group"
-            >
-              <Globe className="w-4 h-4 text-brand-600 group-hover:rotate-12 transition-transform" />
-              <span>Back to Website</span>
-            </Link>
-
-            <button
-              onClick={handleAdminLogout}
-              className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold py-3 px-4 rounded-2xl text-xs border border-red-200 transition-all shadow-sm"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Admin Logout</span>
-            </button>
           </div>
-        </aside>
+        </header>
 
-        {/* Dynamic SaaS Admin Page Viewport */}
-        <main className="flex-1 min-w-0 overflow-x-hidden">
+        {/* Dynamic Viewport for Admin Pages */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           <Outlet />
         </main>
-
       </div>
     </div>
   );
