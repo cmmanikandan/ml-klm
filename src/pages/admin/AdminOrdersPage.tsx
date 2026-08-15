@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Phone, 
   MessageSquare, 
@@ -233,9 +233,12 @@ export const AdminOrdersPage: React.FC = () => {
     setSelectedOrder(null);
   };
 
-  // Standard A4 Paper Format Invoice Preview Modal Trigger
+  const navigate = useNavigate();
+
+  // Standard A4 Paper Format Invoice Preview Direct Page Navigation
   const handlePrintA4Invoice = (order: any) => {
-    setPreviewInvoiceOrder(order);
+    const targetId = order.order_number || order.id || 'MNK-ORD-6224';
+    navigate(`/invoice/${targetId}`);
   };
 
   return (

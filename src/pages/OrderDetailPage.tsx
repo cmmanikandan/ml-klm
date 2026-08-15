@@ -241,7 +241,7 @@ export const OrderDetailPage: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowInvoicePreviewModal(true)}
+              onClick={() => navigate(`/invoice/${order.order_number || order.id}`)}
               className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white bg-brand-600 px-3.5 py-2 rounded-full shadow-md hover:bg-brand-700 transition-colors"
             >
               <Printer className="w-4 h-4" />

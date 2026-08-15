@@ -263,9 +263,11 @@ export const AdminOrderDetailPage: React.FC = () => {
     alert(`₹${customPayAmount.toLocaleString('en-IN')} payment recorded successfully as ${mode}! Remaining due: ₹${updatedRemaining.toLocaleString('en-IN')}`);
   };
 
-  // Standard A4 Paper Format Invoice Generator & Auto Print
+  // Standard A4 Paper Format Invoice Generator & Dedicated Page Navigation
   const handlePrintA4Invoice = () => {
-    setShowInvoicePreviewModal(true);
+    if (!order) return;
+    const targetId = order.order_number || order.id || 'MNK-ORD-6224';
+    navigate(`/invoice/${targetId}`);
   };
 
   if (loading) {

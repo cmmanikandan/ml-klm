@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Printer, Download, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Printer, Download, ArrowLeft, ExternalLink, CheckCircle2, AlertCircle, ZoomIn, ZoomOut } from 'lucide-react';
 import { InvoiceDocument } from '../components/invoice/InvoiceDocument';
 import { INITIAL_PRODUCTS, supabase } from '../lib/supabase';
 
@@ -12,12 +12,18 @@ export const InvoicePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [pdfDownloaded, setPdfDownloaded] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(1.0);
 
   useEffect(() => {
     if (id) {
       fetchOrderDetails(id);
     }
   }, [id]);
+
+  const handleZoomIn = () => setZoomLevel((prev) => Math.min(1.8, Number((prev + 0.15).toFixed(2))));
+  const handleZoomOut = () => setZoomLevel((prev) => Math.max(0.4, Number((prev - 0.15).toFixed(2))));
+  const handleResetZoom = () => setZoomLevel(1.0);
 
   const fetchOrderDetails = async (targetId: string) => {
     setLoading(true);
@@ -81,7 +87,7 @@ export const InvoicePage: React.FC = () => {
         }
       }
 
-      // 4. Default fallback order if not in DB yet (guarantees standalone tab never fails)
+      // 4. Default fallback order if not in DB yet
       if (!record) {
         const normalizedNo = targetId.startsWith('MNK') ? targetId : `MNK-ORD-${targetId}`;
         record = {
@@ -117,54 +123,81 @@ export const InvoicePage: React.FC = () => {
 
   const invoiceNo = order?.order_number || order?.id || 'MNK-ORD-6224';
 
+  const handleBack = () => {
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate('/admin/orders');
+    }
+  };
+
   // Standalone Print Handler
   const handlePrint = () => {
     window.print();
   };
 
+  // Open in New Tab Handler
+  const handleOpenNewTab = () => {
+    window.open(`/invoice/${invoiceNo}`, '_blank');
+  };
+
+  // Ensure html2pdf script is dynamically available
+  const loadHtml2PdfScript = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if ((window as any).html2pdf) {
+        resolve();
+        return;
+      }
+      const existingScript = document.getElementById('html2pdf-cdn-script');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => resolve());
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'html2pdf-cdn-script';
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load html2pdf script'));
+      document.head.appendChild(script);
+    });
+  };
+
   // Standalone Download PDF Handler
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (isPdfGenerating) return;
     setIsPdfGenerating(true);
     setPdfDownloaded(false);
+    setPdfError(null);
 
-    const el = document.getElementById('standalone-invoice-paper');
-    if (!el) {
+    try {
+      await loadHtml2PdfScript();
+
+      const el = document.getElementById('standalone-invoice-paper');
+      if (!el) {
+        throw new Error('Invoice element missing');
+      }
+
+      const filename = `Manikandan-Lathe-Invoice-${invoiceNo}.pdf`;
+
+      const opt = {
+        margin: [0, 0, 0, 0],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 1200 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      const html2pdf = (window as any).html2pdf;
+      await html2pdf().set(opt).from(el).save();
+
       setIsPdfGenerating(false);
-      return;
-    }
-
-    const filename = `Manikandan-Lathe-Invoice-${invoiceNo}.pdf`;
-
-    const opt = {
-      margin: [0, 0, 0, 0],
-      filename: filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    const html2pdf = (window as any).html2pdf;
-
-    if (typeof html2pdf === 'function') {
-      html2pdf()
-        .set(opt)
-        .from(el)
-        .save()
-        .then(() => {
-          setIsPdfGenerating(false);
-          setPdfDownloaded(true);
-          setTimeout(() => setPdfDownloaded(false), 3000);
-        })
-        .catch(() => {
-          setIsPdfGenerating(false);
-          handlePrint();
-        });
-    } else {
-      setTimeout(() => {
-        setIsPdfGenerating(false);
-        handlePrint();
-      }, 500);
+      setPdfDownloaded(true);
+      setTimeout(() => setPdfDownloaded(false), 4000);
+    } catch (err) {
+      console.warn('PDF generation fallback:', err);
+      setIsPdfGenerating(false);
+      setPdfError('Unable to generate PDF. Please try again.');
+      setTimeout(() => setPdfError(null), 4000);
     }
   };
 
@@ -177,22 +210,24 @@ export const InvoicePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 py-6 px-4 space-y-6">
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between">
       
-      {/* Top Action Toolbar (Hidden during browser printing) */}
-      <div className="no-print max-w-[210mm] mx-auto bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+      {/* Top Compact Header Toolbar (Hidden during browser printing) */}
+      <div className="no-print sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-xl flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(-1)}
-            className="p-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-slate-200 transition-colors"
+            onClick={handleBack}
+            className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-200 transition-colors border border-slate-700"
             title="Go Back"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="text-sm font-black tracking-tight text-white flex items-center gap-2">
+            <h1 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-2">
               <span>MANIKANDAN LATHE — TAX INVOICE</span>
-              <span className="font-mono text-brand-400">#{invoiceNo}</span>
+              <span className="font-mono text-xs font-bold text-brand-400 bg-brand-950/80 px-2.5 py-0.5 rounded-full border border-brand-800">
+                #{invoiceNo}
+              </span>
             </h1>
             <p className="text-[11px] text-slate-400 font-medium">
               Official Printable A4 Tax Document
@@ -200,34 +235,103 @@ export const InvoicePage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-3">
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700 shadow-sm">
+            <button
+              onClick={handleZoomOut}
+              className="p-1.5 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
+              title="Zoom Out (-)"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={handleResetZoom}
+              className="px-2.5 py-1 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-mono font-bold transition-colors"
+              title="Reset Zoom (100%)"
+            >
+              {Math.round(zoomLevel * 100)}%
+            </button>
+
+            <button
+              onClick={handleZoomIn}
+              className="p-1.5 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
+              title="Zoom In (+)"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Scrollable A4 Document Viewer Container */}
+      <div 
+        className="flex-1 p-4 sm:p-8 bg-slate-800/90 flex justify-start sm:justify-center items-start overflow-auto"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        <div 
+          className="shadow-2xl rounded-sm bg-white shrink-0 my-auto sm:my-0 transition-transform origin-top"
+          style={{ transform: `scale(${zoomLevel})` }}
+        >
+          <InvoiceDocument order={order} id="standalone-invoice-paper" />
+        </div>
+      </div>
+
+      {/* Bottom Sticky Action Bar (Hidden during browser printing) */}
+      <div className="no-print sticky bottom-0 z-40 bg-slate-900 border-t border-slate-800 px-4 py-3 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+        <div className="text-xs font-extrabold text-slate-400">
+          {pdfDownloaded ? (
+            <span className="text-emerald-400 flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>PDF Downloaded ({invoiceNo}.pdf)</span>
+            </span>
+          ) : pdfError ? (
+            <span className="text-red-400 flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4" />
+              <span>{pdfError}</span>
+            </span>
+          ) : (
+            <span>Official A4 Printable Bill</span>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+          {/* 1. Print Invoice */}
           <button
             onClick={handlePrint}
-            className="flex-1 sm:flex-initial bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-4 py-2 rounded-xl text-xs shadow-md transition-colors flex items-center justify-center gap-2"
+            className="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs shadow-md transition-colors flex items-center justify-center gap-2"
           >
             <Printer className="w-4 h-4" />
             <span>Print Invoice</span>
           </button>
 
+          {/* 2. Open in New Tab */}
+          <button
+            onClick={handleOpenNewTab}
+            className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold px-4 py-2.5 rounded-xl text-xs border border-slate-700 transition-colors flex items-center justify-center gap-2"
+          >
+            <ExternalLink className="w-4 h-4 text-brand-400" />
+            <span>Open in New Tab</span>
+          </button>
+
+          {/* 3. Download PDF */}
           <button
             onClick={handleDownloadPdf}
             disabled={isPdfGenerating}
-            className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-4 py-2 rounded-xl text-xs shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
-            <span>{isPdfGenerating ? 'Generating PDF...' : pdfDownloaded ? 'PDF Downloaded ✓' : 'Download PDF'}</span>
+            <span>{isPdfGenerating ? 'Generating PDF...' : 'Download PDF'}</span>
           </button>
         </div>
       </div>
 
-      {/* Standalone Centered A4 Document */}
-      <div className="flex justify-center">
-        <div className="shadow-2xl rounded-sm overflow-hidden bg-white">
-          <InvoiceDocument order={order} id="standalone-invoice-paper" />
-        </div>
-      </div>
-
       <style>{`
+        @page {
+          size: A4 portrait;
+          margin: 12mm;
+        }
         @media print {
           body {
             background: #ffffff !important;
@@ -236,6 +340,12 @@ export const InvoicePage: React.FC = () => {
           }
           .no-print {
             display: none !important;
+          }
+          #standalone-invoice-paper {
+            width: 210mm !important;
+            min-height: 297mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
           }
         }
       `}</style>
