@@ -137,10 +137,10 @@ export const AdminEnquiryDetailPage: React.FC = () => {
       expected_delivery_date: deliveryDate,
       total_amount: quotePrice,
       advance_amount: advanceRequired,
-      remaining_amount: Math.max(0, quotePrice - advanceRequired),
-      is_payment_requested: true,
+      remaining_amount: quotePrice,
+      is_payment_requested: advanceRequired > 0,
       payment_request_amount: advanceRequired,
-      payment_status: 'pending',
+      payment_status: 'unpaid',
       created_at: new Date().toISOString()
     };
 

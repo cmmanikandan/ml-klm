@@ -457,49 +457,98 @@ export const AdminOrderDetailPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-warm-muted font-medium">
-                  {/* Unpaid Balance Entry Row if remaining > 0 */}
-                  {order.remaining_amount > 0 && (
-                    <tr className="bg-amber-50/50">
-                      <td className="py-3 px-3 font-extrabold text-amber-800">#Due</td>
-                      <td className="py-3 px-3 font-mono font-bold text-amber-700">Pending Collection</td>
-                      <td className="py-3 px-3 font-bold text-charcoal-900">Balance Due Amount</td>
-                      <td className="py-3 px-3 font-black text-amber-700 font-mono">₹{order.remaining_amount.toLocaleString('en-IN')}</td>
-                      <td className="py-3 px-3 text-charcoal-500 text-[11px]">Awaiting payment from customer</td>
-                      <td className="py-3 px-3">
-                        <span className="bg-red-100 text-red-800 font-extrabold px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider">
-                          UNPAID
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCustomPayAmount(order.remaining_amount);
-                            setShowGeneratedQr(false);
-                            setShowPaymentModal(true);
-                          }}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
-                        >
-                          Collect Payment
-                        </button>
-                      </td>
-                    </tr>
-                  )}
+                  {/* Calculate advance payment collection status */}
+                  {(() => {
+                    const totalPaid = paymentsHistory.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+                    const advanceReq = Number(order.advance_amount || 0);
+                    const isAdvancePaid = advanceReq > 0 && totalPaid >= advanceReq;
+                    const remainingBalance = Math.max(0, (order.total_amount || 0) - totalPaid);
 
-                  {/* Completed Payments Rows */}
-                  {paymentsHistory.map((pay, idx) => (
-                    <tr key={pay.id || idx}>
-                      <td className="py-3 px-3 font-extrabold text-charcoal-500">#{idx + 1}</td>
-                      <td className="py-3 px-3 font-mono font-bold text-charcoal-700">
-                        {pay.created_at ? new Date(pay.created_at).toLocaleString('en-IN') : 'Recent'}
-                      </td>
-                      <td className="py-3 px-3 font-bold text-charcoal-900">{pay.payment_mode || 'Online Payment'}</td>
-                      <td className="py-3 px-3 font-black text-emerald-700 font-mono">+₹{(pay.amount || 0).toLocaleString('en-IN')}</td>
-                      <td className="py-3 px-3 text-charcoal-500 text-[11px]">{pay.notes || '-'}</td>
-                      <td className="py-3 px-3"><Badge variant="paid">PAID</Badge></td>
-                      <td className="py-3 px-3 text-center font-bold text-charcoal-400 text-[11px]">-</td>
-                    </tr>
-                  ))}
+                    return (
+                      <>
+                        {/* 1. Unpaid Advance Payment Request Row */}
+                        {advanceReq > 0 && !isAdvancePaid && (
+                          <tr className="bg-rose-50/70 border-l-4 border-rose-500">
+                            <td className="py-3 px-3 font-extrabold text-rose-800">#Advance</td>
+                            <td className="py-3 px-3 font-mono font-bold text-rose-700">Pending Advance Collection</td>
+                            <td className="py-3 px-3 font-bold text-charcoal-900">
+                              Advance Payment Request
+                              <span className="block text-[10px] text-rose-600 font-semibold">Required to start fabrication</span>
+                            </td>
+                            <td className="py-3 px-3 font-black text-rose-700 font-mono text-sm">₹{advanceReq.toLocaleString('en-IN')}</td>
+                            <td className="py-3 px-3 text-charcoal-600 text-[11px]">Advance payment requested from customer</td>
+                            <td className="py-3 px-3">
+                              <span className="bg-rose-100 text-rose-800 border border-rose-300 font-black px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider">
+                                UNPAID
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCustomPayAmount(advanceReq);
+                                  setShowGeneratedQr(false);
+                                  setShowPaymentModal(true);
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
+                              >
+                                Collect Advance
+                              </button>
+                            </td>
+                          </tr>
+                        )}
+
+                        {/* 2. Unpaid Remaining Balance Due Row */}
+                        {remainingBalance > (isAdvancePaid ? 0 : advanceReq) && (
+                          <tr className="bg-amber-50/70 border-l-4 border-amber-500">
+                            <td className="py-3 px-3 font-extrabold text-amber-800">#Due</td>
+                            <td className="py-3 px-3 font-mono font-bold text-amber-700">Pending Collection</td>
+                            <td className="py-3 px-3 font-bold text-charcoal-900">
+                              Remaining Balance Due
+                              <span className="block text-[10px] text-amber-700 font-semibold">Due upon delivery</span>
+                            </td>
+                            <td className="py-3 px-3 font-black text-amber-800 font-mono text-sm">
+                              ₹{(remainingBalance - (isAdvancePaid ? 0 : advanceReq)).toLocaleString('en-IN')}
+                            </td>
+                            <td className="py-3 px-3 text-charcoal-600 text-[11px]">Final balance payment</td>
+                            <td className="py-3 px-3">
+                              <span className="bg-amber-100 text-amber-900 border border-amber-300 font-black px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider">
+                                UNPAID
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCustomPayAmount(remainingBalance - (isAdvancePaid ? 0 : advanceReq));
+                                  setShowGeneratedQr(false);
+                                  setShowPaymentModal(true);
+                                }}
+                                className="bg-brand-600 hover:bg-brand-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
+                              >
+                                Collect Payment
+                              </button>
+                            </td>
+                          </tr>
+                        )}
+
+                        {/* 3. Completed Payments Transactions Rows */}
+                        {paymentsHistory.map((pay, idx) => (
+                          <tr key={pay.id || idx} className="hover:bg-warm-hover transition-colors">
+                            <td className="py-3 px-3 font-extrabold text-charcoal-500">#{idx + 1}</td>
+                            <td className="py-3 px-3 font-mono font-bold text-charcoal-700">
+                              {pay.created_at ? new Date(pay.created_at).toLocaleString('en-IN') : 'Recent'}
+                            </td>
+                            <td className="py-3 px-3 font-bold text-charcoal-900">{pay.payment_mode || 'Online Payment'}</td>
+                            <td className="py-3 px-3 font-black text-emerald-700 font-mono text-sm">+₹{(pay.amount || 0).toLocaleString('en-IN')}</td>
+                            <td className="py-3 px-3 text-charcoal-600 text-[11px]">{pay.notes || 'Payment collected'}</td>
+                            <td className="py-3 px-3"><Badge variant="paid">PAID</Badge></td>
+                            <td className="py-3 px-3 text-center font-bold text-charcoal-400 text-[11px]">-</td>
+                          </tr>
+                        ))}
+                      </>
+                    );
+                  })()}
                 </tbody>
               </table>
             </div>

@@ -349,7 +349,35 @@ export const OrderDetailPage: React.FC = () => {
 
           {/* PAYMENT OPTIONS SECTION (SHOW UNTIL FULLY PAID) */}
           {((order.remaining_amount || 0) > 0 || order.payment_status !== 'paid') && (
-            <div className="bg-gradient-to-r from-amber-500/10 via-brand-500/10 to-orange-500/10 p-5 rounded-2xl border-2 border-brand-300 space-y-3">
+            <div className="bg-gradient-to-r from-amber-500/10 via-brand-500/10 to-orange-500/10 p-5 rounded-2xl border-2 border-brand-300 space-y-4">
+              
+              {/* Advance Payment Breakdown Status Card */}
+              {Number(order.advance_amount || 0) > 0 && (
+                <div className="bg-white p-3.5 rounded-xl border border-brand-200 shadow-sm flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] font-black text-brand-600 uppercase tracking-wider block">
+                      {isTamil ? 'முன்பணம் நிலுவை' : 'Required Advance Amount'}
+                    </span>
+                    <span className="text-sm font-black text-charcoal-900 font-mono">
+                      ₹{Number(order.advance_amount).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+
+                  <div>
+                    {(order.remaining_amount || 0) < (order.total_amount || 0) ? (
+                      <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold px-3 py-1 rounded-full text-xs flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{isTamil ? 'முன்பணம் செலுத்தப்பட்டது' : 'Advance Paid'}</span>
+                      </span>
+                    ) : (
+                      <span className="bg-rose-100 text-rose-800 border border-rose-300 font-extrabold px-3 py-1 rounded-full text-xs flex items-center gap-1 animate-pulse">
+                        <span>{isTamil ? 'முன்பணம் செலுத்தப்படவில்லை (Unpaid)' : 'Advance Unpaid'}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest block">PAYMENT DUE</span>
