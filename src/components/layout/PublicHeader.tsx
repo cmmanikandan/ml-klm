@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Globe, Phone, Home, Package, Info, PhoneCall, Menu, X, ChevronRight } from 'lucide-react';
+import { User, Globe, Phone, Home, Package, Info, PhoneCall, Menu, X, ChevronRight, ShoppingBag, Heart, Bell, Shield } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -8,18 +8,34 @@ import { DEFAULT_SHOP_INFO } from '../../lib/supabase';
 
 export const PublicHeader: React.FC = () => {
   const { language, setLanguage } = useLanguage();
-  const { user } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isTamil = language === 'ta';
 
-  const navLinks = [
+  const guestNavLinks = [
     { to: '/', label_en: 'Home', label_ta: 'முகப்பு', icon: Home },
     { to: '/products', label_en: 'Products', label_ta: 'பொருட்கள்', icon: Package },
     { to: '/about', label_en: 'About Us', label_ta: 'எங்களைப் பற்றி', icon: Info },
     { to: '/contact', label_en: 'Contact', label_ta: 'தொடர்பு', icon: PhoneCall },
   ];
+
+  const loggedInNavLinks = [
+    { to: '/home', label_en: 'Home', label_ta: 'முகப்பு', icon: Home },
+    { to: '/products', label_en: 'Products', label_ta: 'பொருட்கள்', icon: Package },
+    { to: '/orders', label_en: 'My Orders', label_ta: 'என் ஆர்டர்கள்', icon: ShoppingBag },
+    { to: '/wishlist', label_en: 'Wishlist', label_ta: 'விருப்பப்பட்டியல்', icon: Heart },
+    { to: '/notifications', label_en: 'Notifications', label_ta: 'அறிவிப்புகள்', icon: Bell },
+    { to: '/profile', label_en: 'My Profile', label_ta: 'என் கணக்கு', icon: User },
+  ];
+
+  const activeLinks = user ? loggedInNavLinks : guestNavLinks;
+
+  const handleLogout = async () => {
+    setMobileMenuOpen(false);
+    await signOut();
+  };
 
   return (
     <header className="bg-white border-b border-warm-border sticky top-0 z-40 shadow-card">
@@ -33,7 +49,7 @@ export const PublicHeader: React.FC = () => {
 
           {/* Middle: Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => {
+            {guestNavLinks.map((link) => {
               const isActive = location.pathname === link.to;
               return (
                 <Link
@@ -72,7 +88,7 @@ export const PublicHeader: React.FC = () => {
               <span>Call Shop</span>
             </a>
 
-            {/* Sign In Button */}
+            {/* Sign In / Customer Account Button */}
             {user ? (
               <Link
                 to="/home"
@@ -105,15 +121,15 @@ export const PublicHeader: React.FC = () => {
         </div>
       </div>
 
-      {/* ☰ Mobile Dropdown Navigation Menu Drawer */}
+      {/* ☰ Normal Mobile Dropdown Navigation Panel */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-warm-border px-4 pt-3 pb-5 space-y-3 animate-fade-in shadow-2xl">
+        <div className="md:hidden bg-white border-t border-warm-border px-4 pt-3 pb-5 space-y-3 animate-fade-in shadow-xl">
           <div className="space-y-1">
             <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block mb-2 px-2">
               NAVIGATION MENU
             </span>
 
-            {navLinks.map((link) => {
+            {activeLinks.map((link) => {
               const isActive = location.pathname === link.to;
               const Icon = link.icon;
 
@@ -122,7 +138,7 @@ export const PublicHeader: React.FC = () => {
                   key={link.to}
                   to={link.to}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-extrabold transition-all ${
+                  className={`flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-extrabold transition-all ${
                     isActive
                       ? 'bg-brand-600 text-white shadow-sm'
                       : 'text-charcoal-800 hover:bg-warm-bg'
@@ -136,34 +152,46 @@ export const PublicHeader: React.FC = () => {
                 </Link>
               );
             })}
+
+            {isAdmin && (
+              <Link
+                to="/admin/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-extrabold bg-charcoal-900 text-white shadow-sm mt-2"
+              >
+                <div className="flex items-center gap-3">
+                  <Shield className="w-4 h-4 text-brand-500" />
+                  <span>Admin SaaS Portal</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-brand-400" />
+              </Link>
+            )}
           </div>
 
-          {/* Quick Contact & Action Buttons inside Mobile Menu */}
+          {/* Bottom Action Controls */}
           <div className="pt-3 border-t border-warm-border space-y-2">
             <a
               href={`tel:${DEFAULT_SHOP_INFO.phone}`}
-              className="w-full flex items-center justify-center gap-2 bg-warm-bg hover:bg-warm-hover text-charcoal-800 font-bold py-2.5 px-4 rounded-xl text-xs border border-warm-border"
+              className="w-full flex items-center justify-center gap-2 bg-warm-bg hover:bg-warm-hover text-charcoal-800 font-extrabold py-3 px-4 rounded-2xl text-xs border border-warm-border"
             >
-              <Phone className="w-3.5 h-3.5 text-brand-600" />
+              <Phone className="w-4 h-4 text-brand-600" />
               <span>Call Shop ({DEFAULT_SHOP_INFO.phone})</span>
             </a>
 
             {user ? (
-              <Link
-                to="/home"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-2.5 px-4 rounded-xl text-xs shadow-sm"
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold py-3 px-4 rounded-2xl text-xs border border-red-200 transition-all"
               >
-                <User className="w-3.5 h-3.5" />
-                <span>{isTamil ? 'என் கணக்கு' : 'Go to Customer Panel'}</span>
-              </Link>
+                <span>Sign Out</span>
+              </button>
             ) : (
               <Link
                 to="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-2.5 px-4 rounded-xl text-xs shadow-sm"
+                className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-3 px-4 rounded-2xl text-xs shadow-md"
               >
-                <User className="w-3.5 h-3.5" />
+                <User className="w-4 h-4" />
                 <span>{isTamil ? 'உள்நுழைக' : 'Sign In to Account'}</span>
               </Link>
             )}

@@ -1,44 +1,90 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Phone, MessageSquare, Heart, Share2, ArrowLeft, CheckCircle2, ShieldCheck, Wrench, Layers, Ruler } from 'lucide-react';
-import { ProductGallery } from '../components/product/ProductGallery';
-import { EnquiryModal } from '../components/product/EnquiryModal';
+import { 
+  ArrowLeft, 
+  Heart, 
+  Share2, 
+  Check, 
+  ShieldCheck, 
+  Phone, 
+  Send,
+  Building2,
+  Sparkles,
+  Package,
+  Wrench
+} from 'lucide-react';
 import { Button } from '../components/common/Button';
+import { EnquiryModal } from '../components/product/EnquiryModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useWishlist } from '../context/WishlistContext';
-import { useRecentlyViewed } from '../context/RecentlyViewedContext';
-import { Product } from '../types';
-import { INITIAL_PRODUCTS, DEFAULT_SHOP_INFO } from '../lib/supabase';
-
 import { useAuth } from '../context/AuthContext';
+import { useRecentlyViewed } from '../context/RecentlyViewedContext';
+import { DEFAULT_SHOP_INFO, supabase } from '../lib/supabase';
+import { Product } from '../types';
 
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { language, t } = useLanguage();
   const { isInWishlist, toggleWishlist } = useWishlist();
-  const { trackProductView } = useRecentlyViewed();
   const { user } = useAuth();
+  const { trackProductView } = useRecentlyViewed();
 
   const isTamil = language === 'ta';
 
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isEnquiryOpen, setIsEnquiryOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const product: Product | undefined = INITIAL_PRODUCTS.find((p) => p.id === id) || INITIAL_PRODUCTS[0];
-
   useEffect(() => {
-    if (product?.id) {
-      trackProductView(product.id);
+    if (id) {
+      fetchProductDetail(id);
     }
-  }, [product?.id]);
+  }, [id]);
+
+  const fetchProductDetail = async (productId: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .single();
+
+      if (data && !error) {
+        setProduct(data);
+        trackProductView(data.id);
+      } else {
+        setProduct(null);
+      }
+    } catch (e) {
+      console.warn('Error fetching product details');
+      setProduct(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-warm-bg flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-brand-600 border-t-transparent"></div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
       <div className="min-h-screen bg-warm-bg flex items-center justify-center p-4 text-center">
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold">Product not found</h2>
-          <Button onClick={() => navigate('/products')}>Back to Products</Button>
+        <div className="bg-white rounded-3xl p-8 border border-warm-border shadow-card max-w-sm w-full space-y-4">
+          <Package className="w-12 h-12 text-brand-600 mx-auto" />
+          <h2 className="text-lg font-black text-charcoal-900">Product Not Found</h2>
+          <p className="text-xs text-charcoal-500 font-medium">This product may have been removed or is unavailable in catalogue.</p>
+          <Button onClick={() => navigate('/products')} variant="primary" fullWidth>
+            Back to Products Catalogue
+          </Button>
         </div>
       </div>
     );
@@ -61,194 +107,186 @@ export const ProductDetailPage: React.FC = () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Manikandan Lathe - ${title}`,
+          title,
           text: description,
           url: window.location.href,
         });
       } catch (err) {
-        // User cancelled share
+        // Share cancelled
       }
     } else {
-      navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  const handleWhatsAppEnquiry = () => {
-    const text = encodeURIComponent(
-      `Hi Manikandan Lathe, I am interested in: *${title}*\nCategory: ${categoryName}\nPlease provide price and options.`
-    );
-    window.open(`https://wa.me/${DEFAULT_SHOP_INFO.whatsapp}?text=${text}`, '_blank');
-  };
+  const images = product.images && product.images.length > 0 
+    ? product.images 
+    : [product.primary_image || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600&auto=format&fit=crop&q=80'];
 
   return (
-    <div className="min-h-screen bg-warm-bg pb-28 md:pb-14 pt-4">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+    <div className="min-h-screen bg-warm-bg pb-28 md:pb-12 pt-4">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         
-        {/* Back Navigation Bar */}
+        {/* Top Header Navigation */}
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1.5 text-xs font-extrabold text-charcoal-700 hover:text-brand-600 bg-white px-3 py-1.5 rounded-full border border-warm-border shadow-sm transition-colors"
+            className="p-2 text-charcoal-700 bg-white rounded-full border border-warm-border shadow-sm hover:bg-warm-bg transition-colors"
+            aria-label="Back"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span>{t('back')}</span>
+            <ArrowLeft className="w-5 h-5" />
           </button>
 
           <div className="flex items-center gap-2">
             <button
+              onClick={handleShare}
+              className="p-2 text-charcoal-700 bg-white rounded-full border border-warm-border shadow-sm hover:bg-warm-bg transition-colors"
+              aria-label="Share"
+            >
+              {copied ? <Check className="w-5 h-5 text-emerald-600" /> : <Share2 className="w-5 h-5" />}
+            </button>
+            <button
               onClick={handleWishlistToggle}
-              className={`p-2 rounded-full border transition-all shadow-sm ${
-                isWishlisted
-                  ? 'bg-rose-500 text-white border-rose-500'
-                  : 'bg-white text-charcoal-700 border-warm-border hover:text-rose-500'
+              className={`p-2 rounded-full border border-warm-border shadow-sm transition-colors ${
+                isWishlisted ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-charcoal-700 hover:text-rose-500'
               }`}
               aria-label="Wishlist"
             >
               <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-current' : ''}`} />
             </button>
-
-            <button
-              onClick={handleShare}
-              className="p-2 bg-white text-charcoal-700 hover:text-brand-600 rounded-full border border-warm-border transition-colors shadow-sm relative"
-              aria-label="Share"
-            >
-              <Share2 className="w-5 h-5" />
-              {copied && (
-                <span className="absolute -bottom-8 right-0 bg-charcoal-900 text-white text-[10px] px-2 py-0.5 rounded shadow">
-                  Copied Link!
-                </span>
-              )}
-            </button>
           </div>
         </div>
 
-        {/* Product Details Layout Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          
-          {/* Left Column: Multi-Image Gallery */}
-          <div>
-            <ProductGallery
-              images={product.images || (product.primary_image ? [product.primary_image] : [])}
-              productTitle={title}
+        {/* Product Image Gallery & Main View */}
+        <div className="bg-white rounded-3xl p-4 sm:p-6 border border-warm-border shadow-card space-y-4">
+          <div className="relative aspect-square sm:aspect-video rounded-2xl overflow-hidden bg-warm-bg border border-warm-border">
+            <img
+              src={images[selectedImageIndex] || images[0]}
+              alt={title}
+              className="w-full h-full object-cover"
             />
           </div>
 
-          {/* Right Column: Information & Actions */}
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-warm-border/80 shadow-card space-y-6">
-            
-            {/* Category Tag & Title */}
-            <div>
-              <span className="text-xs font-extrabold text-brand-600 uppercase tracking-wider block mb-1">
-                {categoryName}
-              </span>
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-charcoal-900 leading-tight">
-                {title}
-              </h1>
-            </div>
-
-            {/* Price Hidden Notice Banner */}
-            <div className="p-3.5 rounded-2xl bg-warm-bg border border-brand-200 flex items-center gap-3 text-xs text-charcoal-700 font-bold">
-              <ShieldCheck className="w-5 h-5 text-brand-600 shrink-0" />
-              <span>{t('price_hidden_notice')}</span>
-            </div>
-
-            {/* Product Description */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-extrabold uppercase text-charcoal-500 tracking-wider">
-                {t('description')}
-              </h3>
-              <p className="text-sm text-charcoal-700 leading-relaxed font-medium">
-                {description}
-              </p>
-            </div>
-
-            {/* Materials Used */}
-            {product.materials && (
-              <div className="p-4 rounded-2xl bg-warm-bg border border-warm-border space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-extrabold text-brand-600 uppercase">
-                  <Layers className="w-4 h-4" />
-                  <span>{t('materials')}</span>
-                </div>
-                <p className="text-xs font-bold text-charcoal-800">{product.materials}</p>
-              </div>
-            )}
-
-            {/* Available Sizes */}
-            {product.available_sizes && (
-              <div className="p-4 rounded-2xl bg-warm-bg border border-warm-border space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-extrabold text-brand-600 uppercase">
-                  <Ruler className="w-4 h-4" />
-                  <span>{t('available_sizes')}</span>
-                </div>
-                <p className="text-xs font-bold text-charcoal-800">{product.available_sizes}</p>
-              </div>
-            )}
-
-            {/* Product Specifications Table */}
-            {product.specifications && Object.keys(product.specifications).length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-warm-muted">
-                <div className="flex items-center gap-2 text-xs font-extrabold uppercase text-charcoal-500 tracking-wider mb-2">
-                  <Wrench className="w-4 h-4 text-brand-600" />
-                  <span>{t('specifications')}</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {Object.entries(product.specifications).map(([key, val]) => (
-                    <div key={key} className="bg-warm-bg p-2.5 rounded-xl border border-warm-border">
-                      <span className="text-[11px] font-extrabold text-charcoal-500 block">{key}</span>
-                      <span className="text-xs font-bold text-charcoal-900">{val}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Primary Product Actions */}
-            <div className="space-y-3 pt-4 border-t border-warm-muted">
-              {/* Place Enquiry / Order Trigger */}
-              <Button
-                onClick={() => setIsEnquiryOpen(true)}
-                variant="primary"
-                size="lg"
-                fullWidth
-                className="py-4 text-base"
-              >
-                {t('place_enquiry')}
-              </Button>
-
-              {/* Call & WhatsApp Quick Buttons */}
-              <div className="grid grid-cols-2 gap-3">
-                <a
-                  href={`tel:${DEFAULT_SHOP_INFO.phone}`}
-                  className="flex items-center justify-center gap-2 bg-white hover:bg-warm-hover text-charcoal-800 font-extrabold py-3.5 px-4 rounded-xl border-2 border-brand-200 shadow-sm transition-all text-xs"
-                >
-                  <Phone className="w-4 h-4 text-brand-600" />
-                  <span>{t('call_shop')}</span>
-                </a>
-
+          {/* Thumbnail Selector */}
+          {images.length > 1 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {images.map((img, idx) => (
                 <button
-                  type="button"
-                  onClick={handleWhatsAppEnquiry}
-                  className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md transition-all text-xs"
+                  key={idx}
+                  onClick={() => setSelectedImageIndex(idx)}
+                  className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
+                    selectedImageIndex === idx ? 'border-brand-600 ring-2 ring-brand-500/30' : 'border-warm-border opacity-70 hover:opacity-100'
+                  }`}
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>{t('whatsapp_enquiry')}</span>
+                  <img src={img} alt="" className="w-full h-full object-cover" />
                 </button>
-              </div>
+              ))}
             </div>
+          )}
+        </div>
 
+        {/* Product Basic Info Card */}
+        <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-brand-600 uppercase tracking-widest bg-brand-50 px-3 py-1 rounded-full border border-brand-200">
+              {categoryName}
+            </span>
+
+            {product.is_best_selling && (
+              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full">
+                <Sparkles className="w-3 h-3" />
+                <span>Popular Design</span>
+              </span>
+            )}
           </div>
+
+          <h1 className="text-xl sm:text-2xl font-black text-charcoal-900 leading-snug">{title}</h1>
+          <p className="text-xs sm:text-sm text-charcoal-600 leading-relaxed font-medium">{description}</p>
+        </div>
+
+        {/* Product Specification Card */}
+        {(product.materials || product.available_sizes || product.specifications) && (
+          <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-4">
+            <h3 className="text-sm font-black text-charcoal-900 flex items-center gap-2 uppercase tracking-wider">
+              <Wrench className="w-4 h-4 text-brand-600" />
+              <span>Technical Specifications</span>
+            </h3>
+
+            <div className="divide-y divide-warm-muted border-t border-warm-muted pt-2 text-xs">
+              {product.materials && (
+                <div className="py-2.5 flex justify-between">
+                  <span className="font-bold text-charcoal-500">Material Grade</span>
+                  <span className="font-extrabold text-charcoal-900">{product.materials}</span>
+                </div>
+              )}
+              {product.available_sizes && (
+                <div className="py-2.5 flex justify-between">
+                  <span className="font-bold text-charcoal-500">Available Sizes</span>
+                  <span className="font-extrabold text-charcoal-900">{product.available_sizes}</span>
+                </div>
+              )}
+              {product.specifications && Object.entries(product.specifications).map(([key, val]) => (
+                <div key={key} className="py-2.5 flex justify-between">
+                  <span className="font-bold text-charcoal-500 capitalize">{key.replace('_', ' ')}</span>
+                  <span className="font-extrabold text-charcoal-900">{String(val)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Shop Quality Assurances */}
+        <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-brand-100 text-brand-600 shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-extrabold text-charcoal-900">Direct Lathe Manufacturer</h4>
+              <p className="text-[11px] text-charcoal-500 font-medium">Fabricated in Kallimandhayam workshop with grade steel.</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-600 shrink-0">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-extrabold text-charcoal-900">Custom Dimensions Accepted</h4>
+              <p className="text-[11px] text-charcoal-500 font-medium">Specify height, width & metal thickness during enquiry.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Floating Bottom Sticky Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-warm-border p-3.5 shadow-2xl">
+        <div className="max-w-4xl mx-auto flex items-center gap-3">
+          <a
+            href={`tel:${DEFAULT_SHOP_INFO.phone}`}
+            className="flex-1 flex items-center justify-center gap-2 bg-warm-bg hover:bg-warm-hover text-charcoal-800 font-extrabold py-3.5 px-4 rounded-2xl border-2 border-warm-border text-xs sm:text-sm transition-all"
+          >
+            <Phone className="w-4 h-4 text-brand-600" />
+            <span>Call Shop</span>
+          </a>
+
+          <button
+            onClick={() => setIsEnquiryOpen(true)}
+            className="flex-[2] flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-3.5 px-4 rounded-2xl text-xs sm:text-sm shadow-lg shadow-brand-600/30 transition-all active:scale-95"
+          >
+            <Send className="w-4 h-4" />
+            <span>{isTamil ? 'இலவசமாக பெற வினவவும்' : 'Submit Free Enquiry / Get Quote'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Enquiry Modal */}
-      <EnquiryModal
-        isOpen={isEnquiryOpen}
-        onClose={() => setIsEnquiryOpen(false)}
-        product={product}
-      />
+      {/* Free Enquiry Submission Modal */}
+      {isEnquiryOpen && (
+        <EnquiryModal isOpen={isEnquiryOpen} product={product} onClose={() => setIsEnquiryOpen(false)} />
+      )}
     </div>
   );
 };

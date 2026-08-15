@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -10,6 +10,7 @@ import { MobileNav } from './components/layout/MobileNav';
 import { Footer } from './components/layout/Footer';
 import { FloatingWhatsApp } from './components/common/FloatingWhatsApp';
 import { PublicHeader } from './components/layout/PublicHeader';
+import { SplashScreen } from './components/common/SplashScreen';
 
 // Customer Pages
 import { LandingPage } from './pages/LandingPage';
@@ -45,7 +46,19 @@ import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 // Layout wrapper to handle Navbar/MobileNav/PublicHeader visibility
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading || showSplash) {
+    return <SplashScreen />;
+  }
 
   const isAdmin = location.pathname.startsWith('/admin');
   const isAuthPage = location.pathname === '/login' || location.pathname === '/onboarding';
@@ -89,6 +102,20 @@ const OnboardingGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
   return <>{children}</>;
 };
 
+// Landing Route Guard: Auto-redirect returning logged-in users to /home or /admin/dashboard
+const LandingGuard: React.FC = () => {
+  const { user, isAdmin } = useAuth();
+
+  if (user) {
+    if (isAdmin) {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+    return <Navigate to="/home" replace />;
+  }
+
+  return <LandingPage />;
+};
+
 export const App: React.FC = () => {
   return (
     <LanguageProvider>
@@ -99,7 +126,7 @@ export const App: React.FC = () => {
               <AppLayout>
                 <Routes>
                   {/* Public & Customer Routes */}
-                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/" element={<LandingGuard />} />
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/login" element={<LoginPage />} />

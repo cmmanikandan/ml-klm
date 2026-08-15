@@ -174,7 +174,7 @@ export const AdminLayout: React.FC = () => {
               </div>
 
               <Link
-                to="/"
+                to="/home"
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-brand-600 text-white font-extrabold py-3 px-4 rounded-2xl text-xs border border-gray-700 transition-all shadow-sm"
               >
@@ -254,7 +254,7 @@ export const AdminLayout: React.FC = () => {
             </div>
 
             <Link
-              to="/"
+              to="/home"
               className="w-full flex items-center justify-center gap-2 bg-warm-bg hover:bg-brand-50 text-brand-700 font-extrabold py-3 px-4 rounded-2xl text-xs border border-brand-200 transition-all shadow-sm group"
             >
               <Globe className="w-4 h-4 text-brand-600 group-hover:rotate-12 transition-transform" />

@@ -1,18 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, ArrowLeft } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
 import { Button } from '../components/common/Button';
 import { useWishlist } from '../context/WishlistContext';
 import { useLanguage } from '../context/LanguageContext';
-import { INITIAL_PRODUCTS } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { Product } from '../types';
 
 export const WishlistPage: React.FC = () => {
   const { wishlistProductIds } = useWishlist();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  const wishlistedProducts = INITIAL_PRODUCTS.filter((p) => wishlistProductIds.includes(p.id));
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    fetchLiveProducts();
+  }, []);
+
+  const fetchLiveProducts = async () => {
+    try {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('is_active', true);
+      if (data) setProducts(data);
+    } catch (e) {
+      console.warn('Error fetching live products for wishlist');
+    }
+  };
+
+  const wishlistedProducts = products.filter((p) => wishlistProductIds.includes(p.id));
 
   return (
     <div className="min-h-screen bg-warm-bg pb-24 md:pb-12 pt-4">
@@ -45,7 +64,7 @@ export const WishlistPage: React.FC = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
             {wishlistedProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

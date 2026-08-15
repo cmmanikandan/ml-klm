@@ -16,7 +16,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const { user } = useAuth();
   const [wishlistProductIds, setWishlistProductIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('ml_wishlist');
-    return saved ? JSON.parse(saved) : ['p1111111-1111-1111-1111-111111111111'];
+    return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
