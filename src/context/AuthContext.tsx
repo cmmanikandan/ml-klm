@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 import { auth, googleProvider, signInWithPopup, firebaseSignOut, onAuthStateChanged, FirebaseUser } from '../lib/firebase';
 import { useLanguage } from './LanguageContext';
 
+export const MASTER_ADMIN_UIDS = ['9QFtBzZ3Z8f2f8QH4bxgkn4sXVq1'];
+
 interface AuthContextType {
   user: Profile | null;
   loading: boolean;
@@ -26,7 +28,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedUser = localStorage.getItem('ml_user_profile');
     if (savedUser) {
       try {
-        return JSON.parse(savedUser);
+        const parsed = JSON.parse(savedUser);
+        if (parsed && MASTER_ADMIN_UIDS.includes(parsed.id)) {
+          return { ...parsed, role: 'admin', is_profile_completed: true };
+        }
+        return parsed;
       } catch (e) {
         return null;
       }
@@ -53,7 +59,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const syncFirebaseUserWithSupabase = async (fbUser: FirebaseUser) => {
-    // Read local cache to preserve onboarding status across refreshes
+    const isMasterAdmin = MASTER_ADMIN_UIDS.includes(fbUser.uid);
+
+    // Read local cache
     const cachedStr = localStorage.getItem('ml_user_profile');
     let cachedProfile: Profile | null = null;
     if (cachedStr) {
@@ -72,26 +80,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', fbUser.uid)
         .single();
 
-      if (data && !error && data.is_profile_completed) {
-        const mergedProfile = { ...cachedProfile, ...data, is_profile_completed: true };
+      if (data && !error) {
+        const mergedProfile: Profile = {
+          ...cachedProfile,
+          ...data,
+          role: isMasterAdmin ? 'admin' : (data.role || 'customer'),
+          is_profile_completed: isMasterAdmin ? true : (data.is_profile_completed || false)
+        };
+
         setUser(mergedProfile);
         localStorage.setItem('ml_user_profile', JSON.stringify(mergedProfile));
         if (mergedProfile.language) setLanguage(mergedProfile.language);
-      } else if (cachedProfile && cachedProfile.id === fbUser.uid && cachedProfile.is_profile_completed) {
-        // Local cache has completed onboarding -> keep it active and sync to Supabase
-        setUser(cachedProfile);
-        localStorage.setItem('ml_user_profile', JSON.stringify(cachedProfile));
-        await supabase.from('profiles').upsert(cachedProfile);
       } else {
         // New user profile init
         const newProfile: Profile = {
           id: fbUser.uid,
-          full_name: fbUser.displayName || cachedProfile?.full_name || 'Customer',
+          full_name: fbUser.displayName || cachedProfile?.full_name || (isMasterAdmin ? 'Shop Owner' : 'Customer'),
           email: fbUser.email || cachedProfile?.email || '',
           avatar_url: fbUser.photoURL || cachedProfile?.avatar_url || undefined,
           language: cachedProfile?.language || 'en',
-          role: cachedProfile?.role || 'customer',
-          is_profile_completed: cachedProfile?.is_profile_completed || false,
+          role: isMasterAdmin ? 'admin' : 'customer',
+          is_profile_completed: isMasterAdmin ? true : (cachedProfile?.is_profile_completed || false),
           phone: cachedProfile?.phone || undefined,
           address: cachedProfile?.address || undefined,
           city_area: cachedProfile?.city_area || undefined
@@ -103,7 +112,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (e) {
       if (cachedProfile) {
-        setUser(cachedProfile);
+        const merged = {
+          ...cachedProfile,
+          role: isMasterAdmin ? 'admin' : cachedProfile.role
+        };
+        setUser(merged);
       }
     }
   };
@@ -135,10 +148,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (data: Partial<Profile>) => {
     if (!user) return;
+    const isMasterAdmin = MASTER_ADMIN_UIDS.includes(user.id);
+
     const updated: Profile = { 
       ...user, 
       ...data, 
-      is_profile_completed: data.is_profile_completed !== undefined ? data.is_profile_completed : user.is_profile_completed,
+      role: isMasterAdmin ? 'admin' : (data.role || user.role),
+      is_profile_completed: isMasterAdmin ? true : (data.is_profile_completed !== undefined ? data.is_profile_completed : user.is_profile_completed),
       updated_at: new Date().toISOString() 
     };
     
@@ -184,8 +200,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateProfile({ role });
   };
 
-  const isAdmin = user?.role === 'admin';
-  const needsOnboarding = Boolean(user && !user.is_profile_completed);
+  const isAdmin = Boolean(user && (user.role === 'admin' || MASTER_ADMIN_UIDS.includes(user.id)));
+  const needsOnboarding = Boolean(user && !user.is_profile_completed && !MASTER_ADMIN_UIDS.includes(user.id));
 
   return (
     <AuthContext.Provider

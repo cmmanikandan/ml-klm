@@ -5,9 +5,47 @@
 -- Enable UUID Extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. PROFILES TABLE
+-- Drop ALL legacy RLS policies across all tables before column type alterations
+DROP POLICY IF EXISTS "Profiles are viewable by owner or admin" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Categories viewable by everyone" ON public.categories;
+DROP POLICY IF EXISTS "Categories manageable by admin" ON public.categories;
+DROP POLICY IF EXISTS "Active products viewable by everyone" ON public.products;
+DROP POLICY IF EXISTS "Products manageable by admin" ON public.products;
+DROP POLICY IF EXISTS "Images viewable by everyone" ON public.product_images;
+DROP POLICY IF EXISTS "Images manageable by admin" ON public.product_images;
+DROP POLICY IF EXISTS "Wishlists viewable by owner or admin" ON public.wishlists;
+DROP POLICY IF EXISTS "Wishlists insertable by owner" ON public.wishlists;
+DROP POLICY IF EXISTS "Wishlists deletable by owner" ON public.wishlists;
+DROP POLICY IF EXISTS "Views manageable by owner or admin" ON public.product_views;
+DROP POLICY IF EXISTS "Enquiries viewable by owner or admin" ON public.enquiries;
+DROP POLICY IF EXISTS "Enquiries insertable by owner" ON public.enquiries;
+DROP POLICY IF EXISTS "Enquiries manageable by admin" ON public.enquiries;
+DROP POLICY IF EXISTS "Orders viewable by owner or admin" ON public.orders;
+DROP POLICY IF EXISTS "Orders manageable by admin" ON public.orders;
+DROP POLICY IF EXISTS "Payments viewable by owner or admin" ON public.payments;
+DROP POLICY IF EXISTS "Payments insertable by owner or admin" ON public.payments;
+DROP POLICY IF EXISTS "Payments manageable by admin" ON public.payments;
+DROP POLICY IF EXISTS "Notifications viewable by owner" ON public.notifications;
+DROP POLICY IF EXISTS "Notifications updateable by owner" ON public.notifications;
+DROP POLICY IF EXISTS "Feedback viewable by everyone" ON public.feedback;
+DROP POLICY IF EXISTS "Feedback insertable by order owner" ON public.feedback;
+DROP POLICY IF EXISTS "Settings viewable by logged in users" ON public.admin_settings;
+DROP POLICY IF EXISTS "Settings manageable by admin" ON public.admin_settings;
+
+-- Drop legacy foreign key constraints
+ALTER TABLE IF EXISTS public.profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;
+ALTER TABLE IF EXISTS public.wishlists DROP CONSTRAINT IF EXISTS wishlists_user_id_fkey;
+ALTER TABLE IF EXISTS public.product_views DROP CONSTRAINT IF EXISTS product_views_user_id_fkey;
+ALTER TABLE IF EXISTS public.enquiries DROP CONSTRAINT IF EXISTS enquiries_user_id_fkey;
+ALTER TABLE IF EXISTS public.orders DROP CONSTRAINT IF EXISTS orders_user_id_fkey;
+ALTER TABLE IF EXISTS public.payments DROP CONSTRAINT IF EXISTS payments_user_id_fkey;
+ALTER TABLE IF EXISTS public.notifications DROP CONSTRAINT IF EXISTS notifications_user_id_fkey;
+ALTER TABLE IF EXISTS public.feedback DROP CONSTRAINT IF EXISTS feedback_user_id_fkey;
+
+-- 1. PROFILES TABLE (TEXT id to support Firebase Auth Alphanumeric UIDs like 9QFtBzZ3Z8f2f8QH4bxgkn4sXVq1)
 CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     full_name TEXT NOT NULL,
     email TEXT UNIQUE,
     phone TEXT,
@@ -21,7 +59,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure profiles table migration compatibility
+-- Ensure profiles table compatibility for Firebase Auth string UIDs
+ALTER TABLE public.profiles ALTER COLUMN id TYPE TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_profile_completed BOOLEAN DEFAULT FALSE;
 
@@ -83,26 +122,28 @@ CREATE TABLE IF NOT EXISTS public.product_images (
 -- 5. WISHLISTS TABLE
 CREATE TABLE IF NOT EXISTS public.wishlists (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL,
+    user_id TEXT NOT NULL,
     product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(user_id, product_id)
 );
+ALTER TABLE public.wishlists ALTER COLUMN user_id TYPE TEXT;
 
 -- 6. PRODUCT VIEWS TABLE (Recently Viewed)
 CREATE TABLE IF NOT EXISTS public.product_views (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL,
+    user_id TEXT NOT NULL,
     product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
     viewed_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(user_id, product_id)
 );
+ALTER TABLE public.product_views ALTER COLUMN user_id TYPE TEXT;
 
 -- 7. ENQUIRIES TABLE
 CREATE TABLE IF NOT EXISTS public.enquiries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     enquiry_number TEXT UNIQUE NOT NULL,
-    user_id UUID NOT NULL,
+    user_id TEXT NOT NULL,
     product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
     quantity INT DEFAULT 1,
     size_requirement TEXT,
@@ -113,13 +154,14 @@ CREATE TABLE IF NOT EXISTS public.enquiries (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE public.enquiries ALTER COLUMN user_id TYPE TEXT;
 
 -- 8. ORDERS TABLE
 CREATE TABLE IF NOT EXISTS public.orders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_number TEXT UNIQUE NOT NULL,
     enquiry_id UUID REFERENCES public.enquiries(id) ON DELETE SET NULL,
-    user_id UUID NOT NULL,
+    user_id TEXT NOT NULL,
     product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
     quantity INT DEFAULT 1,
     specifications TEXT,
@@ -136,8 +178,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
--- Ensure orders table migration compatibility
+ALTER TABLE public.orders ALTER COLUMN user_id TYPE TEXT;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS is_payment_requested BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_request_amount NUMERIC(10, 2) DEFAULT 0.00;
 
@@ -145,7 +186,7 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_request_amount NUMERI
 CREATE TABLE IF NOT EXISTS public.payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL,
+    user_id TEXT NOT NULL,
     amount NUMERIC(10, 2) NOT NULL,
     payment_type TEXT NOT NULL,
     transaction_id TEXT,
@@ -153,11 +194,12 @@ CREATE TABLE IF NOT EXISTS public.payments (
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE public.payments ALTER COLUMN user_id TYPE TEXT;
 
 -- 10. NOTIFICATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL,
+    user_id TEXT NOT NULL,
     title_en TEXT NOT NULL,
     title_ta TEXT NOT NULL,
     message_en TEXT NOT NULL,
@@ -167,16 +209,18 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE public.notifications ALTER COLUMN user_id TYPE TEXT;
 
 -- 11. FEEDBACK TABLE
 CREATE TABLE IF NOT EXISTS public.feedback (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL,
+    user_id TEXT NOT NULL,
     rating INT CHECK (rating >= 1 AND rating <= 5),
     comment TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE public.feedback ALTER COLUMN user_id TYPE TEXT;
 
 -- 12. ADMIN SETTINGS TABLE
 CREATE TABLE IF NOT EXISTS public.admin_settings (
@@ -231,7 +275,7 @@ ALTER TABLE public.feedback DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_settings DISABLE ROW LEVEL SECURITY;
 
 -- ====================================================================
--- INITIAL SEED DATA (STRICT RFC 4122 VALID HEXADECIMAL UUIDS)
+-- INITIAL SEED DATA (STRICT RFC 4122 VALID HEXADECIMAL UUIDS FOR PRODUCTS)
 -- ====================================================================
 
 -- Seed Categories
@@ -370,3 +414,8 @@ INSERT INTO public.admin_settings (key, value) VALUES
     "working_hours_ta": "திங்கள் - சனி: காலை 8:00 - இரவு 8:00"
 }'::jsonb)
 ON CONFLICT (key) DO NOTHING;
+
+-- Seed Master Admin Profile (Using Firebase Auth UID string 9QFtBzZ3Z8f2f8QH4bxgkn4sXVq1)
+INSERT INTO public.profiles (id, full_name, email, role, is_profile_completed) VALUES
+('9QFtBzZ3Z8f2f8QH4bxgkn4sXVq1', 'Manikandan Admin', 'manikandanlatheklm@gmail.com', 'admin', TRUE)
+ON CONFLICT (id) DO UPDATE SET role = 'admin', is_profile_completed = TRUE;
