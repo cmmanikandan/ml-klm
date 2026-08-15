@@ -8,6 +8,7 @@ import {
   FolderTree, 
   Upload, 
   CreditCard, 
+  Users,
   Settings, 
   Menu, 
   X, 
@@ -35,6 +36,7 @@ export const AdminLayout: React.FC = () => {
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
     { to: '/admin/enquiries', label: 'Enquiries', icon: MessageSquare, badge: null },
     { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, badge: null },
+    { to: '/admin/customers', label: 'Customers', icon: Users, badge: null },
     { to: '/admin/products', label: 'Products', icon: Package, badge: null },
     { to: '/admin/categories', label: 'Categories', icon: FolderTree, badge: null },
     { to: '/admin/import', label: 'CSV Import', icon: Upload, badge: null },
@@ -75,15 +77,15 @@ export const AdminLayout: React.FC = () => {
               </span>
             </div>
 
-            {/* Right: Real Admin Profile Email & Badge */}
+            {/* Right: Real Admin Profile Email & Google DP Avatar */}
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex flex-col text-right">
                 <span className="text-xs font-black text-white">{adminName}</span>
                 <span className="text-[10px] font-bold text-brand-400 font-mono">{adminEmail}</span>
               </div>
-              {user?.avatar_url ? (
+              {user?.avatar_url || (user as any)?.photoURL ? (
                 <img
-                  src={user.avatar_url}
+                  src={user?.avatar_url || (user as any)?.photoURL}
                   alt={adminName}
                   className="w-9 h-9 rounded-full object-cover border-2 border-brand-400 shadow-md"
                 />
