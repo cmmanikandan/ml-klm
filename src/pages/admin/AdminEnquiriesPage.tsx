@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Phone, MessageSquare, CheckCircle2, XCircle, ArrowRight, Search, Eye } from 'lucide-react';
+import { Phone, MessageSquare, CheckCircle2, XCircle, ArrowRight, Search, Eye, Check } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
@@ -19,6 +19,9 @@ export const AdminEnquiriesPage: React.FC = () => {
   const [quotePrice, setQuotePrice] = useState<number>(15000);
   const [advanceRequired, setAdvanceRequired] = useState<number>(5000);
   const [estimatedDays, setEstimatedDays] = useState<number>(7);
+
+  // Conversion Success Modal Card
+  const [convertedSuccessOrder, setConvertedSuccessOrder] = useState<any | null>(null);
 
   useEffect(() => {
     fetchLiveEnquiries();
@@ -95,7 +98,12 @@ export const AdminEnquiriesPage: React.FC = () => {
     }
 
     setEnquiries(enquiries.map((e) => (e.id === selectedEnquiry.id ? { ...e, status: 'converted' } : e)));
-    alert(`Enquiry #${selectedEnquiry.enquiry_number || selectedEnquiry.number} converted into Order #${newOrderNumber}! Customer notified.`);
+    setConvertedSuccessOrder({
+      enquiryNumber: selectedEnquiry.enquiry_number || selectedEnquiry.number || selectedEnquiry.id,
+      orderNumber: newOrderNumber,
+      quotedPrice: quotePrice,
+      advanceRequired: advanceRequired
+    });
     setSelectedEnquiry(null);
   };
 
@@ -246,15 +254,21 @@ export const AdminEnquiriesPage: React.FC = () => {
                     <Eye className="w-3.5 h-3.5" />
                     <span>View Details</span>
                   </Link>
-
-                  <Button
-                    onClick={() => setSelectedEnquiry(enq)}
-                    variant="primary"
-                    size="sm"
-                    icon={<ArrowRight className="w-3.5 h-3.5" />}
-                  >
-                    Quote & Convert
-                  </Button>
+                  {enq.status !== 'converted' ? (
+                    <Button
+                      onClick={() => setSelectedEnquiry(enq)}
+                      variant="primary"
+                      size="sm"
+                      icon={<ArrowRight className="w-3.5 h-3.5" />}
+                    >
+                      Quote & Convert
+                    </Button>
+                  ) : (
+                    <span className="bg-emerald-100 text-emerald-800 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Converted to Order</span>
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -271,43 +285,41 @@ export const AdminEnquiriesPage: React.FC = () => {
           title={`Prepare Quote for Enquiry #${selectedEnquiry.enquiry_number || selectedEnquiry.number}`}
           maxWidth="md"
         >
-          <div className="space-y-4 py-2">
+          <div className="space-y-4">
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-charcoal-700 mb-1">Total Quoted Price (₹) *</label>
+                <label className="block text-xs font-bold text-charcoal-700 mb-1">Total Quoted Price (₹)</label>
                 <input
                   type="number"
-                  required
                   value={quotePrice}
-                  onChange={(e) => setQuotePrice(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2 text-sm font-extrabold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                  onChange={(e) => setQuotePrice(Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-warm-border focus:ring-2 focus:ring-brand-500 text-sm font-bold"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-charcoal-700 mb-1">Advance Amount Required (₹) *</label>
+                <label className="block text-xs font-bold text-charcoal-700 mb-1">Required Advance Payment (₹)</label>
                 <input
                   type="number"
-                  required
                   value={advanceRequired}
-                  onChange={(e) => setAdvanceRequired(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2 text-sm font-extrabold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                  onChange={(e) => setAdvanceRequired(Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-warm-border focus:ring-2 focus:ring-brand-500 text-sm font-bold text-emerald-600"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">Estimated Fabrication Time (Days) *</label>
+              <label className="block text-xs font-bold text-charcoal-700 mb-1">Estimated Fabrication Time (Days)</label>
               <input
                 type="number"
                 value={estimatedDays}
-                onChange={(e) => setEstimatedDays(parseInt(e.target.value) || 1)}
-                className="w-full px-3.5 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white"
+                onChange={(e) => setEstimatedDays(Number(e.target.value))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-warm-border focus:ring-2 focus:ring-brand-500 text-sm font-bold"
               />
             </div>
 
-            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-3">
               <Button
                 onClick={() => handleOpenWhatsAppQuote(selectedEnquiry)}
                 variant="secondary"
@@ -327,6 +339,53 @@ export const AdminEnquiriesPage: React.FC = () => {
               </Button>
             </div>
 
+          </div>
+        </Modal>
+      )}
+
+      {/* CONVERSION SUCCESS IN-APP MODAL CARD */}
+      {convertedSuccessOrder && (
+        <Modal
+          isOpen={Boolean(convertedSuccessOrder)}
+          onClose={() => setConvertedSuccessOrder(null)}
+          title="Order Created Successfully 🎉"
+          maxWidth="sm"
+        >
+          <div className="text-center space-y-4 py-2">
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+
+            <div>
+              <h3 className="text-base font-black text-charcoal-900">
+                Enquiry #{convertedSuccessOrder.enquiryNumber} Converted!
+              </h3>
+              <p className="text-xs text-charcoal-500 font-semibold mt-1">
+                Active Order <span className="font-mono font-bold text-brand-600">#{convertedSuccessOrder.orderNumber}</span> created & assigned to shop.
+              </p>
+            </div>
+
+            <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border text-left space-y-1.5 text-xs font-semibold">
+              <div className="flex justify-between">
+                <span className="text-charcoal-500">Total Quoted Price:</span>
+                <span className="font-bold text-charcoal-900">₹{convertedSuccessOrder.quotedPrice.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-charcoal-500">Required Advance:</span>
+                <span className="font-extrabold text-emerald-600">₹{convertedSuccessOrder.advanceRequired.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="text-[10px] text-charcoal-400 pt-1">
+                • Payment card sent to customer portal automatically.
+              </div>
+            </div>
+
+            <Button
+              onClick={() => setConvertedSuccessOrder(null)}
+              variant="primary"
+              fullWidth
+            >
+              Done & Continue
+            </Button>
           </div>
         </Modal>
       )}

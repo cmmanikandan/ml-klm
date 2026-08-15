@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Upload, Download, CheckCircle2, AlertCircle, FileText, Eye, Package } from 'lucide-react';
+import { Upload, Download, CheckCircle2, AlertCircle, FileText, Eye, Package, File } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import Papa from 'papaparse';
 import { saveProductToStore } from '../../lib/productsStore';
@@ -8,6 +8,7 @@ import { Product } from '../../types';
 
 export const AdminImportPage: React.FC = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<Product[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -128,22 +129,30 @@ export const AdminImportPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* File Upload Stage */}
-      <div className="bg-white rounded-3xl border-2 border-dashed border-warm-border p-8 text-center space-y-4 shadow-card">
-        <div className="w-16 h-16 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto">
+      {/* File Upload Stage Card (Clickable Drop Zone) */}
+      <div
+        onClick={() => fileInputRef.current?.click()}
+        className="bg-white rounded-3xl border-2 border-dashed border-brand-300 hover:border-brand-500 p-8 text-center space-y-4 shadow-card cursor-pointer transition-all hover:bg-brand-50/30 group"
+      >
+        <div className="w-16 h-16 bg-brand-100 group-hover:bg-brand-600 text-brand-600 group-hover:text-white rounded-2xl flex items-center justify-center mx-auto transition-colors shadow-sm">
           <Upload className="w-8 h-8" />
         </div>
 
         <div>
-          <h3 className="text-base font-extrabold text-charcoal-900">Upload CSV File</h3>
-          <p className="text-xs text-charcoal-500 font-medium mt-0.5">Select a .csv file from your device</p>
+          <h3 className="text-base font-black text-charcoal-900 group-hover:text-brand-600 transition-colors">
+            {csvFile ? `Selected: ${csvFile.name}` : 'Click Anywhere to Upload CSV File'}
+          </h3>
+          <p className="text-xs text-charcoal-500 font-semibold mt-1">
+            {csvFile ? 'Click again to choose a different CSV file' : 'Click card to browse & import catalogue products'}
+          </p>
         </div>
 
         <input
+          ref={fileInputRef}
           type="file"
           accept=".csv"
           onChange={handleFileUpload}
-          className="block w-full text-xs text-charcoal-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-brand-600 file:text-white hover:file:bg-brand-700 cursor-pointer max-w-xs mx-auto"
+          className="hidden"
         />
       </div>
 

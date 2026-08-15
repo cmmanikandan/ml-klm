@@ -35,6 +35,9 @@ export const AdminEnquiryDetailPage: React.FC = () => {
   const [advanceRequired, setAdvanceRequired] = useState<number>(5000);
   const [estimatedDays, setEstimatedDays] = useState<number>(7);
 
+  // Conversion Success Modal State
+  const [convertedSuccessOrder, setConvertedSuccessOrder] = useState<any | null>(null);
+
   useEffect(() => {
     if (id) {
       fetchEnquiryDetails(id);
@@ -151,8 +154,13 @@ export const AdminEnquiryDetailPage: React.FC = () => {
     const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
     localStorage.setItem('ml_orders', JSON.stringify([newOrderRecord, ...localOrders]));
 
-    alert(`Enquiry #${enquiry.enquiry_number || enquiry.id} converted into Active Order #${newOrderNumber}!`);
-    navigate('/admin/orders');
+    setEnquiry({ ...enquiry, status: 'converted' });
+    setConvertedSuccessOrder({
+      enquiryNumber: enquiry.enquiry_number || enquiry.id,
+      orderNumber: newOrderNumber,
+      quotedPrice: quotePrice,
+      advanceRequired: advanceRequired
+    });
   };
 
   if (loading) {
@@ -318,14 +326,21 @@ export const AdminEnquiryDetailPage: React.FC = () => {
                 Send Quote via WhatsApp
               </Button>
 
-              <Button
-                onClick={handleConvertToOrder}
-                variant="primary"
-                icon={<CheckCircle2 className="w-4 h-4" />}
-                className="flex-1"
-              >
-                Convert to Active Order
-              </Button>
+              {enquiry.status !== 'converted' ? (
+                <Button
+                  onClick={handleConvertToOrder}
+                  variant="primary"
+                  icon={<CheckCircle2 className="w-4 h-4" />}
+                  className="flex-1"
+                >
+                  Convert to Active Order
+                </Button>
+              ) : (
+                <div className="flex-1 bg-emerald-100 text-emerald-800 font-extrabold py-2.5 px-4 rounded-2xl text-xs text-center flex items-center justify-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Converted to Order</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -390,6 +405,59 @@ export const AdminEnquiryDetailPage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* CONVERSION SUCCESS IN-APP MODAL CARD */}
+      {convertedSuccessOrder && (
+        <Modal
+          isOpen={Boolean(convertedSuccessOrder)}
+          onClose={() => {
+            setConvertedSuccessOrder(null);
+            navigate('/admin/orders');
+          }}
+          title="Order Created Successfully 🎉"
+          maxWidth="sm"
+        >
+          <div className="text-center space-y-4 py-2">
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+
+            <div>
+              <h3 className="text-base font-black text-charcoal-900">
+                Enquiry #{convertedSuccessOrder.enquiryNumber} Converted!
+              </h3>
+              <p className="text-xs text-charcoal-500 font-semibold mt-1">
+                Active Order <span className="font-mono font-bold text-brand-600">#{convertedSuccessOrder.orderNumber}</span> created & assigned to shop.
+              </p>
+            </div>
+
+            <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border text-left space-y-1.5 text-xs font-semibold">
+              <div className="flex justify-between">
+                <span className="text-charcoal-500">Total Quoted Price:</span>
+                <span className="font-bold text-charcoal-900">₹{convertedSuccessOrder.quotedPrice.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-charcoal-500">Required Advance:</span>
+                <span className="font-extrabold text-emerald-600">₹{convertedSuccessOrder.advanceRequired.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="text-[10px] text-charcoal-400 pt-1">
+                • Payment card sent to customer portal automatically.
+              </div>
+            </div>
+
+            <Button
+              onClick={() => {
+                setConvertedSuccessOrder(null);
+                navigate('/admin/orders');
+              }}
+              variant="primary"
+              fullWidth
+            >
+              Go to Manage Orders
+            </Button>
+          </div>
+        </Modal>
+      )}
 
     </div>
   );
