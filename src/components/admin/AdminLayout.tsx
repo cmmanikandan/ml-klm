@@ -49,14 +49,33 @@ export const AdminLayout: React.FC = () => {
 
   const fetchCounts = async () => {
     try {
-      const { data: enqData } = await supabase.from('enquiries').select('*').eq('status', 'pending');
-      if (enqData) setPendingEnquiriesCount(enqData.length);
+      // 1. Pending / Active Enquiries Count
+      const { data: enqData } = await supabase.from('enquiries').select('id, status');
+      const localEnq: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+      const allEnq = [...(enqData || []), ...localEnq];
+      const activeEnquiries = allEnq.filter((e: any) => (e.status || '').toLowerCase() !== 'converted');
+      setPendingEnquiriesCount(activeEnquiries.length);
 
-      const { data: ordData } = await supabase.from('orders').select('*').eq('status', 'pending');
-      if (ordData) setActiveOrdersCount(ordData.length);
+      // 2. Not Delivered Orders Count (Accepted, Confirmed, Processing, Ready)
+      const { data: dbOrders } = await supabase.from('orders').select('id, status');
+      const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+      const allOrders = [...(dbOrders || []), ...localOrders];
+
+      const seen = new Set();
+      const uniqueOrders = allOrders.filter((o: any) => {
+        if (!o.id || seen.has(o.id)) return false;
+        seen.add(o.id);
+        return true;
+      });
+
+      const notDeliveredOrders = uniqueOrders.filter((o: any) => {
+        const status = (o.status || '').toLowerCase();
+        return status !== 'delivered';
+      });
+
+      setActiveOrdersCount(notDeliveredOrders.length);
     } catch (e) {
-      const localEnq = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-      setPendingEnquiriesCount(localEnq.filter((e: any) => e.status === 'pending').length);
+      console.warn('Sidebar count fetch fallback', e);
     }
   };
 
@@ -129,7 +148,11 @@ export const AdminLayout: React.FC = () => {
                 </div>
 
                 {item.badge ? (
-                  <span className="bg-amber-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full">
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm ${
+                    item.to === '/admin/orders'
+                      ? 'bg-brand-500 text-white animate-pulse-subtle'
+                      : 'bg-amber-400 text-slate-950'
+                  }`}>
                     {item.badge}
                   </span>
                 ) : (
