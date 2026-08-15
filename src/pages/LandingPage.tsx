@@ -101,7 +101,7 @@ export const LandingPage: React.FC = () => {
                 <Logo size="lg" className="justify-center" />
                 <div className="aspect-video bg-warm-bg rounded-2xl overflow-hidden border border-warm-border">
                   <img
-                    src="https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=800&auto=format&fit=crop&q=80"
+                    src="/workshop_hero.png"
                     alt="Manikandan Lathe Workshop"
                     className="w-full h-full object-cover"
                   />
