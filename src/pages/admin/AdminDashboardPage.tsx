@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom';
 import { DollarSign, CreditCard, Clock, ShoppingBag, MessageSquare, Package, FolderTree, ArrowUpRight } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, supabase } from '../../lib/supabase';
+import { fetchActiveProducts } from '../../lib/productsStore';
 
 export const AdminDashboardPage: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [enquiries, setEnquiries] = useState<any[]>([]);
+  const [productsCount, setProductsCount] = useState<number>(INITIAL_PRODUCTS.length);
+  const [categoriesCount, setCategoriesCount] = useState<number>(INITIAL_CATEGORIES.length);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,13 +19,42 @@ export const AdminDashboardPage: React.FC = () => {
   const fetchDashboardMetrics = async () => {
     setLoading(true);
     try {
+      // 1. Fetch Orders from Supabase DB or LocalStorage
       const { data: ordData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-      if (ordData) setOrders(ordData);
+      if (ordData && ordData.length > 0) {
+        setOrders(ordData);
+      } else {
+        const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+        setOrders(localOrders);
+      }
 
+      // 2. Fetch Enquiries from Supabase DB or LocalStorage
       const { data: enqData } = await supabase.from('enquiries').select('*').order('created_at', { ascending: false });
-      if (enqData) setEnquiries(enqData);
+      if (enqData && enqData.length > 0) {
+        setEnquiries(enqData);
+      } else {
+        const localEnq = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+        setEnquiries(localEnq);
+      }
+
+      // 3. Fetch Active Products from Product Store (DB + Local Storage)
+      const activeProducts = await fetchActiveProducts();
+      if (activeProducts && activeProducts.length > 0) {
+        setProductsCount(activeProducts.length);
+      }
+
+      // 4. Fetch Active Categories from Supabase DB or Local Storage
+      const { data: catData } = await supabase.from('categories').select('*');
+      const localCat = JSON.parse(localStorage.getItem('ml_categories') || '[]');
+      if (catData && catData.length > 0) {
+        setCategoriesCount(catData.length);
+      } else if (localCat && localCat.length > 0) {
+        setCategoriesCount(localCat.length);
+      } else {
+        setCategoriesCount(INITIAL_CATEGORIES.length);
+      }
     } catch (e) {
-      console.warn('Dashboard DB load fallback');
+      console.warn('Dashboard DB load fallback', e);
     } finally {
       setLoading(false);
     }
@@ -39,8 +71,8 @@ export const AdminDashboardPage: React.FC = () => {
     { title: 'Unpaid Amount', value: `₹${unpaidAmount.toLocaleString('en-IN')}`, icon: Clock, color: 'bg-amber-50 text-amber-600 border-amber-200' },
     { title: 'Total Orders', value: orders.length, icon: ShoppingBag, color: 'bg-brand-50 text-brand-600 border-brand-200' },
     { title: 'Total Enquiries', value: enquiries.length, icon: MessageSquare, color: 'bg-blue-50 text-blue-600 border-blue-200' },
-    { title: 'Total Products', value: INITIAL_PRODUCTS.length, icon: Package, color: 'bg-purple-50 text-purple-600 border-purple-200' },
-    { title: 'Total Categories', value: INITIAL_CATEGORIES.length, icon: FolderTree, color: 'bg-indigo-50 text-indigo-600 border-indigo-200' },
+    { title: 'Total Products', value: productsCount, icon: Package, color: 'bg-purple-50 text-purple-600 border-purple-200' },
+    { title: 'Total Categories', value: categoriesCount, icon: FolderTree, color: 'bg-indigo-50 text-indigo-600 border-indigo-200' },
   ];
 
   return (
