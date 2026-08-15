@@ -87,8 +87,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* MobileNav bottom bar for customer portal pages */}
       {!isAdmin && !isAuthPage && !isPublicPage && !isGuestProductBrowse && <MobileNav />}
 
-      {/* Footer ONLY on public static pages (/, /about, /contact) */}
-      {!isAdmin && isPublicPage && <Footer />}
+      {/* Footer on all public & customer pages */}
+      {!isAdmin && !isAuthPage && <Footer />}
     </div>
   );
 };
