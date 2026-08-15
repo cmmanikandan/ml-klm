@@ -44,6 +44,10 @@ export interface Product {
   specifications?: ProductSpecification;
   is_best_selling: boolean;
   is_new: boolean;
+  is_featured?: boolean;
+  is_popular?: boolean;
+  is_custom_fabrication?: boolean;
+  is_in_stock?: boolean;
   is_active: boolean;
   admin_price?: number; // Strictly admin-only field
   images?: string[];

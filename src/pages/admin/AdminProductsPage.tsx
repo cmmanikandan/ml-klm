@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Edit, Trash2, Eye, EyeOff, Search, Upload, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Product } from '../../types';
-import { supabase } from '../../lib/supabase';
+import { fetchActiveProducts, deleteProductFromStore, clearAllDemoProductsFromStore, saveProductToStore } from '../../lib/productsStore';
 
 export const AdminProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -17,7 +17,7 @@ export const AdminProductsPage: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchProducts();
+    loadProducts();
   }, []);
 
   const showToast = (msg: string) => {
@@ -25,84 +25,43 @@ export const AdminProductsPage: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const fetchProducts = async () => {
+  const loadProducts = async () => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (data && !error) {
-        setProducts(data);
-      } else {
-        setProducts([]);
-      }
-    } catch (e) {
-      console.warn('Error fetching admin products list');
-    } finally {
-      setLoading(false);
-    }
+    const data = await fetchActiveProducts();
+    setProducts(data);
+    setLoading(false);
   };
 
   const toggleProductActive = async (prod: Product) => {
     const newStatus = !prod.is_active;
-    // Optimistic UI update
-    setProducts(products.map((p) => (p.id === prod.id ? { ...p, is_active: newStatus } : p)));
+    const updated = { ...prod, is_active: newStatus };
+    
+    setProducts(products.map((p) => (p.id === prod.id ? updated : p)));
+    await saveProductToStore(updated);
 
-    try {
-      await supabase
-        .from('products')
-        .update({ is_active: newStatus })
-        .eq('id', prod.id);
-
-      showToast(`Product visibility updated to ${newStatus ? 'Active' : 'Disabled'}`);
-    } catch (e) {
-      console.warn('Visibility update error');
-    }
+    showToast(`Product visibility updated to ${newStatus ? 'Active' : 'Disabled'}`);
   };
 
   const confirmDeleteProduct = async () => {
     if (!deleteTargetId) return;
     setIsDeleting(true);
 
-    try {
-      // 1. Delete associated product images first
-      await supabase.from('product_images').delete().eq('product_id', deleteTargetId);
+    await deleteProductFromStore(deleteTargetId);
 
-      // 2. Delete product record from Supabase DB
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', deleteTargetId);
+    setProducts(products.filter((p) => p.id !== deleteTargetId));
+    showToast('Product successfully deleted!');
 
-      if (!error) {
-        setProducts(products.filter((p) => p.id !== deleteTargetId));
-        showToast('Product successfully deleted from database!');
-      } else {
-        showToast('Error deleting product from database');
-      }
-    } catch (e) {
-      console.warn('Delete error');
-    } finally {
-      setIsDeleting(false);
-      setDeleteTargetId(null);
-    }
+    setIsDeleting(false);
+    setDeleteTargetId(null);
   };
 
-  // Purge any remaining sample demo products
+  // Clear all sample demo products completely
   const handlePurgeAllDemoProducts = async () => {
-    if (!window.confirm('Clear all demo products currently stored in Supabase database?')) return;
+    if (!window.confirm('Are you sure you want to clear all sample demo products from shop catalogue?')) return;
     setLoading(true);
-    try {
-      await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      setProducts([]);
-      showToast('All demo products cleared successfully!');
-    } catch (e) {
-      console.warn('Purge error');
-    } finally {
-      setLoading(false);
-    }
+    await clearAllDemoProductsFromStore();
+    await loadProducts();
+    showToast('All sample demo products cleared successfully!');
   };
 
   const filtered = products.filter((p) => {
@@ -129,7 +88,7 @@ export const AdminProductsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-charcoal-900">Products Inventory</h1>
           <p className="text-xs text-charcoal-500 font-semibold mt-0.5">
-            Manage live shop catalogue, pricing, specifications, and visibility in database
+            Manage live shop catalogue, pricing, specifications, and visibility
           </p>
         </div>
 
@@ -138,7 +97,7 @@ export const AdminProductsPage: React.FC = () => {
             <button
               onClick={handlePurgeAllDemoProducts}
               className="inline-flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3.5 py-2.5 rounded-2xl text-xs font-extrabold transition-all"
-              title="Clear old sample products"
+              title="Clear old sample demo products"
             >
               <Trash2 className="w-4 h-4" />
               <span>Clear Demo Products</span>
@@ -177,9 +136,9 @@ export const AdminProductsPage: React.FC = () => {
         </div>
 
         <button
-          onClick={fetchProducts}
+          onClick={loadProducts}
           className="p-2.5 bg-white hover:bg-warm-bg text-charcoal-700 rounded-2xl border border-warm-border shadow-sm transition-colors"
-          title="Refresh products list from database"
+          title="Refresh products list"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-brand-600' : ''}`} />
         </button>
@@ -269,8 +228,8 @@ export const AdminProductsPage: React.FC = () => {
           <div className="w-14 h-14 rounded-full bg-brand-50 border border-brand-200 text-brand-600 flex items-center justify-center mx-auto">
             <Plus className="w-7 h-7" />
           </div>
-          <h3 className="text-base font-black text-charcoal-900">No Products in Database</h3>
-          <p className="text-xs text-charcoal-500 font-medium">Click "Add New Product" above to create your first live product item!</p>
+          <h3 className="text-base font-black text-charcoal-900">No Products in Inventory</h3>
+          <p className="text-xs text-charcoal-500 font-medium">Click "Add New Product" above to create your first product item!</p>
           <Link
             to="/admin/products/new"
             className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-5 py-2.5 rounded-2xl text-xs shadow-md transition-all mt-2"
@@ -292,7 +251,7 @@ export const AdminProductsPage: React.FC = () => {
             <div className="space-y-1">
               <h3 className="text-lg font-black text-charcoal-900">Confirm Product Delete</h3>
               <p className="text-xs text-charcoal-600 font-medium leading-relaxed">
-                Are you sure you want to permanently delete this product from the database catalogue? This action cannot be undone.
+                Are you sure you want to permanently delete this product from the shop catalogue?
               </p>
             </div>
 

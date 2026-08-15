@@ -19,7 +19,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
-import { DEFAULT_SHOP_INFO, supabase } from '../lib/supabase';
+import { DEFAULT_SHOP_INFO } from '../lib/supabase';
+import { fetchProductById } from '../lib/productsStore';
 import { Product } from '../types';
 
 export const ProductDetailPage: React.FC = () => {
@@ -40,31 +41,16 @@ export const ProductDetailPage: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      fetchProductDetail(id);
+      fetchDetail(id);
     }
   }, [id]);
 
-  const fetchProductDetail = async (productId: string) => {
+  const fetchDetail = async (productId: string) => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', productId)
-        .single();
-
-      if (data && !error) {
-        setProduct(data);
-        trackProductView(data.id);
-      } else {
-        setProduct(null);
-      }
-    } catch (e) {
-      console.warn('Error fetching product details');
-      setProduct(null);
-    } finally {
-      setLoading(false);
-    }
+    const prod = await fetchProductById(productId);
+    setProduct(prod);
+    if (prod) trackProductView(prod.id);
+    setLoading(false);
   };
 
   if (loading) {
@@ -123,7 +109,7 @@ export const ProductDetailPage: React.FC = () => {
 
   const images = product.images && product.images.length > 0 
     ? product.images 
-    : [product.primary_image || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600&auto=format&fit=crop&q=80'];
+    : [product.primary_image || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80'];
 
   return (
     <div className="min-h-screen bg-warm-bg pb-28 md:pb-12 pt-4">

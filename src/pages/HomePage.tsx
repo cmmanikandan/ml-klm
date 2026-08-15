@@ -7,7 +7,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { Category, Product } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, INITIAL_CATEGORIES } from '../lib/supabase';
+import { fetchActiveProducts } from '../lib/productsStore';
 
 export const HomePage: React.FC = () => {
   const { language, t } = useLanguage();
@@ -16,7 +17,7 @@ export const HomePage: React.FC = () => {
 
   const isTamil = language === 'ta';
 
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,14 +34,10 @@ export const HomePage: React.FC = () => {
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
 
-      if (catData) setCategories(catData);
+      if (catData && catData.length > 0) setCategories(catData);
 
-      const { data: prodData } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true);
-
-      if (prodData) setProducts(prodData);
+      const activeProds = await fetchActiveProducts();
+      setProducts(activeProds);
     } catch (e) {
       console.warn('Error fetching home page live data');
     } finally {

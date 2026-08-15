@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, Sparkles, Star, Flame, TrendingUp, Wrench, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { ArrowLeft, Save, Plus, Trash2, Sparkles, Star, Flame, TrendingUp, Wrench, CheckCircle2, Package, Eye } from 'lucide-react';
 import { Button } from '../../components/common/Button';
-import { supabase, INITIAL_CATEGORIES } from '../../lib/supabase';
+import { INITIAL_CATEGORIES } from '../../lib/supabase';
+import { fetchProductById, saveProductToStore } from '../../lib/productsStore';
 import { Category, Product } from '../../types';
 
 export const AdminProductEditPage: React.FC = () => {
@@ -14,6 +15,7 @@ export const AdminProductEditPage: React.FC = () => {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [savedProductId, setSavedProductId] = useState<string>('');
 
   // Form Fields
   const [nameEn, setNameEn] = useState('');
@@ -45,68 +47,37 @@ export const AdminProductEditPage: React.FC = () => {
   const [showSuccessCard, setShowSuccessCard] = useState(false);
 
   useEffect(() => {
-    fetchCategories();
     if (isEdit && id) {
-      fetchExistingProduct(id);
+      loadProductForEdit(id);
     }
   }, [id, isEdit]);
 
-  const fetchCategories = async () => {
-    try {
-      const { data } = await supabase
-        .from('categories')
-        .select('*')
-        .order('sort_order', { ascending: true });
-
-      if (data && data.length > 0) {
-        setCategories(data);
-        if (!categoryId) {
-          setCategoryId(data[0].id);
-          setCategorySlug(data[0].slug);
-          setCategoryName(data[0].name_en);
-        }
-      }
-    } catch (e) {
-      console.warn('Error fetching categories');
-    }
-  };
-
-  const fetchExistingProduct = async (prodId: string) => {
+  const loadProductForEdit = async (prodId: string) => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', prodId)
-        .single();
-
-      if (data && !error) {
-        setNameEn(data.name_en || '');
-        setNameTa(data.name_ta || '');
-        setDescEn(data.description_en || '');
-        setDescTa(data.description_ta || '');
-        setCategoryId(data.category_id || '');
-        setCategoryName(data.category_name || 'General');
-        setMaterials(data.materials || '');
-        setAvailableSizes(data.available_sizes || '');
-        setAdminPrice(data.admin_price || 0);
-        setIsBestSelling(data.is_best_selling || false);
-        setIsNew(data.is_new !== false);
-        setIsFeatured(data.is_featured !== false);
-        setIsPopular(data.is_popular || false);
-        setIsCustomFabrication(data.is_custom_fabrication !== false);
-        setIsInStock(data.is_in_stock !== false);
-        if (data.images && data.images.length > 0) {
-          setImages(data.images);
-        } else if (data.primary_image) {
-          setImages([data.primary_image]);
-        }
+    const existing = await fetchProductById(prodId);
+    if (existing) {
+      setNameEn(existing.name_en || '');
+      setNameTa(existing.name_ta || '');
+      setDescEn(existing.description_en || '');
+      setDescTa(existing.description_ta || '');
+      setCategoryId(existing.category_id || '');
+      setCategoryName(existing.category_name || 'General');
+      setMaterials(existing.materials || '');
+      setAvailableSizes(existing.available_sizes || '');
+      setAdminPrice(existing.admin_price || 0);
+      setIsBestSelling(existing.is_best_selling || false);
+      setIsNew(existing.is_new !== false);
+      setIsFeatured(existing.is_featured !== false);
+      setIsPopular(existing.is_popular || false);
+      setIsCustomFabrication(existing.is_custom_fabrication !== false);
+      setIsInStock(existing.is_in_stock !== false);
+      if (existing.images && existing.images.length > 0) {
+        setImages(existing.images);
+      } else if (existing.primary_image) {
+        setImages([existing.primary_image]);
       }
-    } catch (e) {
-      console.warn('Error fetching product for edit');
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   const handleCategoryChange = (slug: string) => {
@@ -131,19 +102,27 @@ export const AdminProductEditPage: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!nameEn.trim()) {
+      alert('Please enter product English name');
+      return;
+    }
     setSaving(true);
 
     const productId = isEdit && id ? id : crypto.randomUUID();
     const primaryImg = images[0] || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80';
 
-    const productPayload = {
+    const selectedCat = categories.find((c) => c.slug === categorySlug) || categories[0];
+    const targetCategoryId = selectedCat?.id || '11111111-1111-1111-1111-111111111111';
+    const targetCategoryName = selectedCat?.name_en || 'Steel Chairs';
+
+    const productPayload: Product = {
       id: productId,
-      category_id: categoryId || categories[0]?.id || '11111111-1111-1111-1111-111111111111',
-      category_name: categoryName,
+      category_id: targetCategoryId,
+      category_name: targetCategoryName,
       name_en: nameEn.trim(),
-      name_ta: nameTa.trim(),
+      name_ta: nameTa.trim() || nameEn.trim(),
       description_en: descEn.trim(),
-      description_ta: descTa.trim(),
+      description_ta: descTa.trim() || descEn.trim(),
       materials: materials.trim(),
       available_sizes: availableSizes.trim(),
       specifications: {
@@ -153,53 +132,19 @@ export const AdminProductEditPage: React.FC = () => {
       },
       is_best_selling: isBestSelling,
       is_new: isNew,
-      is_featured: isFeatured,
-      is_popular: isPopular,
-      is_custom_fabrication: isCustomFabrication,
-      is_in_stock: isInStock,
       is_active: true,
       admin_price: adminPrice,
       primary_image: primaryImg,
       images: images,
-      updated_at: new Date().toISOString()
+      created_at: new Date().toISOString()
     };
 
-    try {
-      // Upsert into Supabase DB table `public.products`
-      const { error } = await supabase.from('products').upsert(productPayload);
+    // Save to Store (Unified Supabase DB + Local Backup Store)
+    await saveProductToStore(productPayload);
 
-      if (error) {
-        console.error('Supabase Product Upsert Error:', error);
-        alert(`Error saving to database: ${error.message}`);
-        setSaving(false);
-        return;
-      }
-
-      // Sync images to `public.product_images`
-      if (images.length > 0) {
-        try {
-          await supabase.from('product_images').delete().eq('product_id', productId);
-          const imageRecords = images.map((url, idx) => ({
-            product_id: productId,
-            image_url: url,
-            is_primary: idx === 0,
-            sort_order: idx + 1
-          }));
-          await supabase.from('product_images').insert(imageRecords);
-        } catch (imgErr) {
-          console.warn('Image sync warning:', imgErr);
-        }
-      }
-
-      setShowSuccessCard(true);
-      setTimeout(() => {
-        navigate('/admin/products');
-      }, 1500);
-
-    } catch (err) {
-      alert('Save failed: Please check database connection.');
-      setSaving(false);
-    }
+    setSavedProductId(productId);
+    setSaving(false);
+    setShowSuccessCard(true);
   };
 
   if (loading) {
@@ -213,11 +158,11 @@ export const AdminProductEditPage: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-6 relative">
       
-      {/* Success Card Modal Overlay */}
+      {/* Success Card Modal Overlay with Direct Product Page Links */}
       {showSuccessCard && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full border-2 border-emerald-500 shadow-2xl text-center space-y-4 animate-bounce-subtle">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto border-2 border-emerald-300">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full border-2 border-emerald-500 shadow-2xl text-center space-y-5 animate-bounce-subtle">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto border-2 border-emerald-300 shadow-md">
               <CheckCircle2 className="w-9 h-9" />
             </div>
 
@@ -225,9 +170,28 @@ export const AdminProductEditPage: React.FC = () => {
               <h3 className="text-xl font-black text-charcoal-900">
                 Product {isEdit ? 'Updated' : 'Added'} Successfully!
               </h3>
-              <p className="text-xs text-charcoal-600 font-bold">
-                Saved directly into Manikandan Lathe Supabase Database catalogue.
+              <p className="text-xs text-emerald-800 font-bold">
+                Item has been saved to Manikandan Lathe shop catalogue.
               </p>
+            </div>
+
+            {/* Direct Action Links */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Link
+                to={`/products/${savedProductId || (isEdit ? id : '')}`}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-3 px-4 rounded-2xl text-xs shadow-md transition-all"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Open Product Page</span>
+              </Link>
+
+              <Link
+                to="/admin/products"
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-charcoal-900 hover:bg-black text-white font-extrabold py-3 px-4 rounded-2xl text-xs shadow-md transition-all"
+              >
+                <Package className="w-4 h-4" />
+                <span>Go to Inventory</span>
+              </Link>
             </div>
           </div>
         </div>
@@ -243,7 +207,7 @@ export const AdminProductEditPage: React.FC = () => {
         </button>
 
         <h1 className="text-xl font-black text-charcoal-900">
-          {isEdit ? 'Edit Product in DB' : 'Add New Product to DB'}
+          {isEdit ? 'Edit Product' : 'Add New Product'}
         </h1>
       </div>
 
@@ -258,19 +222,18 @@ export const AdminProductEditPage: React.FC = () => {
               required
               value={nameEn}
               onChange={(e) => setNameEn(e.target.value)}
-              placeholder="e.g. Stainless Steel Chair"
+              placeholder="e.g. Heavy Duty Steel Chair"
               className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-charcoal-700 mb-1">Product Name (தமிழ்) *</label>
+            <label className="block text-xs font-bold text-charcoal-700 mb-1">Product Name (தமிழ்)</label>
             <input
               type="text"
-              required
               value={nameTa}
               onChange={(e) => setNameTa(e.target.value)}
-              placeholder="e.g. ஸ்டெயின்லெஸ் ஸ்டீல் நாற்காலி"
+              placeholder="e.g. ஹெவி டியூட்டி ஸ்டீல் நாற்காலி"
               className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
@@ -384,32 +347,6 @@ export const AdminProductEditPage: React.FC = () => {
               </div>
             </label>
 
-            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${isFeatured ? 'border-orange-500 bg-orange-50' : 'border-warm-border hover:border-gray-300'}`}>
-              <input
-                type="checkbox"
-                checked={isFeatured}
-                onChange={(e) => setIsFeatured(e.target.checked)}
-                className="w-4 h-4 text-orange-500 rounded"
-              />
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
-                <Flame className="w-3.5 h-3.5 text-orange-500" />
-                <span>Featured</span>
-              </div>
-            </label>
-
-            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${isCustomFabrication ? 'border-purple-500 bg-purple-50' : 'border-warm-border hover:border-gray-300'}`}>
-              <input
-                type="checkbox"
-                checked={isCustomFabrication}
-                onChange={(e) => setIsCustomFabrication(e.target.checked)}
-                className="w-4 h-4 text-purple-500 rounded"
-              />
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
-                <Wrench className="w-3.5 h-3.5 text-purple-500" />
-                <span>Custom Specs</span>
-              </div>
-            </label>
-
             <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${isInStock ? 'border-emerald-500 bg-emerald-50' : 'border-warm-border hover:border-gray-300'}`}>
               <input
                 type="checkbox"
@@ -489,7 +426,7 @@ export const AdminProductEditPage: React.FC = () => {
             fullWidth
             icon={<Save className="w-4 h-4" />}
           >
-            {saving ? 'Saving to Database...' : 'Save Product to Supabase Database'}
+            {saving ? 'Saving Product...' : 'Save Product to Catalogue'}
           </Button>
         </div>
 

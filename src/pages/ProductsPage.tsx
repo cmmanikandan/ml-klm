@@ -4,7 +4,8 @@ import { Filter, PackageX } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
 import { Product, Category } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, INITIAL_CATEGORIES } from '../lib/supabase';
+import { fetchActiveProducts } from '../lib/productsStore';
 
 export const ProductsPage: React.FC = () => {
   const { language, t } = useLanguage();
@@ -13,15 +14,15 @@ export const ProductsPage: React.FC = () => {
 
   const selectedCategorySlug = searchParams.get('category') || 'all';
 
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchProductsAndCategories();
+    loadCatalogue();
   }, []);
 
-  const fetchProductsAndCategories = async () => {
+  const loadCatalogue = async () => {
     setLoading(true);
     try {
       const { data: catData } = await supabase
@@ -30,16 +31,12 @@ export const ProductsPage: React.FC = () => {
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
 
-      if (catData) setCategories(catData);
+      if (catData && catData.length > 0) setCategories(catData);
 
-      const { data: prodData } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true);
-
-      if (prodData) setProducts(prodData);
+      const activeProds = await fetchActiveProducts();
+      setProducts(activeProds);
     } catch (e) {
-      console.warn('Products fetch error');
+      console.warn('Catalogue loading error');
     } finally {
       setLoading(false);
     }

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Upload, Download, CheckCircle2, AlertCircle, FileText, ArrowRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Upload, Download, CheckCircle2, AlertCircle, FileText, ArrowRight, Eye, Package } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import Papa from 'papaparse';
 import { supabase } from '../../lib/supabase';
 
 export const AdminImportPage: React.FC = () => {
+  const navigate = useNavigate();
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<any[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -55,6 +57,7 @@ export const AdminImportPage: React.FC = () => {
           }
 
           validRows.push({
+            id: crypto.randomUUID(),
             name_en: nameEn,
             name_ta: nameTa,
             description_en: row.description_en || '',
@@ -80,11 +83,15 @@ export const AdminImportPage: React.FC = () => {
     setImporting(true);
 
     try {
-      // Execute import into Supabase
+      // Execute import into Supabase DB
       const { error } = await supabase.from('products').insert(parsedRows);
-      if (error) throw error;
+      if (error) {
+        alert(`Import Error: ${error.message}`);
+        setImporting(false);
+        return;
+      }
     } catch (e) {
-      console.warn('Supabase bulk insert simulation');
+      console.warn('Import execution error');
     }
 
     setImporting(false);
@@ -92,7 +99,7 @@ export const AdminImportPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 relative">
       
       <div>
         <h1 className="text-2xl font-black text-charcoal-900">Import Products (CSV)</h1>
@@ -192,18 +199,42 @@ export const AdminImportPage: React.FC = () => {
         </div>
       )}
 
-      {/* Success Banner */}
+      {/* SUCCESS MODAL POP-UP CARD WITH DIRECT PRODUCT PAGE LINKS */}
       {successCount !== null && (
-        <div className="bg-emerald-50 border-2 border-emerald-300 p-6 rounded-3xl text-center space-y-2">
-          <div className="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto shadow-md">
-            <CheckCircle2 className="w-7 h-7" />
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full border-2 border-emerald-500 shadow-2xl text-center space-y-5 animate-bounce-subtle">
+            <div className="w-16 h-16 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto shadow-lg border-2 border-emerald-300">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-xl font-black text-charcoal-900">
+                Bulk Import Successful!
+              </h3>
+              <p className="text-xs text-emerald-800 font-bold">
+                Successfully inserted {successCount} products directly into Supabase database.
+              </p>
+            </div>
+
+            {/* Direct Action Links */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Link
+                to="/products"
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-3 px-4 rounded-2xl text-xs shadow-md transition-all"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Open Products Catalogue Page</span>
+              </Link>
+
+              <Link
+                to="/admin/products"
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-charcoal-900 hover:bg-black text-white font-extrabold py-3 px-4 rounded-2xl text-xs shadow-md transition-all"
+              >
+                <Package className="w-4 h-4" />
+                <span>Manage Admin Inventory</span>
+              </Link>
+            </div>
           </div>
-          <h3 className="text-lg font-black text-emerald-900">
-            Successfully Imported {successCount} Products!
-          </h3>
-          <p className="text-xs text-emerald-700 font-bold">
-            All records have been validated and persisted to Supabase.
-          </p>
         </div>
       )}
 

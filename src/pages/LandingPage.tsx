@@ -4,14 +4,15 @@ import { Phone, ArrowRight, Sparkles, Flame, PackageX } from 'lucide-react';
 import { Logo } from '../components/common/Logo';
 import { ProductCard } from '../components/product/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
-import { DEFAULT_SHOP_INFO, supabase } from '../lib/supabase';
+import { DEFAULT_SHOP_INFO, supabase, INITIAL_CATEGORIES } from '../lib/supabase';
 import { Product, Category } from '../types';
+import { fetchActiveProducts } from '../lib/productsStore';
 
 export const LandingPage: React.FC = () => {
   const { language, t } = useLanguage();
   const isTamil = language === 'ta';
 
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,14 +29,10 @@ export const LandingPage: React.FC = () => {
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
 
-      if (catData) setCategories(catData);
+      if (catData && catData.length > 0) setCategories(catData);
 
-      const { data: prodData } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true);
-
-      if (prodData) setProducts(prodData);
+      const activeProds = await fetchActiveProducts();
+      setProducts(activeProds);
     } catch (e) {
       console.warn('Error fetching live landing page data');
     } finally {
