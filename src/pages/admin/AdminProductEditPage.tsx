@@ -4,6 +4,7 @@ import { ArrowLeft, Save, Plus, Trash2, Sparkles, Star, Flame, TrendingUp, Wrenc
 import { Button } from '../../components/common/Button';
 import { INITIAL_CATEGORIES } from '../../lib/supabase';
 import { fetchProductById, saveProductToStore } from '../../lib/productsStore';
+import { fetchActiveCategories } from '../../lib/categoriesStore';
 import { Category, Product } from '../../types';
 
 export const AdminProductEditPage: React.FC = () => {
@@ -47,10 +48,21 @@ export const AdminProductEditPage: React.FC = () => {
   const [showSuccessCard, setShowSuccessCard] = useState(false);
 
   useEffect(() => {
+    loadCategories();
     if (isEdit && id) {
       loadProductForEdit(id);
     }
   }, [id, isEdit]);
+
+  const loadCategories = async () => {
+    const liveCats = await fetchActiveCategories();
+    if (liveCats.length > 0) {
+      setCategories(liveCats);
+      setCategorySlug(liveCats[0].slug);
+      setCategoryId(liveCats[0].id);
+      setCategoryName(liveCats[0].name_en);
+    }
+  };
 
   const loadProductForEdit = async (prodId: string) => {
     setLoading(true);

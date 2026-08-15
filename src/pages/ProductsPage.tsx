@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { Product, Category } from '../types';
 import { supabase, INITIAL_CATEGORIES } from '../lib/supabase';
 import { fetchActiveProducts } from '../lib/productsStore';
+import { fetchActiveCategories } from '../lib/categoriesStore';
 
 export const ProductsPage: React.FC = () => {
   const { language, t } = useLanguage();
@@ -25,13 +26,8 @@ export const ProductsPage: React.FC = () => {
   const loadCatalogue = async () => {
     setLoading(true);
     try {
-      const { data: catData } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-
-      if (catData && catData.length > 0) setCategories(catData);
+      const activeCats = await fetchActiveCategories();
+      setCategories(activeCats);
 
       const activeProds = await fetchActiveProducts();
       setProducts(activeProds);

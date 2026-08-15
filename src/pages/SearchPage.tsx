@@ -4,7 +4,7 @@ import { Search, X, ArrowLeft, Clock, Sparkles } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
 import { Product } from '../types';
-import { supabase } from '../lib/supabase';
+import { fetchActiveProducts } from '../lib/productsStore';
 
 export const SearchPage: React.FC = () => {
   const { language, t } = useLanguage();
@@ -23,19 +23,12 @@ export const SearchPage: React.FC = () => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
-    fetchLiveProducts();
+    loadProducts();
   }, []);
 
-  const fetchLiveProducts = async () => {
-    try {
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true);
-      if (data) setProducts(data);
-    } catch (e) {
-      console.warn('Error fetching products for search');
-    }
+  const loadProducts = async () => {
+    const active = await fetchActiveProducts();
+    setProducts(active);
   };
 
   const handleClear = () => {
@@ -61,7 +54,8 @@ export const SearchPage: React.FC = () => {
         const titleEn = (p.name_en || '').toLowerCase();
         const titleTa = (p.name_ta || '').toLowerCase();
         const catName = (p.category_name || '').toLowerCase();
-        return titleEn.includes(q) || titleTa.includes(q) || catName.includes(q);
+        const categoryId = (p.category_id || '').toLowerCase();
+        return titleEn.includes(q) || titleTa.includes(q) || catName.includes(q) || categoryId.includes(q);
       })
     : [];
 

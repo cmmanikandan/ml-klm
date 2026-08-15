@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Upload, Download, CheckCircle2, AlertCircle, FileText, ArrowRight, Eye, Package } from 'lucide-react';
+import { Upload, Download, CheckCircle2, AlertCircle, FileText, Eye, Package } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import Papa from 'papaparse';
-import { supabase } from '../../lib/supabase';
+import { saveProductToStore } from '../../lib/productsStore';
+import { Product } from '../../types';
 
 export const AdminImportPage: React.FC = () => {
   const navigate = useNavigate();
   const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [parsedRows, setParsedRows] = useState<any[]>([]);
+  const [parsedRows, setParsedRows] = useState<Product[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [successCount, setSuccessCount] = useState<number | null>(null);
@@ -43,7 +44,7 @@ export const AdminImportPage: React.FC = () => {
       transformHeader: (h) => h.trim(),
       complete: (results) => {
         const rows = results.data;
-        const validRows: any[] = [];
+        const validRows: Product[] = [];
         const errList: string[] = [];
 
         rows.forEach((row: any, index: number) => {
@@ -58,17 +59,20 @@ export const AdminImportPage: React.FC = () => {
 
           validRows.push({
             id: crypto.randomUUID(),
-            name_en: nameEn,
-            name_ta: nameTa,
-            description_en: row.description_en || '',
-            description_ta: row.description_ta || '',
-            category_name: row.category || 'General',
-            materials: row.material || '',
-            available_sizes: row.sizes || 'Standard',
+            name_en: nameEn.trim(),
+            name_ta: (nameTa || nameEn).trim(),
+            description_en: (row.description_en || '').trim(),
+            description_ta: (row.description_ta || '').trim(),
+            category_name: (row.category || 'General').trim(),
+            materials: (row.material || '').trim(),
+            available_sizes: (row.sizes || 'Standard').trim(),
             admin_price: parseFloat(row.admin_price) || 0,
             is_best_selling: row.is_best_selling === 'true',
             is_new: row.is_new !== 'false',
-            is_active: true
+            is_active: true,
+            primary_image: 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
+            images: ['https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80'],
+            created_at: new Date().toISOString()
           });
         });
 
@@ -83,15 +87,12 @@ export const AdminImportPage: React.FC = () => {
     setImporting(true);
 
     try {
-      // Execute import into Supabase DB
-      const { error } = await supabase.from('products').insert(parsedRows);
-      if (error) {
-        alert(`Import Error: ${error.message}`);
-        setImporting(false);
-        return;
+      // Save each product via productsStore to handle clean payload formatting & schema fallbacks automatically
+      for (const prod of parsedRows) {
+        await saveProductToStore(prod);
       }
     } catch (e) {
-      console.warn('Import execution error');
+      console.warn('Import execution error fallback active');
     }
 
     setImporting(false);
@@ -104,7 +105,7 @@ export const AdminImportPage: React.FC = () => {
       <div>
         <h1 className="text-2xl font-black text-charcoal-900">Import Products (CSV)</h1>
         <p className="text-xs text-charcoal-500 font-semibold mt-0.5">
-          Bulk import products into Supabase database with validation & error checking
+          Bulk import products into shop catalogue with validation & schema error prevention
         </p>
       </div>
 
@@ -193,7 +194,7 @@ export const AdminImportPage: React.FC = () => {
               fullWidth
               icon={<CheckCircle2 className="w-5 h-5" />}
             >
-              Confirm & Insert {parsedRows.length} Products to Database
+              Confirm & Insert {parsedRows.length} Products to Catalogue
             </Button>
           </div>
         </div>
@@ -212,7 +213,7 @@ export const AdminImportPage: React.FC = () => {
                 Bulk Import Successful!
               </h3>
               <p className="text-xs text-emerald-800 font-bold">
-                Successfully inserted {successCount} products directly into Supabase database.
+                Successfully inserted {successCount} products directly into shop catalogue.
               </p>
             </div>
 
