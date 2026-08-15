@@ -115,7 +115,7 @@ export const ContactPage: React.FC = () => {
             </div>
 
             <a
-              href="https://maps.app.goo.gl/WP632nSNc73yiBsE7"
+              href={DEFAULT_SHOP_INFO.google_maps_url}
               target="_blank"
               rel="noreferrer"
               className="w-full flex items-center justify-center gap-2 bg-charcoal-900 hover:bg-black text-white font-extrabold py-3 px-4 rounded-2xl shadow-md transition-all text-xs"

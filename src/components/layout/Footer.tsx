@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Phone, MapPin, Clock, MessageSquare, ShieldCheck, Navigation } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { useLanguage } from '../../context/LanguageContext';
-import { DEFAULT_SHOP_INFO } from '../../lib/supabase';
+import { DEFAULT_SHOP_INFO, INITIAL_CATEGORIES } from '../../lib/supabase';
 
 export const Footer: React.FC = () => {
   const { language } = useLanguage();
@@ -65,26 +65,13 @@ export const Footer: React.FC = () => {
               {isTamil ? 'தயாரிப்பு பிரிவுகள்' : 'Shop Categories'}
             </h4>
             <ul className="space-y-2 text-xs sm:text-sm text-gray-400 font-medium">
-              <li>
-                <Link to="/products?category=steel-chairs" className="hover:text-white transition-colors">
-                  {isTamil ? 'ஸ்டீல் நாற்காலிகள்' : 'Steel Chairs'}
-                </Link>
-              </li>
-              <li>
-                <Link to="/products?category=gates" className="hover:text-white transition-colors">
-                  {isTamil ? 'பிரதான கேட் டிசைன்கள்' : 'Entrance Main Gates'}
-                </Link>
-              </li>
-              <li>
-                <Link to="/products?category=safety-grills" className="hover:text-white transition-colors">
-                  {isTamil ? 'பாதுகாப்பு கிரில்கள்' : 'Window Safety Grills'}
-                </Link>
-              </li>
-              <li>
-                <Link to="/products?category=tables-desks" className="hover:text-white transition-colors">
-                  {isTamil ? 'ஹெவி மேஜைகள்' : 'Heavy Steel Tables'}
-                </Link>
-              </li>
+              {INITIAL_CATEGORIES.map((cat) => (
+                <li key={cat.id}>
+                  <Link to={`/products?category=${cat.slug}`} className="hover:text-white transition-colors">
+                    {isTamil ? cat.name_ta || cat.name_en : cat.name_en}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 

@@ -54,7 +54,7 @@ export const LandingPage: React.FC = () => {
             <div className="space-y-6 text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-100 border border-brand-300 text-brand-700 text-xs font-extrabold shadow-sm">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>{isTamil ? '40+ வருட சிறந்த லேத் வெல்டிங் பாரம்பரியம்' : '40+ Years of Industrial Fabrication Excellence'}</span>
+                <span>{isTamil ? '25+ வருட சிறந்த லேத் வெல்டிங் பாரம்பரியம்' : '25+ Years of Industrial Fabrication Excellence'}</span>
               </div>
 
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-charcoal-900 leading-tight tracking-tight">

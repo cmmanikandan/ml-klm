@@ -19,15 +19,15 @@ export const AboutPage: React.FC = () => {
           </span>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-charcoal-900 tracking-tight">
             {isTamil ? (
-              <>40+ வருடங்கள் பாரம்பரிய <span className="text-brand-600">லேத் & வெல்டிங்</span> தயாரிப்புகள்</>
+              <>25+ வருடங்கள் பாரம்பரிய <span className="text-brand-600">லேத் & வெல்டிங்</span> தயாரிப்புகள்</>
             ) : (
-              <>40+ Years of Precision <span className="text-brand-600">Lathe Turning & Metal Fabrication</span></>
+              <>25+ Years of Precision <span className="text-brand-600">Lathe Turning & Metal Fabrication</span></>
             )}
           </h1>
           <p className="text-sm sm:text-base text-charcoal-600 max-w-2xl mx-auto font-medium leading-relaxed">
             {isTamil
-              ? 'கள்ளிமந்தையம், திண்டுக்கல் மாவட்டத்தில் உள்ள எங்கள் பட்டறையில் உயர்தர ஸ்டெயின்லெஸ் ஸ்டீல் நாற்காலிகள், மெயின் கேட்டுகள், பால்கனி கிரில்கள் மற்றும் தொழில்துறை லேத் வேலைகள் துல்லியமாக செய்யப்பட்டு வழங்கப்படுகின்றன.'
-              : 'Located in Kallimandhayam, Dindigul District, Tamil Nadu, Manikandan Lathe – Welding Works specializes in heavy grade 304 stainless steel chairs, architectural entrance gates, safety grills, and custom industrial lathe fabrication.'}
+              ? 'கள்ளிமந்தையம், திண்டுக்கல் மாவட்டத்தில் உள்ள எங்கள் பட்டறையில் திரு. K. செல்லமுத்து அவர்களின் வழிகாட்டுதலில் உயர்தர ஸ்டெயின்லெஸ் ஸ்டீல் நாற்காலிகள், மெயின் கேட்டுகள், பால்கனி கிரில்கள் மற்றும் தொழில்துறை லேத் வேலைகள் துல்லியமாக செய்யப்பட்டு வழங்கப்படுகின்றன.'
+              : 'Founded by K. Chellamuthu in Kallimandhayam, Dindigul District, Tamil Nadu, Manikandan Lathe – Welding Works specializes in heavy grade 304 stainless steel chairs, architectural entrance gates, safety grills, and custom industrial lathe fabrication.'}
           </p>
         </div>
       </section>
@@ -36,7 +36,7 @@ export const AboutPage: React.FC = () => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-6 rounded-3xl border border-warm-border text-center shadow-card space-y-1">
-            <span className="text-3xl font-black text-brand-600">40+</span>
+            <span className="text-3xl font-black text-brand-600">25+</span>
             <span className="text-xs font-bold text-charcoal-700 block">Years Experience</span>
           </div>
           <div className="bg-white p-6 rounded-3xl border border-warm-border text-center shadow-card space-y-1">
@@ -50,6 +50,44 @@ export const AboutPage: React.FC = () => {
           <div className="bg-white p-6 rounded-3xl border border-warm-border text-center shadow-card space-y-1">
             <span className="text-3xl font-black text-brand-600">1,200+</span>
             <span className="text-xs font-bold text-charcoal-700 block">Satisfied Customers</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Founder & Workshop Leadership Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-gradient-to-r from-brand-600 to-amber-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center font-black text-2xl border border-white/30 shrink-0">
+              KC
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-black text-amber-200 uppercase tracking-widest block">FOUNDER & PROPRIETOR</span>
+              <h2 className="text-2xl font-black tracking-tight">K. Chellamuthu</h2>
+              <p className="text-xs text-white/90 font-medium">
+                Master Lathe Craftsman & Industrial Fabrication Visionary with 25+ Years of Dedicated Service
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 text-center shrink-0">
+            <span className="text-xs font-black block text-amber-200">WORKSHOP LOCATION</span>
+            <span className="text-xs font-extrabold text-white">Kallimandhayam, Dindigul</span>
+          </div>
+        </div>
+
+        {/* Real Workshop Photo Showcase */}
+        <div className="mt-6 bg-white p-4 rounded-3xl border border-warm-border shadow-card overflow-hidden">
+          <div className="aspect-video w-full rounded-2xl overflow-hidden border border-warm-border max-h-[420px]">
+            <img
+              src="/manikandan_shop_real.jpg"
+              alt="Manikandan Lathe - Welding Works Workshop"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="pt-3 px-2 flex items-center justify-between text-xs font-extrabold text-charcoal-700">
+            <span>மணிகண்டன் லேத் – கிரில், கலப்பை, டாப் & வெல்டிங் ஒர்க்ஸ்</span>
+            <span className="text-brand-600">கள்ளிமந்தையம் | செல்: 96592 86268</span>
           </div>
         </div>
       </section>
