@@ -198,7 +198,7 @@ export const AdminEnquiryDetailPage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-black text-charcoal-900">Enquiry #{enquiry.enquiry_number || enquiry.id}</h1>
-              <Badge variant={enquiry.status === 'accepted' ? 'accepted' : enquiry.status === 'converted' ? 'confirmed' : 'pending'}>
+              <Badge variant={enquiry.status}>
                 {(enquiry.status || 'pending').toUpperCase()}
               </Badge>
             </div>

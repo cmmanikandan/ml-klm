@@ -271,8 +271,8 @@ export const OrderDetailPage: React.FC = () => {
               </p>
             </div>
 
-            <Badge variant={order.status === 'delivered' ? 'delivered' : 'processing'}>
-              {order.status.toUpperCase()}
+            <Badge variant={order.status}>
+              {(order.status || 'pending').toUpperCase().replace('_', ' ')}
             </Badge>
           </div>
 

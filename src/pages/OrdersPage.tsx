@@ -159,16 +159,8 @@ export const OrdersPage: React.FC = () => {
 
                     {/* Right: Badge & Action */}
                     <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-warm-muted">
-                      <Badge
-                        variant={
-                          order.status === 'delivered'
-                            ? 'delivered'
-                            : order.status === 'processing'
-                            ? 'processing'
-                            : 'confirmed'
-                        }
-                      >
-                        {order.status.toUpperCase()}
+                      <Badge variant={order.status}>
+                        {(order.status || 'pending').toUpperCase().replace('_', ' ')}
                       </Badge>
 
                       <div className="flex items-center gap-1 text-xs font-extrabold text-brand-600 group-hover:translate-x-1 transition-transform">
@@ -203,8 +195,8 @@ export const OrdersPage: React.FC = () => {
                       </h4>
                     </div>
 
-                    <Badge variant={enq.status === 'accepted' ? 'accepted' : enq.status === 'rejected' ? 'rejected' : 'pending'}>
-                      {enq.status.toUpperCase()}
+                    <Badge variant={enq.status}>
+                      {(enq.status || 'pending').toUpperCase().replace('_', ' ')}
                     </Badge>
                   </div>
 

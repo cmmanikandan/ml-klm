@@ -6,6 +6,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { INITIAL_PRODUCTS, DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { getNextOrderId } from '../../lib/idGenerator';
+import { getStatusConfig } from '../../lib/statusConfig';
 
 export const AdminEnquiriesPage: React.FC = () => {
   const [filter, setFilter] = useState<'pending' | 'all' | 'accepted' | 'rejected' | 'converted'>('pending');
@@ -188,18 +189,24 @@ export const AdminEnquiriesPage: React.FC = () => {
           <p className="text-xs text-charcoal-500 font-medium">Review customer specifications, send price quotes & convert to shop orders</p>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-warm-border shadow-sm">
-          {(['pending', 'all', 'accepted', 'rejected', 'converted'] as const).map((key) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold capitalize transition-all ${
-                filter === key ? 'bg-brand-600 text-white shadow-sm' : 'text-charcoal-600 hover:bg-warm-hover'
-              }`}
-            >
-              {key === 'pending' ? 'New Enquiries' : key === 'all' ? 'All Enquiries' : key}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-1.5 bg-white p-1 rounded-2xl border border-warm-border shadow-sm">
+          {(['pending', 'all', 'accepted', 'rejected', 'converted'] as const).map((key) => {
+            const isActive = filter === key;
+            const conf = getStatusConfig(key);
+            return (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border ${
+                  isActive
+                    ? (key === 'all' ? 'bg-brand-600 text-white border-brand-600 shadow-sm' : conf.activeBtnClass)
+                    : 'bg-white border-transparent text-charcoal-700 hover:bg-warm-hover'
+                }`}
+              >
+                {key === 'pending' ? 'New Enquiries' : key === 'all' ? 'All Enquiries' : conf.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 

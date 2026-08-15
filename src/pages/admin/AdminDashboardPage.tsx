@@ -166,8 +166,8 @@ export const AdminDashboardPage: React.FC = () => {
                       {ord.productName || 'Fabrication Item'}
                     </td>
                     <td className="py-3 px-4">
-                      <Badge variant={ord.status === 'delivered' ? 'delivered' : 'processing'}>
-                        {ord.status.toUpperCase()}
+                      <Badge variant={ord.status}>
+                        {(ord.status || 'PENDING').toUpperCase().replace('_', ' ')}
                       </Badge>
                     </td>
                   </tr>

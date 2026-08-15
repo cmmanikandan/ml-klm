@@ -28,6 +28,7 @@ import { InvoicePreviewModal } from '../../components/invoice/InvoicePreviewModa
 import { OrderStatus } from '../../types';
 import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
+import { getStatusConfig } from '../../lib/statusConfig';
 
 export const AdminOrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -312,7 +313,7 @@ export const AdminOrderDetailPage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-black text-charcoal-900">Order #{order.order_number || order.id}</h1>
-              <Badge variant={order.status === 'delivered' ? 'delivered' : 'processing'}>
+              <Badge variant={order.status}>
                 {(order.status || 'pending').toUpperCase().replace('_', ' ')}
               </Badge>
             </div>
@@ -415,21 +416,40 @@ export const AdminOrderDetailPage: React.FC = () => {
 
           {/* Status Updater Card */}
           <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-3">
-            <h3 className="text-sm font-black text-charcoal-900 uppercase tracking-wider">Update Fabrication Status</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {(['accepted', 'order_confirmed', 'processing', 'ready', 'delivered'] as OrderStatus[]).map((st) => (
-                <button
-                  key={st}
-                  onClick={() => handleUpdateStatus(st)}
-                  className={`py-2.5 px-3 rounded-2xl text-xs font-extrabold border transition-all ${
-                    order.status === st
-                      ? 'bg-brand-600 text-white border-brand-600 shadow-md'
-                      : 'bg-warm-bg text-charcoal-700 border-warm-border hover:bg-warm-hover'
-                  }`}
-                >
-                  {st.replace('_', ' ').toUpperCase()}
-                </button>
-              ))}
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-charcoal-900 uppercase tracking-wider">Update Fabrication Status</h3>
+              <span className="text-[11px] font-extrabold font-mono text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200">
+                Current: {getStatusConfig(order.status).label}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+              {(['accepted', 'order_confirmed', 'processing', 'ready', 'delivered'] as OrderStatus[]).map((st) => {
+                const conf = getStatusConfig(st);
+                const isActive = order.status === st;
+                return (
+                  <button
+                    key={st}
+                    onClick={() => handleUpdateStatus(st)}
+                    className={`py-2.5 px-3 rounded-2xl text-xs font-black border transition-all ${
+                      isActive
+                        ? conf.activeBtnClass
+                        : conf.inactiveBtnClass
+                    }`}
+                  >
+                    {conf.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Status Color Legend */}
+            <div className="pt-2 border-t border-warm-muted flex flex-wrap items-center gap-3 text-[11px] font-extrabold text-charcoal-600">
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>Accepted</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-600"></span>Confirmed</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>Processing</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-600"></span>Ready</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-teal-700"></span>Delivered</span>
             </div>
           </div>
 

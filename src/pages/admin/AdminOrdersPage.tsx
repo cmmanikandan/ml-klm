@@ -25,6 +25,7 @@ import { Modal } from '../../components/common/Modal';
 import { OrderStatus } from '../../types';
 import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
+import { getStatusConfig } from '../../lib/statusConfig';
 import { InvoicePreviewModal } from '../../components/invoice/InvoicePreviewModal';
 
 export const AdminOrdersPage: React.FC = () => {
@@ -254,19 +255,23 @@ export const AdminOrdersPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          {['all', 'accepted', 'order_confirmed', 'processing', 'ready', 'delivered'].map((statusKey) => (
-            <button
-              key={statusKey}
-              onClick={() => setFilterStatus(statusKey)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold capitalize transition-all ${
-                filterStatus === statusKey
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'bg-white border border-warm-border text-charcoal-700 hover:bg-warm-hover'
-              }`}
-            >
-              {statusKey.replace('_', ' ')}
-            </button>
-          ))}
+          {['all', 'accepted', 'order_confirmed', 'processing', 'ready', 'delivered'].map((statusKey) => {
+            const isActive = filterStatus === statusKey;
+            const conf = getStatusConfig(statusKey);
+            return (
+              <button
+                key={statusKey}
+                onClick={() => setFilterStatus(statusKey)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border ${
+                  isActive
+                    ? (statusKey === 'all' ? 'bg-brand-600 text-white border-brand-600 shadow-sm' : conf.activeBtnClass)
+                    : 'bg-white border-warm-border text-charcoal-700 hover:bg-warm-hover'
+                }`}
+              >
+                {statusKey === 'all' ? 'All Orders' : conf.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -355,7 +360,7 @@ export const AdminOrdersPage: React.FC = () => {
 
                     {/* Status Badge */}
                     <td className="py-4 px-4">
-                      <Badge variant={ord.status === 'delivered' ? 'delivered' : 'processing'}>
+                      <Badge variant={ord.status}>
                         {(ord.status || 'pending').toUpperCase().replace('_', ' ')}
                       </Badge>
                     </td>
