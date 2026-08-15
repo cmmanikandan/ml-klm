@@ -7,7 +7,7 @@ import { Modal } from '../components/common/Modal';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { DEFAULT_SHOP_INFO, INITIAL_PRODUCTS, supabase } from '../lib/supabase';
-import { Order, OrderStatus } from '../types';
+import { Order, OrderStatus, PaymentStatus } from '../types';
 import confetti from 'canvas-confetti';
 
 export const OrderDetailPage: React.FC = () => {
@@ -97,10 +97,55 @@ export const OrderDetailPage: React.FC = () => {
     }
   };
 
+  const recordCustomerPayment = async (paidAmount: number, paymentMode: string) => {
+    if (!order) return;
+    const currentRemaining = order.remaining_amount || 0;
+    const updatedRemaining = Math.max(0, currentRemaining - paidAmount);
+    const newStatus: PaymentStatus = updatedRemaining === 0 ? 'paid' : 'partially_paid';
+
+    const updatedOrder = {
+      ...order,
+      remaining_amount: updatedRemaining,
+      payment_status: newStatus,
+      is_payment_requested: false
+    };
+    setOrder(updatedOrder);
+
+    const newPaymentObj = {
+      id: `pay_${Date.now()}`,
+      order_id: order.id,
+      order_number: order.order_number || order.id,
+      amount: paidAmount,
+      payment_mode: paymentMode,
+      notes: `Customer paid ₹${paidAmount} via ${paymentMode}`,
+      created_at: new Date().toISOString(),
+      status: 'completed'
+    };
+
+    try {
+      await supabase
+        .from('orders')
+        .update({
+          remaining_amount: updatedRemaining,
+          payment_status: newStatus,
+          is_payment_requested: false
+        })
+        .eq('id', order.id);
+
+      await supabase.from('payments').insert(newPaymentObj);
+    } catch (e) {
+      console.warn('Customer payment DB update fallback');
+    }
+
+    const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocal = localOrders.map((l: any) => l.id === order.id ? updatedOrder : l);
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
+  };
+
   // Razorpay Pay Handler
   const handlePayNow = () => {
     const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_T547lttHOVL633';
-    const amount = order?.payment_request_amount || order?.advance_amount || 1000;
+    const amount = order?.payment_request_amount || order?.remaining_amount || order?.advance_amount || 1000;
 
     const options = {
       key: rzpKey,
@@ -111,7 +156,7 @@ export const OrderDetailPage: React.FC = () => {
       image: '/logo.png',
       handler: function (response: any) {
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-        if (order) setOrder({ ...order, payment_status: 'paid', is_payment_requested: false });
+        recordCustomerPayment(amount, 'Online Payment');
         alert(t('payment_success'));
       },
       prefill: {
@@ -129,7 +174,7 @@ export const OrderDetailPage: React.FC = () => {
       rzp.open();
     } catch (err) {
       confetti({ particleCount: 100, spread: 70 });
-      if (order) setOrder({ ...order, payment_status: 'paid', is_payment_requested: false });
+      recordCustomerPayment(amount, 'Online Payment');
       alert(t('payment_success'));
     }
   };
@@ -458,7 +503,8 @@ export const OrderDetailPage: React.FC = () => {
           <Button
             onClick={() => {
               setShowQrModal(false);
-              if (order) setOrder({ ...order, payment_status: 'paid', is_payment_requested: false });
+              const amount = order?.payment_request_amount || order?.remaining_amount || order?.advance_amount || 0;
+              recordCustomerPayment(amount, 'Online Payment (UPI QR)');
               alert('Payment notification sent to shop admin!');
             }}
             variant="primary"
