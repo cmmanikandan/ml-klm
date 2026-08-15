@@ -48,9 +48,9 @@ export const AdminLayout: React.FC = () => {
     }
   };
 
-  // Protect Admin Portal: redirect non-admin users to /admin/login
+  // Protect Admin Portal: redirect non-admin users to normal login page
   if (!isAdmin) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   const adminNavItems = [
@@ -67,7 +67,7 @@ export const AdminLayout: React.FC = () => {
 
   const handleAdminLogout = async () => {
     await signOut();
-    navigate('/admin/login');
+    navigate('/login', { replace: true });
   };
 
   const adminEmail = user?.email || 'manikandanlatheklm@gmail.com';

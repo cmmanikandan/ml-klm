@@ -1,20 +1,31 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Logo } from '../components/common/Logo';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
 export const LoginPage: React.FC = () => {
-  const { signInWithGoogle, loading } = useAuth();
+  const { user, isAdmin, needsOnboarding, signInWithGoogle, loading } = useAuth();
   const { language } = useLanguage();
   const navigate = useNavigate();
 
   const isTamil = language === 'ta';
 
+  useEffect(() => {
+    if (user) {
+      if (isAdmin) {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (needsOnboarding) {
+        navigate('/onboarding', { replace: true });
+      } else {
+        navigate('/home', { replace: true });
+      }
+    }
+  }, [user, isAdmin, needsOnboarding, navigate]);
+
   const handleGoogleLogin = async () => {
     await signInWithGoogle();
-    navigate('/onboarding');
   };
 
   return (

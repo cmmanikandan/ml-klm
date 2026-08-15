@@ -7,6 +7,16 @@ import { useLanguage } from './LanguageContext';
 export const MASTER_ADMIN_UIDS = ['9QFtBzZ3Z8f2f8QH4bxgkn4sXVq1'];
 export const MASTER_ADMIN_EMAILS = ['manikandanlatheklm@gmail.com'];
 
+export const checkIsAdmin = (u: any): boolean => {
+  if (!u) return false;
+  if (u.role === 'admin') return true;
+  if (u.is_admin === true) return true;
+  if (u.id && MASTER_ADMIN_UIDS.includes(u.id)) return true;
+  if (u.uid && MASTER_ADMIN_UIDS.includes(u.uid)) return true;
+  if (u.email && MASTER_ADMIN_EMAILS.includes(String(u.email).toLowerCase().trim())) return true;
+  return false;
+};
+
 interface AuthContextType {
   user: Profile | null;
   loading: boolean;
@@ -30,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
-        const isMaster = (parsed.id && MASTER_ADMIN_UIDS.includes(parsed.id)) || (parsed.email && MASTER_ADMIN_EMAILS.includes(parsed.email));
+        const isMaster = checkIsAdmin(parsed);
         if (parsed && isMaster) {
           return { ...parsed, role: 'admin', is_profile_completed: true };
         }
@@ -51,7 +61,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await syncFirebaseUserWithSupabase(firebaseUser);
       } else {
         const savedUser = localStorage.getItem('ml_user_profile');
-        if (!savedUser) {
+        if (savedUser) {
+          try {
+            const parsed = JSON.parse(savedUser);
+            if (checkIsAdmin(parsed)) {
+              setUser({ ...parsed, role: 'admin', is_profile_completed: true });
+            } else {
+              setUser(parsed);
+            }
+          } catch (e) {
+            setUser(null);
+          }
+        } else {
           setUser(null);
         }
       }
@@ -62,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const syncFirebaseUserWithSupabase = async (fbUser: FirebaseUser) => {
-    const isMasterAdmin = MASTER_ADMIN_UIDS.includes(fbUser.uid) || MASTER_ADMIN_EMAILS.includes(fbUser.email || '');
+    const isMasterAdmin = checkIsAdmin(fbUser);
 
     // Read local cache
     const cachedStr = localStorage.getItem('ml_user_profile');
@@ -99,12 +120,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // New user profile init
         const newProfile: Profile = {
           id: fbUser.uid,
-          full_name: fbUser.displayName || cachedProfile?.full_name || (isMasterAdmin ? 'Shop Owner' : 'Customer'),
+          full_name: fbUser.displayName || cachedProfile?.full_name || (isMasterAdmin ? 'MANIKANDAN LATHE Admin' : 'Customer'),
           email: fbUser.email || cachedProfile?.email || 'manikandanlatheklm@gmail.com',
           avatar_url: fbUser.photoURL || cachedProfile?.avatar_url || undefined,
           language: cachedProfile?.language || 'en',
           role: isMasterAdmin ? 'admin' : 'customer',
-          is_profile_completed: isMasterAdmin ? true : (cachedProfile?.is_profile_completed || false),
+          is_profile_completed: isMasterAdmin ? true : false,
           phone: cachedProfile?.phone || undefined,
           address: cachedProfile?.address || undefined,
           city_area: cachedProfile?.city_area || undefined
@@ -115,14 +136,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await supabase.from('profiles').upsert(newProfile);
       }
     } catch (e) {
-      if (cachedProfile) {
-        const merged = {
-          ...cachedProfile,
-          email: fbUser.email || cachedProfile.email,
-          role: isMasterAdmin ? 'admin' : cachedProfile.role
-        };
-        setUser(merged);
-      }
+      const fallbackProfile: Profile = {
+        id: fbUser.uid,
+        full_name: fbUser.displayName || (isMasterAdmin ? 'MANIKANDAN LATHE Admin' : 'Customer'),
+        email: fbUser.email || 'manikandanlatheklm@gmail.com',
+        avatar_url: fbUser.photoURL || undefined,
+        language: 'en',
+        role: isMasterAdmin ? 'admin' : 'customer',
+        is_profile_completed: isMasterAdmin ? true : false
+      };
+      setUser(fallbackProfile);
+      localStorage.setItem('ml_user_profile', JSON.stringify(fallbackProfile));
     }
   };
 
@@ -153,7 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (data: Partial<Profile>) => {
     if (!user) return;
-    const isMasterAdmin = MASTER_ADMIN_UIDS.includes(user.id) || MASTER_ADMIN_EMAILS.includes(user.email || '');
+    const isMasterAdmin = checkIsAdmin(user) || checkIsAdmin(data);
 
     const updated: Profile = { 
       ...user, 
@@ -205,19 +229,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateProfile({ role });
   };
 
-  const isAdmin = Boolean(
-    user && (
-      user.role === 'admin' || 
-      MASTER_ADMIN_UIDS.includes(user.id) || 
-      MASTER_ADMIN_EMAILS.includes(user.email || '')
-    )
-  );
+  const isAdmin = Boolean(user && checkIsAdmin(user));
 
   const needsOnboarding = Boolean(
     user && 
     !user.is_profile_completed && 
-    !MASTER_ADMIN_UIDS.includes(user.id) &&
-    !MASTER_ADMIN_EMAILS.includes(user.email || '')
+    !checkIsAdmin(user)
   );
 
   return (

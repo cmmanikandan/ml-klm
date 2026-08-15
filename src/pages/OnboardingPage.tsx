@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, ArrowRight, Globe, User, MapPin, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Logo } from '../components/common/Logo';
@@ -8,9 +8,15 @@ import { useLanguage } from '../context/LanguageContext';
 import { Language } from '../types';
 
 export const OnboardingPage: React.FC = () => {
-  const { user, completeOnboarding } = useAuth();
+  const { user, isAdmin, completeOnboarding } = useAuth();
   const { setLanguage } = useLanguage();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && (isAdmin || user.role === 'admin' || user.email === 'manikandanlatheklm@gmail.com')) {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [user, isAdmin, navigate]);
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedLang, setSelectedLang] = useState<Language>('en');
