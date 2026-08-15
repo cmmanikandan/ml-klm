@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Heart, ShoppingBag, Globe, HelpCircle, LogOut, ChevronRight, Bell, Camera } from 'lucide-react';
+import { User, Heart, ShoppingBag, Globe, HelpCircle, LogOut, ChevronRight, Bell, Camera, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
 export const ProfilePage: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
 
@@ -14,22 +14,26 @@ export const ProfilePage: React.FC = () => {
     navigate('/');
   };
 
+  const displayName = user?.full_name && user.full_name !== 'Manikandan Admin'
+    ? user.full_name
+    : (user?.email ? user.email.split('@')[0] : 'Valued Customer');
+
   return (
     <div className="min-h-screen bg-warm-bg pb-24 md:pb-12 pt-4">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         
-        {/* Profile Card Header with DP Avatar & Edit DP Trigger */}
+        {/* Profile Card Header with DP Avatar */}
         <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card flex items-center gap-4 relative">
           <Link to="/profile/details" className="relative group shrink-0">
             {user?.avatar_url ? (
               <img
                 src={user.avatar_url}
-                alt={user.full_name}
+                alt={displayName}
                 className="w-16 h-16 rounded-full object-cover border-4 border-brand-500 shadow-sm transition-opacity group-hover:opacity-80"
               />
             ) : (
               <div className="w-16 h-16 rounded-full bg-brand-600 text-white font-black text-xl flex items-center justify-center shadow-md">
-                {(user?.full_name || 'C').charAt(0).toUpperCase()}
+                {displayName.charAt(0).toUpperCase()}
               </div>
             )}
             <div className="absolute bottom-0 right-0 bg-brand-600 text-white p-1 rounded-full shadow-sm border border-white">
@@ -38,12 +42,12 @@ export const ProfilePage: React.FC = () => {
           </Link>
 
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-black text-charcoal-900 truncate">{user?.full_name}</h2>
+            <h2 className="text-lg font-black text-charcoal-900 truncate">{displayName}</h2>
             <p className="text-xs text-charcoal-500 font-medium truncate">{user?.email}</p>
 
             <div className="flex items-center gap-2 mt-1.5">
               <span className="bg-brand-100 text-brand-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase">
-                {user?.role || 'Customer'}
+                {isAdmin ? 'Master Admin' : (user?.role || 'Customer')}
               </span>
               <span className="text-[10px] text-charcoal-500 font-bold truncate">
                 {user?.city_area || 'Kallimandhayam'}
@@ -58,6 +62,32 @@ export const ProfilePage: React.FC = () => {
             Edit DP
           </Link>
         </div>
+
+        {/* ADMIN DASHBOARD LINK (Visible for Master Admin accounts) */}
+        {isAdmin && (
+          <Link
+            to="/admin/dashboard"
+            className="bg-gradient-to-r from-charcoal-900 via-charcoal-800 to-brand-900 text-white rounded-3xl p-5 border-2 border-brand-500 shadow-xl flex items-center justify-between group hover:scale-[1.01] transition-all"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="p-3 rounded-2xl bg-brand-600 text-white shadow-md">
+                <LayoutDashboard className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-black text-white">Open Admin SaaS Dashboard</h3>
+                  <span className="bg-brand-500 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase">
+                    MASTER ADMIN
+                  </span>
+                </div>
+                <p className="text-xs text-brand-200 font-medium mt-0.5">
+                  Manage orders, products, price quotes & payments ledger
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-brand-400 group-hover:translate-x-1 transition-transform" />
+          </Link>
+        )}
 
         {/* Options List */}
         <div className="bg-white rounded-3xl border border-warm-border shadow-card divide-y divide-warm-muted overflow-hidden">
