@@ -1,0 +1,317 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Language } from '../types';
+
+interface LanguageContextType {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: string) => string;
+}
+
+const translations: Record<Language, Record<string, string>> = {
+  en: {
+    // Brand
+    brand_name: 'MANIKANDAN',
+    brand_tagline: 'LATHE — WELDING WORKS',
+    shop_title: 'Manikandan Lathe',
+    shop_sub: 'Welding & Lathe Custom Works',
+
+    // Nav
+    nav_home: 'Home',
+    nav_products: 'Products',
+    nav_call: 'Call',
+    nav_orders: 'Orders',
+    nav_profile: 'Profile',
+    nav_search: 'Search',
+    nav_wishlist: 'Wishlist',
+    nav_notifications: 'Notifications',
+    nav_admin: 'Admin Panel',
+
+    // Greetings
+    greeting_morning: 'Good Morning',
+    greeting_afternoon: 'Good Afternoon',
+    greeting_evening: 'Good Evening',
+
+    // Search
+    search_placeholder: 'Search chairs, gates, grills, tables...',
+    search_title: 'Search Products',
+    search_recent: 'Recent Searches',
+    search_suggested: 'Popular Categories',
+    search_no_results: 'No products found',
+    search_no_results_sub: 'Try searching for chairs, gates, grills, or lathe works',
+    search_clear: 'Clear',
+
+    // Home Sections
+    categories_title: 'Shop by Category',
+    new_products: 'New Products',
+    best_selling: 'Best Selling',
+    recommended: 'Recommended For You',
+    recently_viewed: 'Recently Viewed',
+    view_all: 'View All',
+    view_details: 'View Details',
+
+    // Product Details
+    specifications: 'Product Specifications',
+    materials: 'Materials Used',
+    available_sizes: 'Available Sizes & Custom Options',
+    description: 'Description',
+    category: 'Category',
+    call_shop: 'Call Shop',
+    whatsapp_enquiry: 'WhatsApp Enquiry',
+    place_enquiry: 'Send Enquiry / Order Request',
+    in_wishlist: 'Saved to Wishlist',
+    add_wishlist: 'Add to Wishlist',
+    share_product: 'Share Product',
+    price_hidden_notice: 'Price provided upon enquiry review',
+
+    // Enquiry
+    enquiry_title: 'Product Enquiry & Order Request',
+    enquiry_subtitle: 'Fill requirements below. Admin will review and provide exact price and delivery date.',
+    enquiry_product: 'Selected Product',
+    enquiry_qty: 'Quantity Required',
+    enquiry_size: 'Preferred Size / Dimensions',
+    enquiry_notes: 'Custom Requirements / Notes',
+    enquiry_location: 'Delivery Location / Address',
+    enquiry_submit: 'Submit Enquiry',
+    enquiry_submitting: 'Submitting Enquiry...',
+    enquiry_success: 'Enquiry Submitted Successfully!',
+    enquiry_id: 'Enquiry Reference ID',
+    enquiry_whatsapp_msg: 'Hi Manikandan Lathe, I submitted an enquiry for',
+
+    // Order & Timeline
+    orders_title: 'My Orders & Enquiries',
+    active_orders: 'Active Orders',
+    completed_orders: 'Completed Orders',
+    enquiries_tab: 'Enquiries',
+    order_id: 'Order ID',
+    expected_delivery: 'Expected Delivery Date',
+    order_status: 'Order Status',
+    timeline_enquiry: 'Enquiry Submitted',
+    timeline_accepted: 'Accepted',
+    timeline_confirmed: 'Order Confirmed',
+    timeline_processing: 'In Processing',
+    timeline_ready: 'Ready for Delivery',
+    timeline_delivery: 'Out for Delivery / Pickup',
+    timeline_delivered: 'Delivered',
+    timeline_rejected: 'Enquiry Rejected',
+
+    // Payments
+    payment_required: 'Payment Required',
+    pay_now: 'Pay Now via Razorpay',
+    view_upi_qr: 'View UPI QR Code',
+    cash_payment: 'Cash Payment',
+    payment_status: 'Payment Status',
+    advance_amount: 'Advance Required',
+    total_amount: 'Total Agreed Price',
+    remaining_amount: 'Balance Amount',
+    payment_success: 'Payment Completed Successfully!',
+    payment_pending: 'Payment Pending',
+
+    // Feedback
+    feedback_title: 'How was your experience?',
+    feedback_subtitle: 'Rate your completed order from Manikandan Lathe',
+    rating_label: 'Your Rating',
+    feedback_comment: 'Comments / Review (Optional)',
+    submit_feedback: 'Submit Review',
+    feedback_thank_you: 'Thank you for your valuable feedback!',
+
+    // Profile & Wizard
+    onboarding_welcome: 'Welcome to Manikandan Lathe',
+    onboarding_choose_lang: 'Choose your preferred language',
+    onboarding_lang_subtitle: 'Everything will be displayed in your selected language',
+    onboarding_details_title: 'Enter Required Profile Details',
+    full_name: 'Full Name',
+    mobile_number: 'Mobile Phone Number',
+    email_address: 'Email Address',
+    address: 'Address / Location',
+    city_area: 'City / Area',
+    save_profile: 'Complete Profile & Continue',
+    profile_title: 'My Account',
+    my_details: 'My Details',
+    my_wishlist: 'My Wishlist',
+    my_enquiries: 'My Enquiries',
+    my_orders: 'My Orders',
+    language_setting: 'App Language',
+    help_contact: 'Help & Contact Shop',
+    logout: 'Logout',
+    edit_profile: 'Edit Profile',
+    save_changes: 'Save Changes',
+
+    // Actions & General
+    loading: 'Loading...',
+    error_generic: 'Something went wrong. Please try again.',
+    success_updated: 'Updated successfully',
+    close: 'Close',
+    back: 'Back',
+    cancel: 'Cancel',
+    confirm: 'Confirm'
+  },
+  ta: {
+    // Brand
+    brand_name: 'மணிகண்டன்',
+    brand_tagline: 'லேத் — வெல்டிங் வேலைகள்',
+    shop_title: 'மணிகண்டன் லேத்',
+    shop_sub: 'வெல்டிங் மற்றும் லேத் கஸ்டம் வேலைகள்',
+
+    // Nav
+    nav_home: 'முகப்பு',
+    nav_products: 'பொருட்கள்',
+    nav_call: 'அழைக்க',
+    nav_orders: 'ஆர்டர்கள்',
+    nav_profile: 'சுயவிவரம்',
+    nav_search: 'தேடுக',
+    nav_wishlist: 'விருப்பப் பட்டியல்',
+    nav_notifications: 'அறிவிப்புகள்',
+    nav_admin: 'நிர்வாக பேனல்',
+
+    // Greetings
+    greeting_morning: 'காலை வணக்கம்',
+    greeting_afternoon: 'மதிய வணக்கம்',
+    greeting_evening: 'மாலை வணக்கம்',
+
+    // Search
+    search_placeholder: 'நாற்காலிகள், கேட், கிரில், மேஜைகளைத் தேடுக...',
+    search_title: 'பொருட்களைத் தேடுக',
+    search_recent: 'சமீபத்திய தேடல்கள்',
+    search_suggested: 'பிரபலமான பிரிவுகள்',
+    search_no_results: 'பொருட்கள் எதுவும் கிடைக்கவில்லை',
+    search_no_results_sub: 'நாற்காலிகள், கேட், கிரில் அல்லது லேத் வேலைகளைத் தேடிப் பாருங்கள்',
+    search_clear: 'அழி',
+
+    // Home Sections
+    categories_title: 'பிரிவுகள்',
+    new_products: 'புதிய பொருட்கள்',
+    best_selling: 'அதிகம் விற்பனையானவை',
+    recommended: 'உங்களுக்கான பரிந்துரை',
+    recently_viewed: 'சமீபத்தில் பார்த்தவை',
+    view_all: 'அனைத்தையும் பார்',
+    view_details: 'விவரங்களை பார்',
+
+    // Product Details
+    specifications: 'பொருள் விவரக்குறிப்புகள்',
+    materials: 'பயன்படுத்தப்பட்ட பொருட்கள்',
+    available_sizes: 'கிடைக்கும் அளவுகள்',
+    description: 'விளக்கம்',
+    category: 'பிரிவு',
+    call_shop: 'கடைக்கு அழைக்க',
+    whatsapp_enquiry: 'வாட்ஸ்அப் விசாரணை',
+    place_enquiry: 'விசாரணை / ஆர்டர் அனுப்ப',
+    in_wishlist: 'விருப்பப் பட்டியலில் உள்ளது',
+    add_wishlist: 'விருப்பப் பட்டியலில் சேர்',
+    share_product: 'பகிர்க',
+    price_hidden_notice: 'விசாரணைக்குப் பிறகு விலை விவரம் தெரிவிக்கப்படும்',
+
+    // Enquiry
+    enquiry_title: 'பொருள் விசாரணை மற்றும் ஆர்டர் படிவம்',
+    enquiry_subtitle: 'உங்கள் தேவைகளை கீழே பதிவு செய்யவும். நிர்வாகி பரிசீலித்து சரியான விலையை அறிவிப்பார்.',
+    enquiry_product: 'தேர்ந்தெடுக்கப்பட்ட பொருள்',
+    enquiry_qty: 'தேவையான எண்ணிக்கை',
+    enquiry_size: 'விருப்பமான அளவு / அளவீடுகள்',
+    enquiry_notes: 'சிறப்பு தேவைகள் / குறிப்புகள்',
+    enquiry_location: 'டெலிவரி செய்யும் இடம்',
+    enquiry_submit: 'விசாரணையை அனுப்புக',
+    enquiry_submitting: 'அனுப்பப்படுகிறது...',
+    enquiry_success: 'விசாரணை வெற்றிகரமாக அனுப்பப்பட்டது!',
+    enquiry_id: 'விசாரணை எண்',
+    enquiry_whatsapp_msg: 'வணக்கம் மணிகண்டன் லேத், நான் பின்வரும் பொருளுக்கு விசாரணை செய்துள்ளேன்:',
+
+    // Order & Timeline
+    orders_title: 'என் ஆர்டர்கள் மற்றும் விசாரணைகள்',
+    active_orders: 'செயலில் உள்ள ஆர்டர்கள்',
+    completed_orders: 'நிறைவடைந்த ஆர்டர்கள்',
+    enquiries_tab: 'விசாரணைகள்',
+    order_id: 'ஆர்டர் எண்',
+    expected_delivery: 'எதிர்பார்க்கப்படும் டெலிவரி தேதி',
+    order_status: 'ஆர்டர் நிலை',
+    timeline_enquiry: 'விசாரணை சமர்ப்பிக்கப்பட்டது',
+    timeline_accepted: 'ஏற்கப்பட்டது',
+    timeline_confirmed: 'ஆர்டர் உறுதி செய்யப்பட்டது',
+    timeline_processing: 'தயாரிப்பில் உள்ளது',
+    timeline_ready: 'டெலிவரிக்கு தயார்',
+    timeline_delivery: 'டெலிவரிக்கு புறப்பட்டது',
+    timeline_delivered: 'டெலிவரி செய்யப்பட்டது',
+    timeline_rejected: 'விசாரணை நிராகரிக்கப்பட்டது',
+
+    // Payments
+    payment_required: 'கட்டணம் செலுத்துக',
+    pay_now: 'ரேஸர்பே மூலம் கட்டணம் செலுத்து',
+    view_upi_qr: 'UPI QR குறியீட்டைப் பார்',
+    cash_payment: 'ரொக்கப் பணம்',
+    payment_status: 'கட்டண நிலை',
+    advance_amount: 'முன்பணம்',
+    total_amount: 'மொத்த தொகை',
+    remaining_amount: 'மீதி தொகை',
+    payment_success: 'கட்டணம் வெற்றிகரமாக செலுத்தப்பட்டது!',
+    payment_pending: 'கட்டணம் நிலுவையில் உள்ளது',
+
+    // Feedback
+    feedback_title: 'உங்கள் அனுபவம் எப்படி இருந்தது?',
+    feedback_subtitle: 'மணிகண்டன் லேத் சேவைக்கு மதிப்பெண் வழங்குக',
+    rating_label: 'உங்கள் மதிப்பீடு',
+    feedback_comment: 'கருத்துகள் (விருப்பத்தின்பேரில்)',
+    submit_feedback: 'மதிப்பீட்டைச் சமர்ப்பி',
+    feedback_thank_you: 'உங்கள் மதிப்புமிக்க கருத்துக்களுக்கு நன்றி!',
+
+    // Profile & Wizard
+    onboarding_welcome: 'மணிகண்டன் லேத் நிறுவனத்திற்கு நல்வரவு',
+    onboarding_choose_lang: 'உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்',
+    onboarding_lang_subtitle: 'செயலி முழுதும் உங்கள் விருப்ப மொழியில் காட்சிப்படுத்தப்படும்',
+    onboarding_details_title: 'தேவையான சுயவிவர விவரங்களைப் பதிவு செய்க',
+    full_name: 'முழு பெயர்',
+    mobile_number: 'மொபைல் எண்',
+    email_address: 'மின்னஞ்சல் முகவரி',
+    address: 'முகவரி / இருப்பிடம்',
+    city_area: 'நகரம் / பகுதி',
+    save_profile: 'சுயவிவரத்தைப் பதிவு செய்து தொடர்க',
+    profile_title: 'என் கணக்கு',
+    my_details: 'என் விவரங்கள்',
+    my_wishlist: 'என் விருப்பப் பட்டியல்',
+    my_enquiries: 'என் விசாரணைகள்',
+    my_orders: 'என் ஆர்டர்கள்',
+    language_setting: 'செயலி மொழி',
+    help_contact: 'உதவி மற்றும் தொடர்பு',
+    logout: 'வெளியேறு',
+    edit_profile: 'சுயவிவரத்தைத் திருத்து',
+    save_changes: 'மாற்றங்களைச் சேமி',
+
+    // Actions & General
+    loading: 'ஏற்றப்படுகிறது...',
+    error_generic: 'பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்.',
+    success_updated: 'வெற்றிகரமாக புதுப்பிக்கப்பட்டது',
+    close: 'மூடு',
+    back: 'பின்செல்',
+    cancel: 'ரத்து செய்',
+    confirm: 'உறுதி செய்'
+  }
+};
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [language, setLanguageState] = useState<Language>(() => {
+    const saved = localStorage.getItem('ml_language');
+    return (saved === 'ta' || saved === 'en') ? saved : 'en';
+  });
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem('ml_language', lang);
+  };
+
+  const t = (key: string): string => {
+    return translations[language][key] || translations.en[key] || key;
+  };
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+};
+
+export const useLanguage = () => {
+  const context = useContext(LanguageContext);
+  if (!context) {
+    throw new Error('useLanguage must be used within a LanguageProvider');
+  }
+  return context;
+};

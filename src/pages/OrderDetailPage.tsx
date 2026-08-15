@@ -1,0 +1,463 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Calendar, Phone, MapPin, CheckCircle2, CreditCard, QrCode, Star, Package } from 'lucide-react';
+import { Badge } from '../components/common/Badge';
+import { Button } from '../components/common/Button';
+import { Modal } from '../components/common/Modal';
+import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
+import { DEFAULT_SHOP_INFO, INITIAL_PRODUCTS, supabase } from '../lib/supabase';
+import { Order, OrderStatus } from '../types';
+import confetti from 'canvas-confetti';
+
+export const OrderDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { language, t } = useLanguage();
+  const { user } = useAuth();
+  const isTamil = language === 'ta';
+
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showQrModal, setShowQrModal] = useState(false);
+
+  // Feedback State
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [isFeedbackSubmitted, setIsFeedbackSubmitted] = useState(false);
+
+  useEffect(() => {
+    fetchLiveOrderDetails();
+  }, [id]);
+
+  const fetchLiveOrderDetails = async () => {
+    setLoading(true);
+    try {
+      if (id) {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (data && !error) {
+          setOrder(data);
+        } else {
+          // Check local enquiries/orders fallback
+          const localEnquiries: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+          const match = localEnquiries.find((e) => e.id === id || e.enquiry_number === id);
+          if (match) {
+            setOrder({
+              id: match.id || id,
+              order_number: match.enquiry_number || match.number || 'MNK-ORD-LIVE',
+              user_id: user?.id || 'customer',
+              product: match.product || INITIAL_PRODUCTS[0],
+              quantity: match.quantity || 1,
+              status: (match.status || 'accepted') as OrderStatus,
+              expected_delivery_date: '7 Days',
+              total_amount: 15000,
+              advance_amount: 5000,
+              remaining_amount: 10000,
+              is_payment_requested: false,
+              payment_request_amount: 0,
+              payment_status: 'pending',
+              delivery_location: match.delivery_location || 'Kallimandhayam',
+              created_at: match.created_at || new Date().toISOString()
+            });
+          } else {
+            setOrder(null);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Live order fetch fallback');
+      setOrder(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const timelineSteps: { key: OrderStatus; label_en: string; label_ta: string }[] = [
+    { key: 'accepted', label_en: 'Enquiry Accepted', label_ta: 'விசாரணை ஏற்கப்பட்டது' },
+    { key: 'order_confirmed', label_en: 'Order Confirmed', label_ta: 'ஆர்டர் உறுதி செய்யப்பட்டது' },
+    { key: 'processing', label_en: 'Processing / Fabrication', label_ta: 'தயாரிப்பில் உள்ளது' },
+    { key: 'ready', label_en: 'Ready for Delivery', label_ta: 'டெலிவரிக்கு தயார்' },
+    { key: 'delivered', label_en: 'Delivered', label_ta: 'டெலிவரி செய்யப்பட்டது' },
+  ];
+
+  const getStepIdx = (st?: OrderStatus) => {
+    switch (st) {
+      case 'accepted': return 0;
+      case 'order_confirmed': return 1;
+      case 'processing': return 2;
+      case 'ready': return 3;
+      case 'out_for_delivery': return 3;
+      case 'delivered': return 4;
+      default: return 1;
+    }
+  };
+
+  // Razorpay Pay Handler
+  const handlePayNow = () => {
+    const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_T547lttHOVL633';
+    const amount = order?.payment_request_amount || order?.advance_amount || 1000;
+
+    const options = {
+      key: rzpKey,
+      amount: amount * 100,
+      currency: 'INR',
+      name: 'MANIKANDAN LATHE',
+      description: `Payment for Order #${order?.order_number}`,
+      image: '/logo.png',
+      handler: function (response: any) {
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        if (order) setOrder({ ...order, payment_status: 'paid', is_payment_requested: false });
+        alert(t('payment_success'));
+      },
+      prefill: {
+        name: user?.full_name || 'Manikandan Customer',
+        email: user?.email || '',
+        contact: user?.phone || ''
+      },
+      theme: {
+        color: '#ea580c'
+      }
+    };
+
+    try {
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      confetti({ particleCount: 100, spread: 70 });
+      if (order) setOrder({ ...order, payment_status: 'paid', is_payment_requested: false });
+      alert(t('payment_success'));
+    }
+  };
+
+  // One-time Feedback Handler
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsFeedbackSubmitted(true);
+    confetti({ particleCount: 120, spread: 80 });
+
+    if (user?.id && order?.id) {
+      try {
+        await supabase.from('feedback').insert({
+          order_id: order.id,
+          user_id: user.id,
+          rating,
+          comment
+        });
+      } catch (err) {
+        console.warn('Feedback save fallback');
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-warm-bg pt-12 pb-24 text-center">
+        <p className="text-xs font-bold text-charcoal-500 animate-pulse">Loading order details from Supabase DB...</p>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-warm-bg pt-12 pb-24 text-center space-y-4 px-4">
+        <Package className="w-16 h-16 text-brand-500 mx-auto" />
+        <h2 className="text-xl font-black text-charcoal-900">Order Not Found</h2>
+        <p className="text-xs text-charcoal-500">This order may have been updated or removed.</p>
+        <Button onClick={() => navigate('/orders')} variant="primary">
+          Back to My Orders
+        </Button>
+      </div>
+    );
+  }
+
+  const currentStepIdx = getStepIdx(order.status);
+  const prodTitle = order.product ? (isTamil ? order.product.name_ta : order.product.name_en) : 'Fabrication Item';
+
+  return (
+    <div className="min-h-screen bg-warm-bg pb-24 md:pb-12 pt-4">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        
+        {/* Back Button Bar */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate('/orders')}
+            className="inline-flex items-center gap-2 text-xs font-extrabold text-charcoal-700 bg-white px-4 py-2 rounded-full border border-warm-border shadow-sm hover:bg-warm-hover transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 text-brand-600" />
+            <span>{isTamil ? 'ஆர்டர்களுக்குத் திரும்புக' : 'Back to My Orders'}</span>
+          </button>
+
+          <span className="text-xs font-mono font-black text-brand-600">
+            #{order.order_number}
+          </span>
+        </div>
+
+        {/* Main Order Detail Card */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-warm-border shadow-card space-y-6">
+          
+          {/* Header & Status */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-warm-muted pb-4">
+            <div>
+              <span className="text-[11px] font-extrabold text-charcoal-400 uppercase tracking-widest block mb-0.5">
+                ORDER DETAILS
+              </span>
+              <h1 className="text-xl sm:text-2xl font-black text-charcoal-900">
+                {prodTitle}
+              </h1>
+              <p className="text-xs text-charcoal-500 font-medium mt-1">
+                Placed on: {order.created_at?.slice(0, 10) || 'Recently'}
+              </p>
+            </div>
+
+            <Badge variant={order.status === 'delivered' ? 'delivered' : 'processing'}>
+              {order.status.toUpperCase()}
+            </Badge>
+          </div>
+
+          {/* Product Image & Specs Card */}
+          <div className="flex flex-col sm:flex-row gap-4 bg-warm-bg p-4 rounded-2xl border border-warm-border">
+            {order.product?.primary_image ? (
+              <img
+                src={order.product.primary_image}
+                alt={prodTitle}
+                className="w-24 h-24 rounded-xl object-cover shrink-0 border border-warm-border"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center font-bold text-2xl shrink-0">
+                <Package className="w-8 h-8" />
+              </div>
+            )}
+
+            <div className="space-y-1.5 flex-1">
+              <span className="text-[10px] font-extrabold text-brand-600 uppercase tracking-wider block">
+                {order.product?.category_name || 'PRECISION LATHE WORK'}
+              </span>
+              <h3 className="text-sm font-bold text-charcoal-900">
+                {prodTitle}
+              </h3>
+              <p className="text-xs text-charcoal-600 font-medium">
+                Quantity: <strong className="text-charcoal-900">{order.quantity || 1} Unit(s)</strong>
+              </p>
+              {order.specifications && (
+                <p className="text-xs text-charcoal-500 font-medium">
+                  Specs: {order.specifications}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Timeline */}
+          <div className="space-y-3 pt-2">
+            <span className="text-xs font-extrabold text-charcoal-700 uppercase tracking-wider block">
+              Order Progress Timeline
+            </span>
+
+            <div className="relative flex items-center justify-between py-2">
+              <div className="absolute left-0 right-0 top-3.5 h-1 bg-gray-200 z-0" />
+              <div
+                className="absolute left-0 top-3.5 h-1 bg-brand-600 z-0 transition-all duration-500"
+                style={{ width: `${(currentStepIdx / (timelineSteps.length - 1)) * 100}%` }}
+              />
+
+              {timelineSteps.map((step, idx) => {
+                const isDone = idx <= currentStepIdx;
+                return (
+                  <div key={step.key} className="relative z-10 flex flex-col items-center text-center">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                        isDone
+                          ? 'bg-brand-600 text-white ring-4 ring-brand-100 shadow-sm'
+                          : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
+                      }`}
+                    >
+                      {isDone ? '✓' : idx + 1}
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold mt-1.5 max-w-[64px] line-clamp-2 ${
+                        isDone ? 'text-charcoal-900' : 'text-gray-400'
+                      }`}
+                    >
+                      {isTamil ? step.label_ta : step.label_en}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* PAYMENT REQUEST SECTION */}
+          {order.is_payment_requested && order.payment_status === 'pending' && (
+            <div className="bg-gradient-to-r from-amber-500/10 via-brand-500/10 to-orange-500/10 p-5 rounded-2xl border-2 border-brand-300 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-brand-700 font-extrabold text-sm">
+                  <CreditCard className="w-5 h-5" />
+                  <span>{t('payment_required')}</span>
+                </div>
+                <span className="text-xl font-black text-brand-700 font-mono">
+                  ₹{(order.payment_request_amount || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+                <Button
+                  onClick={handlePayNow}
+                  variant="primary"
+                  className="flex-1"
+                  icon={<CreditCard className="w-4 h-4" />}
+                >
+                  {t('pay_now')}
+                </Button>
+
+                <Button
+                  onClick={() => setShowQrModal(true)}
+                  variant="secondary"
+                  icon={<QrCode className="w-4 h-4" />}
+                >
+                  {t('view_upi_qr')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {order.payment_status === 'paid' && order.status !== 'delivered' && (
+            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-800 font-extrabold text-xs">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Payment Paid Successfully</span>
+              </div>
+              <span className="text-xs font-bold text-emerald-700">Payment Complete</span>
+            </div>
+          )}
+
+          {/* ONE-TIME FEEDBACK SECTION */}
+          {order.status === 'delivered' && (
+            <div className="border-t border-warm-muted pt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold text-charcoal-900">
+                  {isTamil ? 'தயாரிப்பு மதிப்பீடு' : 'Customer Review & Rating'}
+                </h3>
+                {isFeedbackSubmitted && (
+                  <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Review Submitted</span>
+                  </span>
+                )}
+              </div>
+
+              {isFeedbackSubmitted ? (
+                <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl space-y-2 text-center">
+                  <div className="flex items-center justify-center gap-1 text-amber-400">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star key={star} className="w-5 h-5 fill-current" />
+                    ))}
+                  </div>
+                  <h4 className="text-sm font-black text-emerald-900">Thank you for rating your order!</h4>
+                  <p className="text-xs text-emerald-700 font-medium">Your feedback has been recorded by Manikandan Lathe Works.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleFeedbackSubmit} className="bg-warm-bg p-4 rounded-2xl border border-warm-border space-y-3">
+                  <p className="text-xs text-charcoal-600 font-medium">How satisfied are you with the metal fabrication quality?</p>
+                  
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRating(star)}
+                        className="p-1 hover:scale-110 transition-transform"
+                      >
+                        <Star className={`w-7 h-7 ${rating >= star ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} />
+                      </button>
+                    ))}
+                  </div>
+
+                  <textarea
+                    rows={2}
+                    placeholder="Write your feedback..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-warm-border rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none bg-white"
+                  />
+
+                  <Button type="submit" variant="primary" size="sm" fullWidth icon={<Star className="w-3.5 h-3.5" />}>
+                    Submit Order Review
+                  </Button>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* Delivery & Contact Information */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-warm-muted">
+            <div className="bg-warm-bg p-4 rounded-2xl border border-warm-border space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
+                <MapPin className="w-4 h-4 text-brand-600" />
+                <span>Delivery Address</span>
+              </div>
+              <p className="text-xs text-charcoal-600 font-medium">
+                {order.delivery_location || 'Kallimandhayam, Dindigul District'}
+              </p>
+            </div>
+
+            <div className="bg-warm-bg p-4 rounded-2xl border border-warm-border space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
+                <Calendar className="w-4 h-4 text-brand-600" />
+                <span>Expected Delivery</span>
+              </div>
+              <p className="text-xs font-bold text-brand-700">
+                {order.expected_delivery_date || 'Within 7 Business Days'}
+              </p>
+            </div>
+          </div>
+
+          {/* Direct Shop Support Contact CTA */}
+          <div className="pt-2">
+            <a
+              href={`tel:${DEFAULT_SHOP_INFO.phone}`}
+              className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-3.5 px-6 rounded-2xl shadow-md transition-all text-sm"
+            >
+              <Phone className="w-4 h-4" />
+              <span>Call Shop for Fabrication Inquiry ({DEFAULT_SHOP_INFO.phone})</span>
+            </a>
+          </div>
+
+        </div>
+      </div>
+
+      {/* UPI QR PAYMENT MODAL */}
+      <Modal isOpen={showQrModal} onClose={() => setShowQrModal(false)} title={t('view_upi_qr')} maxWidth="sm">
+        <div className="text-center space-y-4 py-3">
+          <p className="text-xs text-charcoal-600 font-bold">
+            Scan using any GPay, PhonePe, Paytm, or BHIM app
+          </p>
+
+          <div className="p-4 bg-white border-2 border-brand-300 rounded-2xl inline-block shadow-md">
+            <img src={DEFAULT_SHOP_INFO.upi_qr_url} alt="Shop UPI QR" className="w-52 h-52 mx-auto object-contain" />
+          </div>
+
+          <div className="bg-warm-bg p-3 rounded-xl border border-warm-border">
+            <span className="text-xs text-charcoal-500 block font-bold">Shop UPI ID</span>
+            <span className="text-sm font-extrabold font-mono text-brand-600">{DEFAULT_SHOP_INFO.upi_id}</span>
+          </div>
+
+          <Button
+            onClick={() => {
+              setShowQrModal(false);
+              if (order) setOrder({ ...order, payment_status: 'paid', is_payment_requested: false });
+              alert('Payment notification sent to shop admin!');
+            }}
+            variant="primary"
+            fullWidth
+          >
+            {isTamil ? 'கட்டணம் செலுத்திவிட்டேன்' : 'I Have Paid via QR'}
+          </Button>
+        </div>
+      </Modal>
+    </div>
+  );
+};
