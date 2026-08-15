@@ -210,9 +210,17 @@ export const AdminCustomersPage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-warm-muted pb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-brand-100 text-brand-700 font-black text-sm flex items-center justify-center border border-brand-200">
-                      {(cust.full_name || 'C').charAt(0).toUpperCase()}
-                    </div>
+                    {cust.avatar_url || (cust as any).photoURL ? (
+                      <img
+                        src={cust.avatar_url || (cust as any).photoURL}
+                        alt={cust.full_name || 'Customer'}
+                        className="w-10 h-10 rounded-2xl object-cover border-2 border-brand-300 shadow-sm shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-2xl bg-brand-100 text-brand-700 font-black text-sm flex items-center justify-center border border-brand-200 shrink-0">
+                        {(cust.full_name || 'C').charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <h3 className="text-sm font-black text-charcoal-900">{cust.full_name || 'Customer'}</h3>
                       <span className="text-[10px] font-bold text-brand-600 uppercase tracking-wider">
@@ -296,9 +304,17 @@ export const AdminCustomersPage: React.FC = () => {
         >
           <div className="space-y-5">
             <div className="flex items-center gap-4 bg-warm-bg p-4 rounded-2xl border border-warm-border">
-              <div className="w-14 h-14 rounded-2xl bg-brand-600 text-white font-black text-xl flex items-center justify-center shadow-md">
-                {(selectedCustomer.full_name || 'C').charAt(0).toUpperCase()}
-              </div>
+              {selectedCustomer.avatar_url || (selectedCustomer as any).photoURL ? (
+                <img
+                  src={selectedCustomer.avatar_url || (selectedCustomer as any).photoURL}
+                  alt={selectedCustomer.full_name || 'Customer'}
+                  className="w-14 h-14 rounded-2xl object-cover border-2 border-brand-400 shadow-md shrink-0"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-2xl bg-brand-600 text-white font-black text-xl flex items-center justify-center shadow-md shrink-0">
+                  {(selectedCustomer.full_name || 'C').charAt(0).toUpperCase()}
+                </div>
+              )}
               <div>
                 <h3 className="text-base font-black text-charcoal-900">{selectedCustomer.full_name}</h3>
                 <span className="text-xs font-extrabold text-brand-600 block">{selectedCustomer.email}</span>

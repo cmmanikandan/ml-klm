@@ -55,7 +55,7 @@ export const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* Top High-Priority Notification Action Cards */}
-      {(enquiries.filter(e => e.status === 'pending').length > 0 || orders.filter(o => o.status !== 'delivered').length > 0) && (
+      {(enquiries.filter(e => e.status === 'pending').length > 0 || orders.filter(o => o.status === 'pending' || o.payment_status === 'pending').length > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {enquiries.filter(e => e.status === 'pending').length > 0 && (
             <div className="bg-gradient-to-r from-amber-500 to-brand-600 text-white p-5 rounded-3xl shadow-lg flex items-center justify-between gap-4">
@@ -78,23 +78,23 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           )}
 
-          {orders.filter(o => o.status !== 'delivered').length > 0 && (
+          {orders.filter(o => o.status === 'pending' || o.payment_status === 'pending').length > 0 && (
             <div className="bg-gradient-to-r from-charcoal-800 to-charcoal-900 text-white p-5 rounded-3xl border border-charcoal-700 shadow-lg flex items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="bg-brand-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Active Orders</span>
+                  <span className="bg-brand-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">New Order Received</span>
                 </div>
                 <h4 className="text-sm font-black">
-                  {orders.filter(o => o.status !== 'delivered').length} Orders in Production
+                  {orders.filter(o => o.status === 'pending' || o.payment_status === 'pending').length} New Orders Awaiting Acceptance
                 </h4>
-                <p className="text-xs text-gray-300 font-medium">Track delivery timelines & advance payments</p>
+                <p className="text-xs text-gray-300 font-medium">Accept order & confirm fabrication schedule</p>
               </div>
 
               <Link
                 to="/admin/orders"
                 className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-md transition-all shrink-0 whitespace-nowrap"
               >
-                Manage Orders →
+                Accept Orders →
               </Link>
             </div>
           )}
