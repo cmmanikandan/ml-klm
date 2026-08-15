@@ -251,11 +251,11 @@ export const AdminOrdersPage: React.FC = () => {
       <html>
         <head>
           <meta charset="utf-8"/>
-          <title>Invoice - ${order.order_number || order.id}</title>
+          <title>Tax Invoice - ${order.order_number || order.id}</title>
           <style>
             @page {
               size: A4 portrait;
-              margin: 12mm;
+              margin: 10mm;
             }
             @media print {
               body { margin: 0; padding: 0; background: #fff; }
@@ -264,19 +264,28 @@ export const AdminOrdersPage: React.FC = () => {
             * { box-sizing: border-box; }
             body {
               font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-              color: #1e293b;
-              line-height: 1.5;
-              padding: 20px;
+              color: #0f172a;
+              line-height: 1.4;
+              padding: 15px;
               max-width: 800px;
               margin: 0 auto;
               background: #fff;
             }
+            .page-border {
+              border: 2px solid #0f172a;
+              padding: 20px;
+              position: relative;
+              min-height: 980px;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+            }
             .no-print-bar {
               background: #f8fafc;
-              border: 1px solid #e2e8f0;
-              padding: 12px 18px;
-              border-radius: 12px;
-              margin-bottom: 25px;
+              border: 1px solid #cbd5e1;
+              padding: 10px 16px;
+              border-radius: 10px;
+              margin-bottom: 15px;
               display: flex;
               align-items: center;
               justify-content: space-between;
@@ -285,272 +294,256 @@ export const AdminOrdersPage: React.FC = () => {
               background: #ea580c;
               color: white;
               border: none;
-              padding: 10px 22px;
-              font-size: 13px;
+              padding: 8px 18px;
+              font-size: 12px;
               font-weight: 800;
-              border-radius: 10px;
+              border-radius: 8px;
               cursor: pointer;
-              box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
             }
-
-            .header-banner {
-              border-bottom: 3px solid #ea580c;
-              padding-bottom: 16px;
-              margin-bottom: 24px;
+            .header-box {
+              border-bottom: 2px solid #ea580c;
+              padding-bottom: 12px;
+              margin-bottom: 16px;
               display: flex;
               justify-content: space-between;
               align-items: flex-start;
             }
-            .brand-name {
-              font-size: 24px;
+            .brand-title {
+              font-size: 26px;
               font-weight: 900;
               color: #0f172a;
               letter-spacing: -0.5px;
             }
-            .brand-name span { color: #ea580c; }
-            .brand-tagline {
-              font-size: 11px;
+            .brand-title span { color: #ea580c; }
+            .brand-subtitle {
+              font-size: 10px;
               font-weight: 800;
               color: #ea580c;
               letter-spacing: 2px;
               text-transform: uppercase;
-              margin-top: 2px;
+              margin-top: 1px;
             }
             .shop-address {
               font-size: 11px;
-              color: #64748b;
-              margin-top: 6px;
-              line-height: 1.4;
-            }
-
-            .invoice-badge {
-              text-align: right;
-            }
-            .invoice-title {
-              font-size: 22px;
-              font-weight: 900;
-              color: #0f172a;
-              letter-spacing: -0.5px;
-            }
-            .invoice-no {
-              font-size: 14px;
-              font-weight: 800;
-              color: #ea580c;
-              font-family: monospace;
-              margin-top: 2px;
-            }
-
-            .details-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 20px;
-              background: #f8fafc;
-              padding: 16px 20px;
-              border-radius: 14px;
-              border: 1px solid #e2e8f0;
-              margin-bottom: 24px;
-            }
-            .section-label {
-              font-size: 10px;
-              font-weight: 800;
-              color: #94a3b8;
-              text-transform: uppercase;
-              letter-spacing: 0.8px;
-              margin-bottom: 4px;
-            }
-            .customer-name {
-              font-size: 14px;
-              font-weight: 800;
-              color: #0f172a;
-            }
-            .customer-info {
-              font-size: 11px;
               color: #475569;
-              font-weight: 600;
+              margin-top: 4px;
             }
-
-            .stamp-box {
+            .invoice-head-right { text-align: right; }
+            .doc-title { font-size: 20px; font-weight: 900; color: #0f172a; }
+            .doc-no { font-size: 13px; font-weight: 800; color: #ea580c; font-family: monospace; }
+            .stamp-badge {
               display: inline-block;
-              padding: 4px 12px;
+              padding: 3px 10px;
               border: 2px solid ${statusStampBorder};
               color: ${statusStampColor};
               font-weight: 900;
-              font-size: 11px;
+              font-size: 10px;
               letter-spacing: 1px;
-              border-radius: 6px;
+              border-radius: 4px;
               text-transform: uppercase;
-              margin-top: 6px;
+              margin-top: 4px;
             }
-
+            .from-to-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 16px;
+              margin-bottom: 18px;
+            }
+            .address-card {
+              border: 1px solid #cbd5e1;
+              border-radius: 8px;
+              padding: 12px 14px;
+              background: #f8fafc;
+            }
+            .card-heading {
+              font-size: 10px;
+              font-weight: 900;
+              color: #ea580c;
+              text-transform: uppercase;
+              letter-spacing: 0.8px;
+              border-bottom: 1px solid #e2e8f0;
+              padding-bottom: 4px;
+              margin-bottom: 6px;
+            }
+            .party-name { font-size: 13px; font-weight: 900; color: #0f172a; }
+            .party-info { font-size: 11px; color: #334155; font-weight: 600; }
             .items-table {
               width: 100%;
               border-collapse: collapse;
-              margin-bottom: 24px;
+              margin-bottom: 18px;
             }
             .items-table th {
               background: #0f172a;
               color: #ffffff;
-              font-size: 11px;
+              font-size: 10px;
               font-weight: 800;
               text-transform: uppercase;
-              letter-spacing: 0.5px;
-              padding: 10px 14px;
+              padding: 8px 10px;
               text-align: left;
+              border: 1px solid #0f172a;
             }
             .items-table td {
-              padding: 14px;
-              border-bottom: 1px solid #e2e8f0;
-              font-size: 12px;
+              padding: 10px;
+              border: 1px solid #cbd5e1;
+              font-size: 11px;
             }
-            .item-title { font-weight: 800; color: #0f172a; font-size: 13px; }
-            .item-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
-
-            .totals-container {
+            .item-name { font-weight: 800; color: #0f172a; font-size: 12px; }
+            .item-desc { font-size: 10px; color: #64748b; margin-top: 2px; }
+            .summary-flex {
               display: flex;
-              justify-content: flex-end;
-              margin-bottom: 30px;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 20px;
             }
-            .totals-table {
-              width: 320px;
-              border-collapse: collapse;
+            .amount-in-words {
+              font-size: 11px;
+              font-weight: 700;
+              color: #334155;
+              max-width: 360px;
+              background: #f1f5f9;
+              padding: 8px 12px;
+              border-radius: 6px;
+              border-left: 3px solid #ea580c;
             }
-            .totals-table td {
-              padding: 6px 12px;
-              font-size: 12px;
-            }
+            .totals-table { width: 280px; border-collapse: collapse; }
+            .totals-table td { padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #e2e8f0; }
             .totals-table .total-row td {
-              font-size: 16px;
+              font-size: 14px;
               font-weight: 900;
               color: #ea580c;
               border-top: 2px solid #ea580c;
               border-bottom: 2px solid #ea580c;
-              padding: 10px 12px;
+              padding: 8px 10px;
             }
-
-            .footer-sign {
+            .footer-signature-section {
               display: flex;
               justify-content: space-between;
               align-items: flex-end;
-              margin-top: 50px;
-              padding-top: 20px;
-              border-top: 1px solid #e2e8f0;
+              padding-top: 15px;
+              border-top: 1px solid #cbd5e1;
+              margin-top: 30px;
             }
-            .sign-title {
-              font-size: 11px;
+            .customer-sign-box { text-align: center; width: 180px; }
+            .owner-sign-box { text-align: center; width: 220px; }
+            .sign-line {
+              border-top: 1px solid #64748b;
+              margin-top: 45px;
+              padding-top: 4px;
+              font-size: 10px;
               font-weight: 800;
               color: #0f172a;
             }
-            .sign-line {
-              width: 180px;
-              border-top: 1px solid #94a3b8;
-              margin-top: 40px;
-              text-align: center;
-              font-size: 10px;
-              color: #64748b;
-              padding-top: 4px;
-            }
-
-            .watermark-footer {
-              text-align: center;
-              font-size: 10px;
-              color: #94a3b8;
-              margin-top: 30px;
-            }
+            .shop-seal { font-size: 9px; color: #64748b; font-weight: 700; }
           </style>
         </head>
         <body>
           <div className="no-print-bar no-print">
-            <span style="font-size: 12px; font-weight: bold; color: #334155;">MANIKANDAN LATHE — Official A4 Printable Invoice</span>
-            <button onclick="window.print()" className="print-btn">🖨️ Click to Print A4 Invoice</button>
+            <span style="font-size: 12px; font-weight: bold;">MANIKANDAN LATHE — Official Printable Tax Bill</span>
+            <button onclick="window.print()" className="print-btn">🖨️ Print Invoice Now</button>
           </div>
 
-          <div className="header-banner">
+          <div className="page-border">
             <div>
-              <div className="brand-name">MANIKANDAN <span>LATHE</span></div>
-              <div className="brand-tagline">WELDING WORKS & FABRICATION SHOP</div>
-              <div className="shop-address">
-                Kallimandhayam - 624616, Dindigul District, Tamil Nadu<br/>
-                <strong>Phone:</strong> +91 96592 86268 | <strong>Email:</strong> manikandanlatheklm@gmail.com
+              <div className="header-box">
+                <div>
+                  <div className="brand-title">MANIKANDAN <span>LATHE</span></div>
+                  <div className="brand-subtitle">— WELDING WORKS & FABRICATION SHOP —</div>
+                  <div className="shop-address">
+                    Kallimandhayam - 624616, Dindigul District, Tamil Nadu<br/>
+                    <strong>Phone:</strong> +91 96592 86268 | <strong>Email:</strong> manikandanlatheklm@gmail.com
+                  </div>
+                </div>
+
+                <div className="invoice-head-right">
+                  <div className="doc-title">TAX INVOICE / BILL</div>
+                  <div className="doc-no">#${order.order_number || order.id}</div>
+                  <div className="stamp-badge">${statusStampText}</div>
+                </div>
+              </div>
+
+              <div className="from-to-grid">
+                <div className="address-card">
+                  <div className="card-heading">FROM (SUPPLIER / WORKSHOP):</div>
+                  <div className="party-name">MANIKANDAN LATHE WORKS</div>
+                  <div className="party-info">Kallimandhayam - 624616</div>
+                  <div className="party-info">Dindigul District, Tamil Nadu</div>
+                  <div className="party-info">Phone: +91 96592 86268</div>
+                </div>
+
+                <div className="address-card">
+                  <div className="card-heading">TO (BILLED CUSTOMER):</div>
+                  <div className="party-name">${order.customerName || 'Customer'}</div>
+                  <div className="party-info">Phone: ${order.customerPhone || 'N/A'}</div>
+                  <div className="party-info">Location: ${order.customerAddress || 'Kallimandhayam'}</div>
+                  <div className="party-info">Date: ${order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN')}</div>
+                </div>
+              </div>
+
+              <table className="items-table">
+                <thead>
+                  <tr>
+                    <th style="width: 8%; text-align: center;">S.No</th>
+                    <th style="width: 52%;">Product / Fabrication Description</th>
+                    <th style="width: 12%; text-align: center;">Qty</th>
+                    <th style="width: 14%; text-align: right;">Rate (₹)</th>
+                    <th style="width: 14%; text-align: right;">Amount (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="text-align: center; font-weight: 800;">1</td>
+                    <td>
+                      <div className="item-name">${order.productName || 'Custom Lathe Fabricated Item'}</div>
+                      <div className="item-desc">Precision heavy duty steel lathe work & welding fabrication.</div>
+                    </td>
+                    <td style="text-align: center; font-weight: 800;">${order.quantity || 1}</td>
+                    <td style="text-align: right; font-weight: 800; font-family: monospace;">₹${total.toLocaleString('en-IN')}</td>
+                    <td style="text-align: right; font-weight: 900; font-family: monospace;">₹${total.toLocaleString('en-IN')}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div className="summary-flex">
+                <div className="amount-in-words">
+                  <strong>Payment Status:</strong> ${statusStampText}<br/>
+                  Thank you for choosing Manikandan Lathe Works!
+                </div>
+
+                <table className="totals-table">
+                  <tr>
+                    <td>Subtotal Amount:</td>
+                    <td style="text-align: right; font-weight: 800;">₹${total.toLocaleString('en-IN')}</td>
+                  </tr>
+                  <tr>
+                    <td>Advance / Paid:</td>
+                    <td style="text-align: right; font-weight: 800; color: #059669;">- ₹${advancePaid.toLocaleString('en-IN')}</td>
+                  </tr>
+                  <tr className="total-row">
+                    <td>Balance Due:</td>
+                    <td style="text-align: right; font-family: monospace;">₹${remaining.toLocaleString('en-IN')}</td>
+                  </tr>
+                </table>
               </div>
             </div>
 
-            <div className="invoice-badge">
-              <div className="invoice-title">TAX INVOICE</div>
-              <div className="invoice-no">#${order.order_number || order.id}</div>
-              <div className="stamp-box">${statusStampText}</div>
-            </div>
-          </div>
-
-          <div className="details-grid">
             <div>
-              <div className="section-label">Billed To (Customer):</div>
-              <div className="customer-name">${order.customerName || 'Customer'}</div>
-              <div className="customer-info">Phone: ${order.customerPhone || 'N/A'}</div>
-              <div className="customer-info">Location: ${order.customerAddress || 'Kallimandhayam'}</div>
-            </div>
+              <div className="footer-signature-section">
+                <div className="customer-sign-box">
+                  <div className="sign-line">Customer Signature</div>
+                </div>
 
-            <div style="text-align: right;">
-              <div className="section-label">Invoice Details:</div>
-              <div className="customer-info"><strong>Invoice Date:</strong> ${order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN')}</div>
-              <div className="customer-info"><strong>Expected Delivery:</strong> ${order.expected_delivery_date || 'Within 7 Days'}</div>
-              <div className="customer-info"><strong>Fabrication Shop:</strong> Kallimandhayam Workshop</div>
-            </div>
-          </div>
+                <div className="owner-sign-box">
+                  <div className="sign-line">
+                    Shop Owner Signature<br/>
+                    <span className="shop-seal">MANIKANDAN LATHE WORKS</span>
+                  </div>
+                </div>
+              </div>
 
-          <table className="items-table">
-            <thead>
-              <tr>
-                <th style="width: 55%;">Fabrication Item Description</th>
-                <th style="text-align: center; width: 15%;">Qty</th>
-                <th style="text-align: right; width: 30%;">Total Amount (₹)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <div className="item-title">${order.productName || 'Custom Lathe Fabricated Item'}</div>
-                  <div className="item-sub">Heavy duty steel fabrication engineered with precision grade lathe machining.</div>
-                </td>
-                <td style="text-align: center; font-weight: 800;">${order.quantity || 1}</td>
-                <td style="text-align: right; font-weight: 900; font-family: monospace;">₹${total.toLocaleString('en-IN')}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div className="totals-container">
-            <table className="totals-table">
-              <tr>
-                <td>Total Quoted Amount:</td>
-                <td style="text-align: right; font-weight: 800;">₹${total.toLocaleString('en-IN')}</td>
-              </tr>
-              <tr>
-                <td>Advance Received:</td>
-                <td style="text-align: right; font-weight: 800; color: #059669;">- ₹${advancePaid.toLocaleString('en-IN')}</td>
-              </tr>
-              <tr className="total-row">
-                <td>Balance Due:</td>
-                <td style="text-align: right; font-family: monospace;">₹${remaining.toLocaleString('en-IN')}</td>
-              </tr>
-            </table>
-          </div>
-
-          <div className="footer-sign">
-            <div>
-              <div className="sign-title">Terms & Conditions:</div>
-              <div style="font-size: 10px; color: #64748b; margin-top: 4px; max-width: 380px;">
-                • All fabricated items undergo quality testing before delivery.<br/>
-                • Remaining balance due upon delivery or workshop pickup.
+              <div style="text-align: center; font-size: 9px; color: #94a3b8; margin-top: 15px;">
+                Computer Generated Tax Invoice • Kallimandhayam - 624616, Dindigul District, Tamil Nadu
               </div>
             </div>
-
-            <div className="sign-line">
-              Authorized Signatory<br/>
-              <strong>MANIKANDAN LATHE WORKS</strong>
-            </div>
-          </div>
-
-          <div className="watermark-footer">
-            Computer Generated Tax Invoice • Kallimandhayam - 624616, Dindigul District • Thank you for your business!
           </div>
 
           <script>
