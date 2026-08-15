@@ -231,7 +231,7 @@ export const AdminOrdersPage: React.FC = () => {
     setSelectedOrder(null);
   };
 
-  // Standard A4 Paper Format Invoice Generator
+  // Standard A4 Paper Format Invoice Generator & Auto Print
   const handlePrintA4Invoice = (order: any) => {
     const printWin = window.open('', '_blank');
     if (!printWin) return;
@@ -240,139 +240,326 @@ export const AdminOrdersPage: React.FC = () => {
     const remaining = order.remaining_amount || 0;
     const advancePaid = Math.max(0, total - remaining);
 
+    const isFullyPaid = remaining === 0;
+    const isPartiallyPaid = advancePaid > 0 && remaining > 0;
+    const statusStampText = isFullyPaid ? 'PAID IN FULL' : isPartiallyPaid ? 'PARTIALLY PAID' : 'PAYMENT PENDING';
+    const statusStampColor = isFullyPaid ? '#059669' : isPartiallyPaid ? '#d97706' : '#dc2626';
+    const statusStampBorder = isFullyPaid ? '#10b981' : isPartiallyPaid ? '#f59e0b' : '#ef4444';
+
     printWin.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
+          <meta charset="utf-8"/>
           <title>Invoice - ${order.order_number || order.id}</title>
           <style>
             @page {
               size: A4 portrait;
-              margin: 15mm;
+              margin: 12mm;
             }
             @media print {
-              body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; color: #111; }
+              body { margin: 0; padding: 0; background: #fff; }
               .no-print { display: none !important; }
             }
+            * { box-sizing: border-box; }
             body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              color: #1f2937;
+              font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+              color: #1e293b;
               line-height: 1.5;
-              padding: 25px;
+              padding: 20px;
               max-width: 800px;
               margin: 0 auto;
               background: #fff;
             }
-            .header-table { width: 100%; border-bottom: 3px solid #ea580c; pb-4; margin-bottom: 20px; }
-            .shop-title { font-size: 22px; font-weight: 900; color: #ea580c; text-transform: uppercase; letter-spacing: 1px; }
-            .shop-subtitle { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; }
-            .shop-address { font-size: 11px; color: #6b7280; margin-top: 4px; }
+            .no-print-bar {
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              padding: 12px 18px;
+              border-radius: 12px;
+              margin-bottom: 25px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+            }
+            .print-btn {
+              background: #ea580c;
+              color: white;
+              border: none;
+              padding: 10px 22px;
+              font-size: 13px;
+              font-weight: 800;
+              border-radius: 10px;
+              cursor: pointer;
+              box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+            }
 
-            .invoice-details-grid { width: 100%; margin-bottom: 25px; border-collapse: collapse; }
-            .invoice-details-grid td { vertical-align: top; padding: 6px 0; }
-            
-            .box-title { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.5px; }
-            .box-value { font-size: 13px; font-weight: 800; color: #111827; }
+            .header-banner {
+              border-bottom: 3px solid #ea580c;
+              padding-bottom: 16px;
+              margin-bottom: 24px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+            }
+            .brand-name {
+              font-size: 24px;
+              font-weight: 900;
+              color: #0f172a;
+              letter-spacing: -0.5px;
+            }
+            .brand-name span { color: #ea580c; }
+            .brand-tagline {
+              font-size: 11px;
+              font-weight: 800;
+              color: #ea580c;
+              letter-spacing: 2px;
+              text-transform: uppercase;
+              margin-top: 2px;
+            }
+            .shop-address {
+              font-size: 11px;
+              color: #64748b;
+              margin-top: 6px;
+              line-height: 1.4;
+            }
 
-            .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            .items-table th { background: #f3f4f6; color: #374151; font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 10px 12px; border-top: 1px solid #e5e7eb; border-bottom: 2px solid #ea580c; text-align: left; }
-            .items-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
+            .invoice-badge {
+              text-align: right;
+            }
+            .invoice-title {
+              font-size: 22px;
+              font-weight: 900;
+              color: #0f172a;
+              letter-spacing: -0.5px;
+            }
+            .invoice-no {
+              font-size: 14px;
+              font-weight: 800;
+              color: #ea580c;
+              font-family: monospace;
+              margin-top: 2px;
+            }
 
-            .summary-table { width: 300px; margin-left: auto; margin-top: 20px; border-collapse: collapse; }
-            .summary-table td { padding: 6px 10px; font-size: 12px; }
-            .summary-table .total-row td { font-size: 15px; font-weight: 900; color: #ea580c; border-top: 2px solid #ea580c; border-bottom: 2px solid #ea580c; }
+            .details-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 20px;
+              background: #f8fafc;
+              padding: 16px 20px;
+              border-radius: 14px;
+              border: 1px solid #e2e8f0;
+              margin-bottom: 24px;
+            }
+            .section-label {
+              font-size: 10px;
+              font-weight: 800;
+              color: #94a3b8;
+              text-transform: uppercase;
+              letter-spacing: 0.8px;
+              margin-bottom: 4px;
+            }
+            .customer-name {
+              font-size: 14px;
+              font-weight: 800;
+              color: #0f172a;
+            }
+            .customer-info {
+              font-size: 11px;
+              color: #475569;
+              font-weight: 600;
+            }
 
-            .footer-notes { margin-top: 40px; padding-top: 15px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280; display: flex; justify-content: space-between; align-items: flex-end; }
-            .signature-box { text-align: right; margin-top: 30px; font-size: 11px; font-weight: 800; }
+            .stamp-box {
+              display: inline-block;
+              padding: 4px 12px;
+              border: 2px solid ${statusStampBorder};
+              color: ${statusStampColor};
+              font-weight: 900;
+              font-size: 11px;
+              letter-spacing: 1px;
+              border-radius: 6px;
+              text-transform: uppercase;
+              margin-top: 6px;
+            }
 
-            .print-btn { background: #ea580c; color: white; border: none; padding: 10px 20px; font-size: 13px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-bottom: 20px; }
+            .items-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 24px;
+            }
+            .items-table th {
+              background: #0f172a;
+              color: #ffffff;
+              font-size: 11px;
+              font-weight: 800;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              padding: 10px 14px;
+              text-align: left;
+            }
+            .items-table td {
+              padding: 14px;
+              border-bottom: 1px solid #e2e8f0;
+              font-size: 12px;
+            }
+            .item-title { font-weight: 800; color: #0f172a; font-size: 13px; }
+            .item-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+            .totals-container {
+              display: flex;
+              justify-content: flex-end;
+              margin-bottom: 30px;
+            }
+            .totals-table {
+              width: 320px;
+              border-collapse: collapse;
+            }
+            .totals-table td {
+              padding: 6px 12px;
+              font-size: 12px;
+            }
+            .totals-table .total-row td {
+              font-size: 16px;
+              font-weight: 900;
+              color: #ea580c;
+              border-top: 2px solid #ea580c;
+              border-bottom: 2px solid #ea580c;
+              padding: 10px 12px;
+            }
+
+            .footer-sign {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+              margin-top: 50px;
+              padding-top: 20px;
+              border-top: 1px solid #e2e8f0;
+            }
+            .sign-title {
+              font-size: 11px;
+              font-weight: 800;
+              color: #0f172a;
+            }
+            .sign-line {
+              width: 180px;
+              border-top: 1px solid #94a3b8;
+              margin-top: 40px;
+              text-align: center;
+              font-size: 10px;
+              color: #64748b;
+              padding-top: 4px;
+            }
+
+            .watermark-footer {
+              text-align: center;
+              font-size: 10px;
+              color: #94a3b8;
+              margin-top: 30px;
+            }
           </style>
         </head>
         <body>
-          <button onclick="window.print()" className="print-btn no-print">🖨️ Print A4 Invoice</button>
+          <div className="no-print-bar no-print">
+            <span style="font-size: 12px; font-weight: bold; color: #334155;">MANIKANDAN LATHE — Official A4 Printable Invoice</span>
+            <button onclick="window.print()" className="print-btn">🖨️ Click to Print A4 Invoice</button>
+          </div>
 
-          <table className="header-table">
-            <tr>
-              <td>
-                <div className="shop-title">MANIKANDAN LATHE</div>
-                <div className="shop-subtitle">—— WELDING WORKS & FABRICATION SHOP ——</div>
-                <div className="shop-address">
-                  Kallimandhayam - 624616, Dindigul District, Tamil Nadu<br/>
-                  Phone: +91 96592 86268 | Email: manikandanlatheklm@gmail.com
-                </div>
-              </td>
-              <td style="text-align: right; vertical-align: top;">
-                <div style="font-size: 20px; font-weight: 900; color: #111;">TAX INVOICE / BILL</div>
-                <div style="font-size: 12px; font-weight: 800; color: #ea580c; margin-top: 4px;">#${order.order_number || order.id}</div>
-              </td>
-            </tr>
-          </table>
+          <div className="header-banner">
+            <div>
+              <div className="brand-name">MANIKANDAN <span>LATHE</span></div>
+              <div className="brand-tagline">WELDING WORKS & FABRICATION SHOP</div>
+              <div className="shop-address">
+                Kallimandhayam - 624616, Dindigul District, Tamil Nadu<br/>
+                <strong>Phone:</strong> +91 96592 86268 | <strong>Email:</strong> manikandanlatheklm@gmail.com
+              </div>
+            </div>
 
-          <table className="invoice-details-grid">
-            <tr>
-              <td style="width: 50%;">
-                <div className="box-title">BILLED TO (CUSTOMER):</div>
-                <div className="box-value">${order.customerName || 'Customer'}</div>
-                <div style="font-size: 12px; font-weight: 600;">Phone: ${order.customerPhone || 'N/A'}</div>
-                <div style="font-size: 12px; color: #4b5563;">${order.customerAddress || 'Kallimandhayam'}</div>
-              </td>
-              <td style="width: 50%; text-align: right;">
-                <div className="box-title">INVOICE DATE:</div>
-                <div className="box-value">${order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN')}</div>
-                <div className="box-title" style="margin-top: 8px;">EXPECTED DELIVERY:</div>
-                <div className="box-value" style="color: #059669;">${order.expected_delivery_date || 'Within 7 Days'}</div>
-              </td>
-            </tr>
-          </table>
+            <div className="invoice-badge">
+              <div className="invoice-title">TAX INVOICE</div>
+              <div className="invoice-no">#${order.order_number || order.id}</div>
+              <div className="stamp-box">${statusStampText}</div>
+            </div>
+          </div>
+
+          <div className="details-grid">
+            <div>
+              <div className="section-label">Billed To (Customer):</div>
+              <div className="customer-name">${order.customerName || 'Customer'}</div>
+              <div className="customer-info">Phone: ${order.customerPhone || 'N/A'}</div>
+              <div className="customer-info">Location: ${order.customerAddress || 'Kallimandhayam'}</div>
+            </div>
+
+            <div style="text-align: right;">
+              <div className="section-label">Invoice Details:</div>
+              <div className="customer-info"><strong>Invoice Date:</strong> ${order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN')}</div>
+              <div className="customer-info"><strong>Expected Delivery:</strong> ${order.expected_delivery_date || 'Within 7 Days'}</div>
+              <div className="customer-info"><strong>Fabrication Shop:</strong> Kallimandhayam Workshop</div>
+            </div>
+          </div>
 
           <table className="items-table">
             <thead>
               <tr>
-                <th style="width: 50%;">Description / Item Name</th>
+                <th style="width: 55%;">Fabrication Item Description</th>
                 <th style="text-align: center; width: 15%;">Qty</th>
-                <th style="text-align: right; width: 35%;">Amount (₹)</th>
+                <th style="text-align: right; width: 30%;">Total Amount (₹)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td>
-                  <strong>${order.productName || 'Custom Lathe Fabricated Item'}</strong>
-                  <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">Grade Steel Fabrication Work</div>
+                  <div className="item-title">${order.productName || 'Custom Lathe Fabricated Item'}</div>
+                  <div className="item-sub">Heavy duty steel fabrication engineered with precision grade lathe machining.</div>
                 </td>
-                <td style="text-align: center; font-weight: bold;">${order.quantity || 1}</td>
-                <td style="text-align: right; font-weight: bold;">₹${total.toLocaleString('en-IN')}</td>
+                <td style="text-align: center; font-weight: 800;">${order.quantity || 1}</td>
+                <td style="text-align: right; font-weight: 900; font-family: monospace;">₹${total.toLocaleString('en-IN')}</td>
               </tr>
             </tbody>
           </table>
 
-          <table className="summary-table">
-            <tr>
-              <td>Subtotal Amount:</td>
-              <td style="text-align: right; font-weight: bold;">₹${total.toLocaleString('en-IN')}</td>
-            </tr>
-            <tr>
-              <td>Advance Received:</td>
-              <td style="text-align: right; font-weight: bold; color: #059669;">- ₹${advancePaid.toLocaleString('en-IN')}</td>
-            </tr>
-            <tr className="total-row">
-              <td>Balance Due:</td>
-              <td style="text-align: right;">₹${remaining.toLocaleString('en-IN')}</td>
-            </tr>
-          </table>
-
-          <div className="signature-box">
-            <p>For MANIKANDAN LATHE – WELDING WORKS</p>
-            <div style="height: 40px;"></div>
-            <p style="font-size: 10px; color: #6b7280;">(Authorized Signature)</p>
+          <div className="totals-container">
+            <table className="totals-table">
+              <tr>
+                <td>Total Quoted Amount:</td>
+                <td style="text-align: right; font-weight: 800;">₹${total.toLocaleString('en-IN')}</td>
+              </tr>
+              <tr>
+                <td>Advance Received:</td>
+                <td style="text-align: right; font-weight: 800; color: #059669;">- ₹${advancePaid.toLocaleString('en-IN')}</td>
+              </tr>
+              <tr className="total-row">
+                <td>Balance Due:</td>
+                <td style="text-align: right; font-family: monospace;">₹${remaining.toLocaleString('en-IN')}</td>
+              </tr>
+            </table>
           </div>
 
-          <div className="footer-notes">
+          <div className="footer-sign">
             <div>
-              Thank you for trusting Manikandan Lathe Works!<br/>
-              * All fabricated items pass quality testing before dispatch.
+              <div className="sign-title">Terms & Conditions:</div>
+              <div style="font-size: 10px; color: #64748b; margin-top: 4px; max-width: 380px;">
+                • All fabricated items undergo quality testing before delivery.<br/>
+                • Remaining balance due upon delivery or workshop pickup.
+              </div>
             </div>
-            <div>Computer Generated Invoice</div>
+
+            <div className="sign-line">
+              Authorized Signatory<br/>
+              <strong>MANIKANDAN LATHE WORKS</strong>
+            </div>
           </div>
+
+          <div className="watermark-footer">
+            Computer Generated Tax Invoice • Kallimandhayam - 624616, Dindigul District • Thank you for your business!
+          </div>
+
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 400);
+            };
+          </script>
         </body>
       </html>
     `);
@@ -455,9 +642,9 @@ export const AdminOrdersPage: React.FC = () => {
                     
                     {/* Order # & Date */}
                     <td className="py-4 px-4 font-mono font-extrabold text-brand-600">
-                      <span className="cursor-pointer hover:underline" onClick={() => setSelectedOrder(ord)}>
+                      <Link to={`/admin/orders/${ord.id}`} className="cursor-pointer hover:underline">
                         #{ord.order_number || ord.id}
-                      </span>
+                      </Link>
                       <span className="block text-[10px] text-charcoal-400 font-sans font-semibold mt-0.5">
                         {ord.created_at ? new Date(ord.created_at).toLocaleDateString() : 'Today'}
                       </span>
@@ -528,13 +715,13 @@ export const AdminOrdersPage: React.FC = () => {
                     {/* Table Row Actions */}
                     <td className="py-4 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => setSelectedOrder(ord)}
+                        <Link
+                          to={`/admin/orders/${ord.id}`}
                           className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-xs shadow-sm transition-colors flex items-center gap-1"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>View Details</span>
-                        </button>
+                        </Link>
 
                         <button
                           onClick={() => handlePrintA4Invoice(ord)}
@@ -761,7 +948,7 @@ export const AdminOrdersPage: React.FC = () => {
               />
             </div>
 
-            <Button onClick={handleRecordCashPayment} variant="primary" fullWidth icon={<CheckCircle2 className="w-4 h-4" />}>
+            <Button onClick={handleRecordCashPayment} variant="primary" fullWidth icon={<CheckCircle2 className="w-4 h-4" />} size="lg">
               Save Cash Payment to DB
             </Button>
           </div>
