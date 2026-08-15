@@ -300,130 +300,203 @@ export const AdminOrdersPage: React.FC = () => {
             <p className="text-xs text-charcoal-500 font-medium">Orders created by customers will appear here automatically.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-warm-bg text-charcoal-500 font-extrabold border-b border-warm-border uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="py-3.5 px-4">Order # & Date</th>
-                  <th className="py-3.5 px-4">Customer Name</th>
-                  <th className="py-3.5 px-4">Fabrication Item</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4">Delivery Date</th>
-                  <th className="py-3.5 px-4">Payment Summary</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-warm-muted font-medium">
-                {filteredOrders.map((ord) => (
-                  <tr key={ord.id} className="hover:bg-warm-hover/50 transition-colors">
-                    
-                    {/* Order # & Date */}
-                    <td className="py-4 px-4 font-mono font-extrabold text-brand-600">
-                      <Link to={`/admin/orders/${ord.id}`} className="cursor-pointer hover:underline">
+          <>
+            {/* MOBILE ORDER CARDS (< md) */}
+            <div className="block md:hidden space-y-4">
+              {filteredOrders.map((ord) => (
+                <div key={ord.id} className="bg-white p-4 rounded-2xl border border-warm-border shadow-sm space-y-3">
+                  <div className="flex items-center justify-between border-b border-warm-muted pb-2.5">
+                    <div>
+                      <Link to={`/admin/orders/${ord.id}`} className="font-mono font-extrabold text-brand-600 text-sm hover:underline">
                         #{ord.order_number || ord.id}
                       </Link>
-                      <span className="block text-[10px] text-charcoal-400 font-sans font-semibold mt-0.5">
+                      <span className="block text-[10px] text-charcoal-400 font-bold mt-0.5">
                         {ord.created_at ? new Date(ord.created_at).toLocaleDateString() : 'Today'}
                       </span>
-                    </td>
+                    </div>
+                    <Badge variant={ord.status}>
+                      {(ord.status || 'pending').toUpperCase().replace('_', ' ')}
+                    </Badge>
+                  </div>
 
-                    {/* Customer Name & Contact */}
-                    <td className="py-4 px-4">
-                      <span className="font-black text-charcoal-900 block text-sm">{ord.customerName}</span>
-                      <a href={`tel:${ord.customerPhone}`} className="text-[11px] text-charcoal-600 font-mono font-bold hover:text-brand-600">
-                        {ord.customerPhone}
-                      </a>
-                    </td>
+                  <div className="flex items-start gap-3">
+                    <img
+                      src={ord.productImage}
+                      alt={ord.productName}
+                      className="w-12 h-12 rounded-xl object-cover border border-warm-border shrink-0"
+                    />
+                    <div className="space-y-0.5">
+                      <h4 className="font-extrabold text-charcoal-900 text-xs line-clamp-1">{ord.productName}</h4>
+                      <p className="text-[11px] text-charcoal-600 font-medium">Customer: <span className="font-bold text-charcoal-900">{ord.customerName}</span></p>
+                      <a href={`tel:${ord.customerPhone}`} className="text-[11px] text-brand-600 font-mono font-bold block">{ord.customerPhone}</a>
+                    </div>
+                  </div>
 
-                    {/* Product Name & Thumbnail */}
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2.5">
-                        <img
-                          src={ord.productImage}
-                          alt={ord.productName}
-                          className="w-10 h-10 rounded-xl object-cover border border-warm-border shrink-0"
-                        />
-                        <div>
-                          <Link
-                            to={`/products/${ord.productId}`}
-                            target="_blank"
-                            className="font-bold text-charcoal-900 hover:text-brand-600 flex items-center gap-1 line-clamp-1"
-                          >
-                            <span>{ord.productName}</span>
-                            <ExternalLink className="w-3 h-3 text-brand-500 shrink-0" />
-                          </Link>
-                          <span className="text-[11px] text-charcoal-500 font-bold block">Qty: {ord.quantity || 1} Unit(s)</span>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Status Badge */}
-                    <td className="py-4 px-4">
-                      <Badge variant={ord.status}>
-                        {(ord.status || 'pending').toUpperCase().replace('_', ' ')}
-                      </Badge>
-                    </td>
-
-                    {/* Expected Delivery Date Picker */}
-                    <td className="py-4 px-4">
+                  <div className="grid grid-cols-2 gap-2 bg-warm-bg p-2.5 rounded-xl text-xs">
+                    <div>
+                      <span className="text-[10px] text-charcoal-400 font-extrabold uppercase block">Expected Delivery:</span>
                       <input
                         type="date"
                         value={ord.expected_delivery_date || ''}
                         onChange={(e) => handleUpdateDeliveryDate(ord.id, e.target.value)}
-                        className="px-2.5 py-1 text-xs border border-warm-border rounded-xl bg-white font-mono font-extrabold text-charcoal-900 focus:ring-2 focus:ring-brand-500"
+                        className="mt-0.5 w-full px-2 py-1 text-[11px] border border-warm-border rounded-lg bg-white font-mono font-bold"
                       />
-                    </td>
-
-                    {/* Payment Summary */}
-                    <td className="py-4 px-4">
-                      <div className="space-y-0.5">
-                        <span className="font-black text-charcoal-900 block font-mono text-xs">
-                          Total: ₹{(ord.total_amount || 0).toLocaleString('en-IN')}
-                        </span>
-                        <span className="text-[11px] text-emerald-700 font-extrabold block">
-                          Paid: ₹{Math.max(0, (ord.total_amount || 0) - (ord.remaining_amount || 0)).toLocaleString('en-IN')}
-                        </span>
-                        <span className="text-[10px] text-amber-700 font-bold block">
-                          Due: ₹{(ord.remaining_amount || 0).toLocaleString('en-IN')}
-                        </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-charcoal-400 font-extrabold uppercase block">Payment:</span>
+                      <div className="text-[11px] space-y-0.5 mt-0.5">
+                        <span className="font-black text-charcoal-900 block font-mono">Total: ₹{(ord.total_amount || 0).toLocaleString('en-IN')}</span>
+                        <span className="text-emerald-700 font-bold block font-mono">Paid: ₹{Math.max(0, (ord.total_amount || 0) - (ord.remaining_amount || 0)).toLocaleString('en-IN')}</span>
                       </div>
-                    </td>
+                    </div>
+                  </div>
 
-                    {/* Table Row Actions */}
-                    <td className="py-4 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Link
-                          to={`/admin/orders/${ord.id}`}
-                          className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-xs shadow-sm transition-colors flex items-center gap-1"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View Details</span>
-                        </Link>
+                  <div className="flex items-center gap-2 pt-1 border-t border-warm-border/60">
+                    <Link
+                      to={`/admin/orders/${ord.id}`}
+                      className="flex-1 py-2 px-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-xs text-center shadow-sm flex items-center justify-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View Details</span>
+                    </Link>
 
-                        <button
-                          onClick={() => handlePrintA4Invoice(ord)}
-                          className="p-1.5 rounded-xl text-charcoal-700 hover:bg-warm-hover border border-warm-border transition-colors"
-                          title="Print A4 Invoice"
-                        >
-                          <Printer className="w-4 h-4 text-brand-600" />
-                        </button>
+                    <button
+                      onClick={() => handlePrintA4Invoice(ord)}
+                      className="p-2 rounded-xl bg-warm-bg text-charcoal-700 hover:bg-warm-hover border border-warm-border"
+                      title="Print A4 Invoice"
+                    >
+                      <Printer className="w-4 h-4 text-brand-600" />
+                    </button>
 
-                        <button
-                          onClick={() => setOrderToDelete(ord)}
-                          className="p-1.5 rounded-xl text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
-                          title="Delete Order"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                    <button
+                      onClick={() => setOrderToDelete(ord)}
+                      className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                      title="Delete Order"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
 
+            {/* DESKTOP ORDER TABLE (>= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-warm-bg text-charcoal-500 font-extrabold border-b border-warm-border uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="py-3.5 px-4">Order # & Date</th>
+                    <th className="py-3.5 px-4">Customer Name</th>
+                    <th className="py-3.5 px-4">Fabrication Item</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4">Delivery Date</th>
+                    <th className="py-3.5 px-4">Payment Summary</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+
+                <tbody className="divide-y divide-warm-muted font-medium">
+                  {filteredOrders.map((ord) => (
+                    <tr key={ord.id} className="hover:bg-warm-hover/50 transition-colors">
+                      <td className="py-4 px-4 font-mono font-extrabold text-brand-600">
+                        <Link to={`/admin/orders/${ord.id}`} className="cursor-pointer hover:underline">
+                          #{ord.order_number || ord.id}
+                        </Link>
+                        <span className="block text-[10px] text-charcoal-400 font-sans font-semibold mt-0.5">
+                          {ord.created_at ? new Date(ord.created_at).toLocaleDateString() : 'Today'}
+                        </span>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <span className="font-black text-charcoal-900 block text-sm">{ord.customerName}</span>
+                        <a href={`tel:${ord.customerPhone}`} className="text-[11px] text-charcoal-600 font-mono font-bold hover:text-brand-600">
+                          {ord.customerPhone}
+                        </a>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={ord.productImage}
+                            alt={ord.productName}
+                            className="w-10 h-10 rounded-xl object-cover border border-warm-border shrink-0"
+                          />
+                          <div>
+                            <Link
+                              to={`/products/${ord.productId}`}
+                              target="_blank"
+                              className="font-bold text-charcoal-900 hover:text-brand-600 flex items-center gap-1 line-clamp-1"
+                            >
+                              <span>{ord.productName}</span>
+                              <ExternalLink className="w-3 h-3 text-brand-500 shrink-0" />
+                            </Link>
+                            <span className="text-[11px] text-charcoal-500 font-bold block">Qty: {ord.quantity || 1} Unit(s)</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <Badge variant={ord.status}>
+                          {(ord.status || 'pending').toUpperCase().replace('_', ' ')}
+                        </Badge>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <input
+                          type="date"
+                          value={ord.expected_delivery_date || ''}
+                          onChange={(e) => handleUpdateDeliveryDate(ord.id, e.target.value)}
+                          className="px-2.5 py-1 text-xs border border-warm-border rounded-xl bg-white font-mono font-extrabold text-charcoal-900 focus:ring-2 focus:ring-brand-500"
+                        />
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <div className="space-y-0.5">
+                          <span className="font-black text-charcoal-900 block font-mono text-xs">
+                            Total: ₹{(ord.total_amount || 0).toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-[11px] text-emerald-700 font-extrabold block">
+                            Paid: ₹{Math.max(0, (ord.total_amount || 0) - (ord.remaining_amount || 0)).toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-[10px] text-amber-700 font-bold block">
+                            Due: ₹{(ord.remaining_amount || 0).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Link
+                            to={`/admin/orders/${ord.id}`}
+                            className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-xs shadow-sm transition-colors flex items-center gap-1"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View Details</span>
+                          </Link>
+
+                          <button
+                            onClick={() => handlePrintA4Invoice(ord)}
+                            className="p-1.5 rounded-xl text-charcoal-700 hover:bg-warm-hover border border-warm-border transition-colors"
+                            title="Print A4 Invoice"
+                          >
+                            <Printer className="w-4 h-4 text-brand-600" />
+                          </button>
+
+                          <button
+                            onClick={() => setOrderToDelete(ord)}
+                            className="p-1.5 rounded-xl text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
+                            title="Delete Order"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

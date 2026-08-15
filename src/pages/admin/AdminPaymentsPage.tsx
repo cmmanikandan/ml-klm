@@ -156,75 +156,103 @@ export const AdminPaymentsPage: React.FC = () => {
             <p className="text-xs text-charcoal-500 font-medium">Recorded payment receipts will appear here automatically.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-warm-bg text-charcoal-500 font-extrabold border-b border-warm-border uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="py-3.5 px-4">S.No</th>
-                  <th className="py-3.5 px-4">Date & Time</th>
-                  <th className="py-3.5 px-4">Order # & Bill</th>
-                  <th className="py-3.5 px-4">Customer Name</th>
-                  <th className="py-3.5 px-4">Payment Mode & Ref</th>
-                  <th className="py-3.5 px-4">Amount Received</th>
-                  <th className="py-3.5 px-4 text-right">Status</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-warm-muted font-medium">
-                {filteredPayments.map((pay, idx) => (
-                  <tr key={pay.id || idx} className="hover:bg-warm-hover/50 transition-colors">
-                    
-                    {/* S.No */}
-                    <td className="py-4 px-4 font-black text-charcoal-500 text-xs">
-                      #{idx + 1}
-                    </td>
-
-                    {/* Transaction Date & Time */}
-                    <td className="py-4 px-4 font-mono font-bold text-charcoal-800 whitespace-nowrap">
-                      {pay.formattedDate}
-                    </td>
-
-                    {/* Order # */}
-                    <td className="py-4 px-4 font-mono font-extrabold text-brand-600">
-                      <Link to={`/admin/orders/${pay.order_id}`} className="hover:underline flex items-center gap-1">
+          <>
+            {/* MOBILE PAYMENTS CARDS (< md) */}
+            <div className="block md:hidden space-y-3 p-4">
+              {filteredPayments.map((pay, idx) => (
+                <div key={pay.id || idx} className="bg-white p-4 rounded-2xl border border-warm-border shadow-sm space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-warm-muted pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-charcoal-400 text-xs">#{idx + 1}</span>
+                      <Link to={`/admin/orders/${pay.order_id}`} className="font-mono font-extrabold text-brand-600 text-xs hover:underline flex items-center gap-1">
                         <span>#{pay.orderNumber}</span>
                         <ExternalLink className="w-3 h-3 text-brand-400 shrink-0" />
                       </Link>
-                    </td>
+                    </div>
+                    <Badge variant="paid">COMPLETED</Badge>
+                  </div>
 
-                    {/* Customer Name & Phone */}
-                    <td className="py-4 px-4">
-                      <span className="font-black text-charcoal-900 block text-xs">{pay.customerName}</span>
-                      <a href={`tel:${pay.customerPhone}`} className="text-[11px] text-charcoal-500 font-mono font-bold hover:text-brand-600">
-                        {pay.customerPhone}
-                      </a>
-                    </td>
+                  <div className="flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-black text-charcoal-900 block">{pay.customerName}</span>
+                      <a href={`tel:${pay.customerPhone}`} className="text-[11px] text-charcoal-500 font-mono font-bold block">{pay.customerPhone}</a>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-black text-emerald-700 font-mono block">+₹{(pay.amount || 0).toLocaleString('en-IN')}</span>
+                      <span className="text-[10px] text-charcoal-400 font-bold block">{pay.paymentMode}</span>
+                    </div>
+                  </div>
 
-                    {/* Payment Mode & Reference */}
-                    <td className="py-4 px-4">
-                      <span className="font-bold text-charcoal-900 block">{pay.paymentMode}</span>
-                      <span className="text-[10px] text-charcoal-400 font-mono truncate block">
-                        Ref: {pay.transaction_id || pay.id}
-                      </span>
-                    </td>
+                  <div className="flex items-center justify-between text-[10px] text-charcoal-400 font-mono pt-1.5 border-t border-warm-border/60">
+                    <span>Ref: {pay.transaction_id || pay.id}</span>
+                    <span>{pay.formattedDate}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-                    {/* Amount */}
-                    <td className="py-4 px-4">
-                      <span className="text-sm font-black text-emerald-700 font-mono">
-                        +₹{(pay.amount || 0).toLocaleString('en-IN')}
-                      </span>
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-4 px-4 text-right">
-                      <Badge variant="paid">COMPLETED</Badge>
-                    </td>
-
+            {/* DESKTOP PAYMENTS TABLE (>= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-warm-bg text-charcoal-500 font-extrabold border-b border-warm-border uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="py-3.5 px-4">#</th>
+                    <th className="py-3.5 px-4">Date & Time</th>
+                    <th className="py-3.5 px-4">Order #</th>
+                    <th className="py-3.5 px-4">Customer Name</th>
+                    <th className="py-3.5 px-4">Payment Mode & Ref</th>
+                    <th className="py-3.5 px-4">Amount Paid</th>
+                    <th className="py-3.5 px-4 text-right">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+
+                <tbody className="divide-y divide-warm-muted font-medium">
+                  {filteredPayments.map((pay, idx) => (
+                    <tr key={pay.id || idx} className="hover:bg-warm-hover/50 transition-colors">
+                      <td className="py-4 px-4 font-black text-charcoal-500 text-xs">
+                        #{idx + 1}
+                      </td>
+
+                      <td className="py-4 px-4 font-mono font-bold text-charcoal-800 whitespace-nowrap">
+                        {pay.formattedDate}
+                      </td>
+
+                      <td className="py-4 px-4 font-mono font-extrabold text-brand-600">
+                        <Link to={`/admin/orders/${pay.order_id}`} className="hover:underline flex items-center gap-1">
+                          <span>#{pay.orderNumber}</span>
+                          <ExternalLink className="w-3 h-3 text-brand-400 shrink-0" />
+                        </Link>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <span className="font-black text-charcoal-900 block text-xs">{pay.customerName}</span>
+                        <a href={`tel:${pay.customerPhone}`} className="text-[11px] text-charcoal-500 font-mono font-bold hover:text-brand-600">
+                          {pay.customerPhone}
+                        </a>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <span className="font-bold text-charcoal-900 block">{pay.paymentMode}</span>
+                        <span className="text-[10px] text-charcoal-400 font-mono truncate block">
+                          Ref: {pay.transaction_id || pay.id}
+                        </span>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <span className="text-sm font-black text-emerald-700 font-mono">
+                          +₹{(pay.amount || 0).toLocaleString('en-IN')}
+                        </span>
+                      </td>
+
+                      <td className="py-4 px-4 text-right">
+                        <Badge variant="paid">COMPLETED</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
