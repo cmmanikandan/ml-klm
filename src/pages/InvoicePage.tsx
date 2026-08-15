@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Printer, Download, ArrowLeft, ExternalLink, CheckCircle2, AlertCircle, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { InvoiceDocument } from '../components/invoice/InvoiceDocument';
 import { INITIAL_PRODUCTS, supabase } from '../lib/supabase';
+import { fetchActiveProducts } from '../lib/productsStore';
 
 export const InvoicePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -103,14 +104,57 @@ export const InvoicePage: React.FC = () => {
         }
       }
 
-      // 4. Guaranteed fallback record (Never null or empty)
+      // 4. Hydrate real Customer Profile from Supabase `profiles` & `enquiries` tables
+      let customerName = record?.customerName || record?.customer_name || record?.user_name;
+      let customerPhone = record?.customerPhone || record?.customer_phone;
+      let customerAddress = record?.customerAddress || record?.delivery_location || record?.location;
+
+      if (record?.user_id) {
+        try {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', record.user_id)
+            .maybeSingle();
+
+          if (prof) {
+            if (!customerName || customerName === 'Customer') customerName = prof.full_name;
+            if (!customerPhone) customerPhone = prof.phone;
+            if (!customerAddress) customerAddress = prof.address || prof.city_area;
+          }
+        } catch (e) {
+          console.warn('Profile fetch fallback in invoice');
+        }
+      }
+
+      if ((!customerName || !customerPhone || !customerAddress) && record?.user_id) {
+        try {
+          const { data: enq } = await supabase
+            .from('enquiries')
+            .select('*')
+            .eq('user_id', record.user_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (enq) {
+            if (!customerName || customerName === 'Customer') customerName = enq.customerName || enq.customer_name;
+            if (!customerPhone) customerPhone = enq.customerPhone || enq.customer_phone;
+            if (!customerAddress) customerAddress = enq.delivery_location || enq.location;
+          }
+        } catch (e) {
+          console.warn('Enquiry fetch fallback in invoice');
+        }
+      }
+
+      // 5. Guaranteed fallback record
       if (!record) {
         const normalizedNo = cleanId.startsWith('MNK') ? cleanId : `MNK-ORD-${cleanId}`;
         record = {
           id: cleanId,
           order_number: normalizedNo,
-          customerName: 'Karthik Kumar (Customer)',
-          customerPhone: '+91 96592 86268',
+          customerName: 'Manikandan Prabhu',
+          customerPhone: '+91 9629286268',
           customerAddress: 'K. Keeranur road, Kallimandhayam, Dindigul',
           productName: 'Steel Shoe Rack Work',
           quantity: 1,
@@ -120,14 +164,16 @@ export const InvoicePage: React.FC = () => {
         };
       }
 
-      // Hydrate product details
-      const prod = INITIAL_PRODUCTS.find((p) => p.id === record.product_id) || INITIAL_PRODUCTS[0];
+      // Hydrate product details and final customer payload
+      const activeProds = await fetchActiveProducts();
+      const prod = activeProds.find((p) => p.id === record.product_id) || INITIAL_PRODUCTS[0];
+
       setOrder({
         ...record,
-        customerName: record.customerName || record.customer_name || 'Karthik Kumar',
-        customerPhone: record.customerPhone || record.customer_phone || '+91 96592 86268',
-        customerAddress: record.customerAddress || record.delivery_location || 'Kallimandhayam, Dindigul',
-        productName: record.productName || record.product_name || prod.name_en || 'Steel Shoe Rack',
+        customerName: customerName || record.customerName || record.customer_name || 'Manikandan Prabhu',
+        customerPhone: customerPhone || record.customerPhone || record.customer_phone || '+91 9629286268',
+        customerAddress: customerAddress || record.customerAddress || record.delivery_location || 'K. Keeranur road, Kallimandhayam, Dindigul',
+        productName: record.productName || record.product_name || prod.name_en || 'Steel Shoe Rack Work',
         productImage: record.productImage || prod.primary_image
       });
     } catch (e) {
@@ -136,9 +182,9 @@ export const InvoicePage: React.FC = () => {
       setOrder({
         id: cleanId,
         order_number: cleanId.startsWith('MNK') ? cleanId : `MNK-ORD-${cleanId}`,
-        customerName: 'Karthik Kumar',
-        customerPhone: '+91 96592 86268',
-        customerAddress: 'Kallimandhayam, Dindigul',
+        customerName: 'Manikandan Prabhu',
+        customerPhone: '+91 9629286268',
+        customerAddress: 'K. Keeranur road, Kallimandhayam, Dindigul',
         productName: 'Steel Shoe Rack Work',
         quantity: 1,
         total_amount: 15000,

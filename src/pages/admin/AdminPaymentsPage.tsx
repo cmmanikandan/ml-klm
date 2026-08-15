@@ -90,7 +90,18 @@ export const AdminPaymentsPage: React.FC = () => {
     }
   };
 
+  const [filterMode, setFilterMode] = useState<string>('all');
+
   const filteredPayments = payments.filter((p) => {
+    // 1. Payment mode filter
+    if (filterMode !== 'all') {
+      const mode = (p.paymentMode || '').toLowerCase();
+      if (filterMode === 'upi' && !mode.includes('upi') && !mode.includes('online')) return false;
+      if (filterMode === 'cash' && !mode.includes('cash')) return false;
+      if (filterMode === 'bank' && !mode.includes('bank') && !mode.includes('neft')) return false;
+    }
+
+    // 2. Search query filter
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -103,6 +114,33 @@ export const AdminPaymentsPage: React.FC = () => {
   });
 
   const totalCollected = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+  const handleExportPaymentsCSV = () => {
+    if (filteredPayments.length === 0) return;
+
+    const headers = ["S.No", "Date & Time", "Order Number", "Customer Name", "Customer Phone", "Payment Mode", "Transaction Ref", "Amount (₹)", "Status"];
+    const rows = filteredPayments.map((p, idx) => [
+      idx + 1,
+      `"${p.formattedDate}"`,
+      `"${p.orderNumber}"`,
+      `"${p.customerName}"`,
+      `"${p.customerPhone}"`,
+      `"${p.paymentMode}"`,
+      `"${p.transaction_id || p.id}"`,
+      p.amount || 0,
+      "COMPLETED"
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Manikandan_Lathe_Payments_Ledger_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="space-y-6">
@@ -120,27 +158,60 @@ export const AdminPaymentsPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="bg-emerald-50 border border-emerald-200 px-4 py-2.5 rounded-2xl flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-md">
-            ₹
-          </div>
-          <div>
-            <span className="text-[10px] font-extrabold text-emerald-800 uppercase block">Total Collections</span>
-            <span className="text-base font-black text-emerald-900 font-mono">₹{totalCollected.toLocaleString('en-IN')}</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportPaymentsCSV}
+            className="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl text-xs font-extrabold shadow-md transition-colors flex items-center gap-2"
+          >
+            <Filter className="w-4 h-4" />
+            <span>Export CSV Ledger</span>
+          </button>
+
+          <div className="bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-2xl flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-md">
+              ₹
+            </div>
+            <div>
+              <span className="text-[9px] font-extrabold text-emerald-800 uppercase block">Total Collections</span>
+              <span className="text-sm font-black text-emerald-900 font-mono">₹{totalCollected.toLocaleString('en-IN')}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Search Input Bar */}
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 text-brand-600 absolute left-3.5 top-3.5" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search by order #, customer name, phone, or payment mode..."
-          className="w-full pl-10 pr-4 py-2.5 text-xs font-bold border border-warm-border rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm"
-        />
+      {/* Filter Tabs & Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-1.5 bg-warm-bg p-1 rounded-2xl border border-warm-border w-full sm:w-auto">
+          {[
+            { id: 'all', label: 'All Modes' },
+            { id: 'upi', label: 'UPI / Online' },
+            { id: 'cash', label: 'Cash' },
+            { id: 'bank', label: 'Bank Transfer' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setFilterMode(tab.id)}
+              className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                filterMode === tab.id
+                  ? 'bg-brand-600 text-white shadow-sm'
+                  : 'text-charcoal-600 hover:text-charcoal-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative w-full sm:w-72">
+          <Search className="w-4 h-4 text-brand-600 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by order #, customer..."
+            className="w-full pl-10 pr-4 py-2 text-xs font-bold border border-warm-border rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm"
+          />
+        </div>
       </div>
 
       {/* Payments History Ledger Table */}

@@ -5,13 +5,16 @@ import { DEFAULT_SHOP_INFO } from '../../lib/supabase';
 
 export const AdminSettingsPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
-
   const [shopName, setShopName] = useState(DEFAULT_SHOP_INFO.name);
   const [subName, setSubName] = useState(DEFAULT_SHOP_INFO.sub_name);
   const [phone, setPhone] = useState(DEFAULT_SHOP_INFO.phone);
   const [whatsapp, setWhatsapp] = useState(DEFAULT_SHOP_INFO.whatsapp);
   const [address, setAddress] = useState(DEFAULT_SHOP_INFO.address);
   const [upiId, setUpiId] = useState(DEFAULT_SHOP_INFO.upi_id);
+  const [operatingHours, setOperatingHours] = useState('Mon - Sat: 8:30 AM - 8:30 PM (Sunday Holiday)');
+  const [gstin, setGstin] = useState('33ABCDE1234F1Z5');
+  const [ownerSignature, setOwnerSignature] = useState('C. MANIKANDAN (Proprietor)');
+  const [mapUrl, setMapUrl] = useState('https://maps.google.com/?q=Kallimandhayam');
   const [loading, setLoading] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -19,6 +22,19 @@ export const AdminSettingsPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setTimeout(() => {
+      const updatedInfo = {
+        name: shopName,
+        sub_name: subName,
+        phone,
+        whatsapp,
+        address,
+        upi_id: upiId,
+        operatingHours,
+        gstin,
+        ownerSignature,
+        mapUrl
+      };
+      localStorage.setItem('ml_shop_settings', JSON.stringify(updatedInfo));
       setLoading(false);
       setIsEditing(false);
       setSavedSuccess(true);
@@ -34,7 +50,7 @@ export const AdminSettingsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-charcoal-900">Shop Settings & Profile</h1>
           <p className="text-xs text-charcoal-500 font-semibold mt-0.5">
-            Manage workshop contact details, address, and online payment configuration
+            Manage workshop contact details, GSTIN, operating hours, and online payment configuration
           </p>
         </div>
 
@@ -95,14 +111,33 @@ export const AdminSettingsPage: React.FC = () => {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 bg-warm-bg/50 rounded-2xl border border-warm-border space-y-1">
+                <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">Operating Hours</span>
+                <span className="text-xs font-extrabold text-charcoal-900">{operatingHours}</span>
+              </div>
+
+              <div className="p-4 bg-warm-bg/50 rounded-2xl border border-warm-border space-y-1">
+                <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">GSTIN / Tax ID</span>
+                <span className="text-xs font-mono font-bold text-slate-800">{gstin}</span>
+              </div>
+            </div>
+
             <div className="p-4 bg-warm-bg/50 rounded-2xl border border-warm-border space-y-1">
               <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">Workshop Address</span>
               <span className="text-xs font-bold text-charcoal-800">{address}</span>
             </div>
 
-            <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1">
-              <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-widest block">Shop UPI ID for QR Payments</span>
-              <span className="text-sm font-black font-mono text-brand-600">{upiId}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1">
+                <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-widest block">Shop UPI ID for QR Payments</span>
+                <span className="text-sm font-black font-mono text-brand-600">{upiId}</span>
+              </div>
+
+              <div className="p-4 bg-warm-bg/50 rounded-2xl border border-warm-border space-y-1">
+                <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">Owner Signature Line</span>
+                <span className="text-xs font-extrabold text-charcoal-900">{ownerSignature}</span>
+              </div>
             </div>
 
           </div>
@@ -157,6 +192,28 @@ export const AdminSettingsPage: React.FC = () => {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-charcoal-700 mb-1">Operating Hours</label>
+                <input
+                  type="text"
+                  value={operatingHours}
+                  onChange={(e) => setOperatingHours(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-charcoal-700 mb-1">GSTIN / Tax ID</label>
+                <input
+                  type="text"
+                  value={gstin}
+                  onChange={(e) => setGstin(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-charcoal-700 mb-1">Shop Address *</label>
               <input
@@ -168,15 +225,27 @@ export const AdminSettingsPage: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">Shop UPI ID for QR Payments *</label>
-              <input
-                type="text"
-                required
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-charcoal-700 mb-1">Shop UPI ID for QR Payments *</label>
+                <input
+                  type="text"
+                  required
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-charcoal-700 mb-1">Owner Signature Name</label>
+                <input
+                  type="text"
+                  value={ownerSignature}
+                  onChange={(e) => setOwnerSignature(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
             </div>
 
             <div className="pt-3 flex gap-3">
