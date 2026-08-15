@@ -48,27 +48,6 @@ export const AdminLayout: React.FC = () => {
     }
   };
 
-  // Lock body scroll when mobile drawer is open
-  useEffect(() => {
-    if (mobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [mobileMenuOpen]);
-
-  // Close drawer on ESC key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMobileMenuOpen(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   // Protect Admin Portal: redirect non-admin users to normal login page
   if (!isAdmin) {
     return <Navigate to="/login" replace />;
@@ -95,20 +74,20 @@ export const AdminLayout: React.FC = () => {
   const adminName = user?.full_name || 'MANIKANDAN LATHE Admin';
 
   return (
-    <div className="min-h-screen bg-warm-bg flex flex-col max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-warm-bg flex flex-col">
       {/* Admin SaaS Top Header */}
-      <header className="sticky top-0 z-30 bg-charcoal-900 text-white border-b-2 border-brand-600 shadow-lg">
+      <header className="sticky top-0 z-40 bg-charcoal-900 text-white border-b-2 border-brand-600 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             
             {/* Left: Mobile Drawer Trigger + Brand Logo */}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setMobileMenuOpen(true)}
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="lg:hidden p-2 text-gray-300 hover:text-white rounded-xl hover:bg-gray-800 transition-colors focus:outline-none"
-                aria-label="Open Navigation Drawer"
+                aria-label="Toggle Admin Menu"
               >
-                <Menu className="w-6 h-6 text-brand-500" />
+                {mobileMenuOpen ? <X className="w-6 h-6 text-brand-500" /> : <Menu className="w-6 h-6" />}
               </button>
 
               <Logo size="md" variant="dark" />
@@ -142,26 +121,25 @@ export const AdminLayout: React.FC = () => {
         </div>
       </header>
 
-      {/* Mobile Drawer Navigation (Translucent Overlay + Dark Navy Slide-out Menu) */}
+      {/* Mobile Overlay Navigation Drawer */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
-          {/* Fullscreen Backdrop Blur Overlay */}
+          {/* Backdrop Blur */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
           />
 
-          {/* Dark Navy Slide-out Drawer Panel (h-[100dvh]) */}
-          <div className="relative w-[80vw] max-w-[300px] h-[100dvh] bg-slate-900 text-white p-5 flex flex-col justify-between shadow-2xl z-10 transition-transform duration-300 ease-in-out transform translate-x-0">
-            <div className="space-y-5 flex-1 overflow-y-auto pr-1">
+          {/* Drawer Menu Panel */}
+          <div className="relative flex-1 max-w-xs w-full bg-charcoal-900 text-white p-5 flex flex-col justify-between shadow-2xl z-10 animate-fade-in">
+            <div className="space-y-6">
               
               {/* Drawer Header */}
-              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-4">
                 <Logo size="md" variant="dark" />
                 <button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
-                  aria-label="Close Navigation Drawer"
+                  className="p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-800"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -169,7 +147,7 @@ export const AdminLayout: React.FC = () => {
 
               {/* Navigation Items List */}
               <div className="space-y-1">
-                <span className="text-[10px] font-extrabold text-brand-400 uppercase tracking-widest block mb-2 px-3">
+                <span className="text-[10px] font-extrabold text-brand-500 uppercase tracking-widest block mb-2 px-3">
                   MANIKANDAN LATHE OPERATIONS
                 </span>
 
@@ -185,7 +163,7 @@ export const AdminLayout: React.FC = () => {
                       className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
                         isActive
                           ? 'bg-brand-600 text-white shadow-md'
-                          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -194,11 +172,11 @@ export const AdminLayout: React.FC = () => {
                       </div>
 
                       {item.badge ? (
-                        <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full">
+                        <span className="bg-amber-500 text-black text-[10px] font-extrabold px-2 py-0.5 rounded-full">
                           {item.badge}
                         </span>
                       ) : (
-                        <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-600'}`} />
+                        <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-gray-500'}`} />
                       )}
                     </NavLink>
                   );
@@ -207,13 +185,13 @@ export const AdminLayout: React.FC = () => {
             </div>
 
             {/* Mobile Drawer Bottom Navigation Section */}
-            <div className="pt-4 border-t border-slate-800 space-y-2 shrink-0">
-              <div className="bg-slate-800/90 p-3 rounded-2xl border border-slate-700 space-y-1 mb-2">
+            <div className="pt-4 border-t border-gray-800 space-y-2">
+              <div className="bg-gray-800/80 p-3 rounded-2xl border border-gray-700 space-y-1 mb-2">
                 <div className="flex items-center gap-1.5 text-xs font-extrabold text-brand-400">
                   <ShieldAlert className="w-3.5 h-3.5" />
                   <span>Master Admin Active</span>
                 </div>
-                <p className="text-[11px] text-slate-300 font-mono font-bold truncate">
+                <p className="text-[11px] text-gray-300 font-mono truncate">
                   {adminEmail}
                 </p>
               </div>
@@ -221,7 +199,7 @@ export const AdminLayout: React.FC = () => {
               <Link
                 to="/home"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-brand-600 text-white font-extrabold py-2.5 px-4 rounded-xl text-xs border border-slate-700 transition-all shadow-sm"
+                className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-brand-600 text-white font-extrabold py-3 px-4 rounded-2xl text-xs border border-gray-700 transition-all shadow-sm"
               >
                 <Globe className="w-4 h-4 text-brand-400" />
                 <span>Back to Website</span>
@@ -232,7 +210,7 @@ export const AdminLayout: React.FC = () => {
                   setMobileMenuOpen(false);
                   handleAdminLogout();
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-rose-950/60 hover:bg-rose-900 text-rose-200 font-extrabold py-2.5 px-4 rounded-xl text-xs border border-rose-800 transition-all shadow-sm"
+                className="w-full flex items-center justify-center gap-2 bg-red-900/40 hover:bg-red-900/70 text-red-300 font-extrabold py-3 px-4 rounded-2xl text-xs border border-red-800 transition-all shadow-sm"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Admin Logout</span>
