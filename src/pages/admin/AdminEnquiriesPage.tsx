@@ -73,22 +73,32 @@ export const AdminEnquiriesPage: React.FC = () => {
 
     const deliveryDate = new Date(Date.now() + estimatedDays * 86400000).toISOString().slice(0, 10);
     const newOrderNumber = await getNextOrderId();
+    const orderId = `ord_${Date.now()}`;
 
     const newOrderRecord = {
+      id: orderId,
       order_number: newOrderNumber,
       user_id: selectedEnquiry.user_id || 'demo-user-123',
+      customerName: selectedEnquiry.customerName || selectedEnquiry.customer_name || 'Customer',
+      customerPhone: selectedEnquiry.customerPhone || selectedEnquiry.customer_phone || '+91 96592 86268',
+      customerAddress: selectedEnquiry.delivery_location || selectedEnquiry.location || 'Kallimandhayam',
       product_id: selectedEnquiry.product_id || INITIAL_PRODUCTS[0].id,
+      productName: selectedEnquiry.productName || selectedEnquiry.product_name || 'Custom Lathe Fabricated Item',
       quantity: selectedEnquiry.quantity || 1,
       status: 'order_confirmed',
       expected_delivery_date: deliveryDate,
       total_amount: quotePrice,
       advance_amount: advanceRequired,
-      remaining_amount: quotePrice - advanceRequired,
+      remaining_amount: Math.max(0, quotePrice - advanceRequired),
       is_payment_requested: true,
       payment_request_amount: advanceRequired,
       payment_status: 'pending',
       created_at: new Date().toISOString()
     };
+
+    // Store in localStorage ml_orders for instant invoice availability
+    const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    localStorage.setItem('ml_orders', JSON.stringify([newOrderRecord, ...localOrders]));
 
     try {
       await supabase.from('orders').insert(newOrderRecord);
@@ -101,6 +111,7 @@ export const AdminEnquiriesPage: React.FC = () => {
     setConvertedSuccessOrder({
       enquiryNumber: selectedEnquiry.enquiry_number || selectedEnquiry.number || selectedEnquiry.id,
       orderNumber: newOrderNumber,
+      orderId: orderId,
       quotedPrice: quotePrice,
       advanceRequired: advanceRequired
     });
@@ -220,40 +231,43 @@ export const AdminEnquiriesPage: React.FC = () => {
 
               </div>
 
-              {/* Action Buttons */}
-              <div className="pt-3 border-t border-warm-border flex items-center justify-between gap-2">
-                {enq.status === 'pending' ? (
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleUpdateStatus(enq.id, 'accepted')}
-                      className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200"
-                      title="Accept Enquiry"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                    </button>
+              {/* Action Buttons Bar */}
+              <div className="pt-3 border-t border-warm-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                <div className="flex items-center justify-between sm:justify-start gap-2">
+                  <Badge variant={enq.status === 'accepted' ? 'accepted' : enq.status === 'converted' ? 'confirmed' : enq.status === 'rejected' ? 'rejected' : 'pending'}>
+                    STATUS: {(enq.status || 'PENDING').toUpperCase()}
+                  </Badge>
 
-                    <button
-                      onClick={() => handleUpdateStatus(enq.id, 'rejected')}
-                      className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
-                      title="Reject Enquiry"
-                    >
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-[11px] font-extrabold text-charcoal-400">
-                    Status: {enq.status.toUpperCase()}
-                  </div>
-                )}
+                  {enq.status === 'pending' && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleUpdateStatus(enq.id, 'accepted')}
+                        className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200"
+                        title="Accept Enquiry"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </button>
 
-                <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleUpdateStatus(enq.id, 'rejected')}
+                        className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                        title="Reject Enquiry"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <Link
                     to={`/admin/enquiries/${enq.id}`}
-                    className="inline-flex items-center justify-center gap-1 bg-warm-bg hover:bg-brand-50 text-brand-700 font-extrabold py-2 px-3 rounded-xl text-xs border border-brand-200 transition-colors"
+                    className="inline-flex items-center justify-center gap-1 bg-warm-bg hover:bg-brand-50 text-brand-700 font-extrabold py-2 px-3.5 rounded-xl text-xs border border-brand-200 transition-colors"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     <span>View Details</span>
                   </Link>
+
                   {enq.status !== 'converted' ? (
                     <Button
                       onClick={() => setSelectedEnquiry(enq)}
@@ -264,7 +278,7 @@ export const AdminEnquiriesPage: React.FC = () => {
                       Quote & Convert
                     </Button>
                   ) : (
-                    <span className="bg-emerald-100 text-emerald-800 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1">
+                    <span className="bg-emerald-100 text-emerald-900 font-extrabold px-3.5 py-2 rounded-xl text-xs flex items-center justify-center gap-1 border border-emerald-300">
                       <Check className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Converted to Order</span>
                     </span>

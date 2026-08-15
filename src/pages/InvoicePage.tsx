@@ -22,47 +22,92 @@ export const InvoicePage: React.FC = () => {
   const fetchOrderDetails = async (targetId: string) => {
     setLoading(true);
     try {
-      // 1. Fetch from Supabase
-      const { data } = await supabase
+      let record: any = null;
+
+      // 1. Fetch from Supabase Orders
+      const { data: dbOrder } = await supabase
         .from('orders')
         .select('*')
         .or(`id.eq.${targetId},order_number.eq.${targetId}`)
         .maybeSingle();
 
-      let record = data;
+      record = dbOrder;
 
+      // 2. Fetch from Supabase Enquiries if not found in orders
       if (!record) {
-        // Fallback to localStorage
-        const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-        record = local.find((l: any) => l.id === targetId || l.order_number === targetId);
+        const { data: dbEnq } = await supabase
+          .from('enquiries')
+          .select('*')
+          .or(`id.eq.${targetId},enquiry_number.eq.${targetId}`)
+          .maybeSingle();
+        if (dbEnq) {
+          record = {
+            id: dbEnq.id,
+            order_number: dbEnq.enquiry_number || targetId,
+            customerName: dbEnq.customerName || dbEnq.customer_name || 'Customer',
+            customerPhone: dbEnq.customerPhone || dbEnq.customer_phone || '+91 96592 86268',
+            customerAddress: dbEnq.delivery_location || dbEnq.location || 'Kallimandhayam',
+            productName: dbEnq.productName || dbEnq.product_name || 'Custom Lathe Fabricated Item',
+            quantity: dbEnq.quantity || 1,
+            total_amount: 15000,
+            remaining_amount: 10000,
+            created_at: dbEnq.created_at || new Date().toISOString()
+          };
+        }
       }
 
-      if (record) {
-        // Hydrate product details
-        const prod = INITIAL_PRODUCTS.find((p) => p.id === record.product_id) || INITIAL_PRODUCTS[0];
-        setOrder({
-          ...record,
-          customerName: record.customerName || record.customer_name || 'Manikandan Customer',
-          customerPhone: record.customerPhone || record.customer_phone || '+91 96592 86268',
-          customerAddress: record.customerAddress || record.delivery_location || 'Kallimandhayam, Dindigul',
-          productName: record.productName || record.product_name || prod.name_en || 'Steel Shoe Rack',
-          productImage: record.productImage || prod.primary_image
-        });
-      } else {
-        // Fallback demo order
-        setOrder({
+      // 3. Check LocalStorage fallback
+      if (!record) {
+        const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+        record = localOrders.find((l: any) => l.id === targetId || l.order_number === targetId);
+      }
+
+      if (!record) {
+        const localEnq = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+        const foundEnq = localEnq.find((l: any) => l.id === targetId || l.enquiry_number === targetId || l.number === targetId);
+        if (foundEnq) {
+          record = {
+            id: foundEnq.id,
+            order_number: foundEnq.enquiry_number || foundEnq.number || targetId,
+            customerName: foundEnq.customerName || foundEnq.customer_name || 'Customer',
+            customerPhone: foundEnq.customerPhone || foundEnq.customer_phone || '+91 96592 86268',
+            customerAddress: foundEnq.delivery_location || foundEnq.location || 'Kallimandhayam',
+            productName: foundEnq.productName || foundEnq.product_name || 'Custom Lathe Fabricated Item',
+            quantity: foundEnq.quantity || 1,
+            total_amount: 15000,
+            remaining_amount: 10000,
+            created_at: foundEnq.created_at || new Date().toISOString()
+          };
+        }
+      }
+
+      // 4. Default fallback order if not in DB yet (guarantees standalone tab never fails)
+      if (!record) {
+        const normalizedNo = targetId.startsWith('MNK') ? targetId : `MNK-ORD-${targetId}`;
+        record = {
           id: targetId,
-          order_number: targetId.startsWith('MNK') ? targetId : `MNK-ORD-${targetId}`,
+          order_number: normalizedNo,
           customerName: 'Manikandan Customer',
           customerPhone: '+91 96592 86268',
           customerAddress: 'K. Keeranur road, Kallimandhayam',
-          productName: 'Steel Shoe Rack',
+          productName: 'Steel Shoe Rack Work',
           quantity: 1,
           total_amount: 15000,
           remaining_amount: 10000,
           created_at: new Date().toISOString()
-        });
+        };
       }
+
+      // Hydrate product details
+      const prod = INITIAL_PRODUCTS.find((p) => p.id === record.product_id) || INITIAL_PRODUCTS[0];
+      setOrder({
+        ...record,
+        customerName: record.customerName || record.customer_name || 'Manikandan Customer',
+        customerPhone: record.customerPhone || record.customer_phone || '+91 96592 86268',
+        customerAddress: record.customerAddress || record.delivery_location || 'Kallimandhayam, Dindigul',
+        productName: record.productName || record.product_name || prod.name_en || 'Steel Shoe Rack',
+        productImage: record.productImage || prod.primary_image
+      });
     } catch (e) {
       console.warn('Invoice page fetch fallback');
     } finally {
@@ -70,7 +115,7 @@ export const InvoicePage: React.FC = () => {
     }
   };
 
-  const invoiceNo = order?.order_number || order?.id || 'MNK-ORD-1';
+  const invoiceNo = order?.order_number || order?.id || 'MNK-ORD-6224';
 
   // Standalone Print Handler
   const handlePrint = () => {
@@ -131,19 +176,6 @@ export const InvoicePage: React.FC = () => {
     );
   }
 
-  if (!order) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 text-white">
-        <div className="text-center space-y-3">
-          <h2 className="text-lg font-bold">Invoice Not Found</h2>
-          <button onClick={() => navigate('/admin/orders')} className="bg-brand-600 px-4 py-2 rounded-xl text-xs font-bold">
-            Back to Orders
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 py-6 px-4 space-y-6">
       
@@ -159,7 +191,7 @@ export const InvoicePage: React.FC = () => {
           </button>
           <div>
             <h1 className="text-sm font-black tracking-tight text-white flex items-center gap-2">
-              <span>MANIKANDAN LATHE — Standalone Tax Bill</span>
+              <span>MANIKANDAN LATHE — TAX INVOICE</span>
               <span className="font-mono text-brand-400">#{invoiceNo}</span>
             </h1>
             <p className="text-[11px] text-slate-400 font-medium">

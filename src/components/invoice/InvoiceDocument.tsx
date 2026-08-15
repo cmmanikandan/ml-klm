@@ -23,9 +23,10 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
   return (
     <div
       id={id}
-      className="bg-white text-slate-900 mx-auto relative flex flex-col justify-between box-border"
+      className="bg-white text-slate-900 mx-auto relative flex flex-col justify-between box-border shadow-lg"
       style={{
         width: '210mm',
+        minWidth: '210mm',
         minHeight: '297mm',
         padding: '16mm 18mm',
         fontFamily: "'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif",
