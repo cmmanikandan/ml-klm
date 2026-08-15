@@ -40,7 +40,7 @@ export const AdminLayout: React.FC = () => {
       const { data: enqData } = await supabase.from('enquiries').select('*').eq('status', 'pending');
       if (enqData) setPendingEnquiriesCount(enqData.length);
 
-      const { data: ordData } = await supabase.from('orders').select('*').neq('status', 'delivered');
+      const { data: ordData } = await supabase.from('orders').select('*').eq('status', 'pending');
       if (ordData) setActiveOrdersCount(ordData.length);
     } catch (e) {
       const localEnq = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');

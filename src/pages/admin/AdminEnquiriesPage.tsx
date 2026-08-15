@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, MessageSquare, CheckCircle2, XCircle, ArrowRight, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Phone, MessageSquare, CheckCircle2, XCircle, ArrowRight, Search, Eye } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
@@ -213,32 +214,48 @@ export const AdminEnquiriesPage: React.FC = () => {
 
               {/* Action Buttons */}
               <div className="pt-3 border-t border-warm-border flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleUpdateStatus(enq.id, 'accepted')}
-                    className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200"
-                    title="Accept Enquiry"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                  </button>
+                {enq.status === 'pending' ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleUpdateStatus(enq.id, 'accepted')}
+                      className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200"
+                      title="Accept Enquiry"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                    </button>
 
-                  <button
-                    onClick={() => handleUpdateStatus(enq.id, 'rejected')}
-                    className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
-                    title="Reject Enquiry"
+                    <button
+                      onClick={() => handleUpdateStatus(enq.id, 'rejected')}
+                      className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                      title="Reject Enquiry"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-[11px] font-extrabold text-charcoal-400">
+                    Status: {enq.status.toUpperCase()}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/admin/enquiries/${enq.id}`}
+                    className="inline-flex items-center justify-center gap-1 bg-warm-bg hover:bg-brand-50 text-brand-700 font-extrabold py-2 px-3 rounded-xl text-xs border border-brand-200 transition-colors"
                   >
-                    <XCircle className="w-4 h-4" />
-                  </button>
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>View Details</span>
+                  </Link>
+
+                  <Button
+                    onClick={() => setSelectedEnquiry(enq)}
+                    variant="primary"
+                    size="sm"
+                    icon={<ArrowRight className="w-3.5 h-3.5" />}
+                  >
+                    Quote & Convert
+                  </Button>
                 </div>
-
-                <Button
-                  onClick={() => setSelectedEnquiry(enq)}
-                  variant="primary"
-                  size="sm"
-                  icon={<ArrowRight className="w-3.5 h-3.5" />}
-                >
-                  Send Quote & Convert
-                </Button>
               </div>
 
             </div>

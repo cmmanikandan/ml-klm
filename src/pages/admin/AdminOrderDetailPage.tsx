@@ -15,7 +15,8 @@ import {
   ShieldCheck, 
   CheckCircle2, 
   AlertTriangle,
-  History
+  History,
+  MessageSquare
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
@@ -517,14 +518,37 @@ export const AdminOrderDetailPage: React.FC = () => {
               </div>
 
               <div className="p-3 bg-warm-bg rounded-2xl border border-warm-border space-y-2">
-                <div className="flex items-center gap-2 font-bold text-charcoal-900">
-                  <Phone className="w-3.5 h-3.5 text-brand-600 shrink-0" />
-                  <a href={`tel:${order.customerPhone}`} className="hover:text-brand-600 font-mono">{order.customerPhone}</a>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-charcoal-900">
+                    <Phone className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                    <a href={`tel:${order.customerPhone}`} className="hover:text-brand-600 font-mono">{order.customerPhone}</a>
+                  </div>
                 </div>
 
                 <div className="flex items-start gap-2 font-medium text-charcoal-700">
                   <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                   <span>{order.customerAddress}</span>
+                </div>
+
+                {/* Call & WhatsApp Quick Buttons */}
+                <div className="flex items-center gap-2 pt-2 border-t border-warm-border/60">
+                  <a
+                    href={`tel:${order.customerPhone}`}
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-2 px-3 rounded-xl text-xs shadow-sm transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>Call</span>
+                  </a>
+
+                  <a
+                    href={`https://wa.me/${(order.customerPhone || '').replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2 px-3 rounded-xl text-xs shadow-sm transition-colors"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>WhatsApp</span>
+                  </a>
                 </div>
               </div>
             </div>

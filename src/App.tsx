@@ -35,6 +35,7 @@ import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminEnquiriesPage } from './pages/admin/AdminEnquiriesPage';
+import { AdminEnquiryDetailPage } from './pages/admin/AdminEnquiryDetailPage';
 import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
 import { AdminOrderDetailPage } from './pages/admin/AdminOrderDetailPage';
 import { AdminCustomersPage } from './pages/admin/AdminCustomersPage';
@@ -175,6 +176,7 @@ export const App: React.FC = () => {
                     <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="dashboard" element={<AdminDashboardPage />} />
                     <Route path="enquiries" element={<AdminEnquiriesPage />} />
+                    <Route path="enquiries/:id" element={<AdminEnquiryDetailPage />} />
                     <Route path="orders" element={<AdminOrdersPage />} />
                     <Route path="orders/:id" element={<AdminOrderDetailPage />} />
                     <Route path="customers" element={<AdminCustomersPage />} />
