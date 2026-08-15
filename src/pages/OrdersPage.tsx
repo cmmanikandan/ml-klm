@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Calendar, ChevronRight } from 'lucide-react';
+import { Package, Calendar, ChevronRight, ShoppingBag } from 'lucide-react';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { useLanguage } from '../context/LanguageContext';
@@ -210,6 +210,18 @@ export const OrdersPage: React.FC = () => {
                       <span className="font-extrabold">{enq.delivery_location || 'Kallimandhayam'}</span>
                     </div>
                   </div>
+
+                  {(enq.status === 'converted' || Boolean(enq.converted_order_id || enq.convertedOrderId || enq.order_id)) && (
+                    <div className="pt-2 border-t border-warm-border/60">
+                      <Link
+                        to={`/orders/${enq.converted_order_id || enq.convertedOrderId || enq.order_id || 'MNK-ORD-6224'}`}
+                        className="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors"
+                      >
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                        <span>{isTamil ? 'ஆர்டரைப் பார்க்கவும்' : 'View Shop Order'}</span>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               ))
             )}

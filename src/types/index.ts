@@ -63,7 +63,7 @@ export interface ProductImage {
   sort_order: number;
 }
 
-export type EnquiryStatus = 'pending' | 'accepted' | 'rejected' | 'converted_to_order';
+export type EnquiryStatus = 'pending' | 'accepted' | 'rejected' | 'converted' | 'converted_to_order';
 
 export interface Enquiry {
   id: string;
@@ -77,6 +77,9 @@ export interface Enquiry {
   custom_notes?: string;
   delivery_location?: string;
   status: EnquiryStatus;
+  converted_order_id?: string;
+  convertedOrderId?: string;
+  order_id?: string;
   rejection_reason?: string;
   created_at: string;
   updated_at?: string;

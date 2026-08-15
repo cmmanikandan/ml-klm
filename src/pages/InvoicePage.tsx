@@ -212,8 +212,9 @@ export const InvoicePage: React.FC = () => {
         margin: [0, 0, 0, 0],
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 1200 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 794, windowHeight: 1123 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css'] }
       };
 
       const html2pdf = (window as any).html2pdf;
@@ -242,7 +243,7 @@ export const InvoicePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between">
+    <div className="invoice-page-wrapper min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between">
       
       {/* 1. TOP HEADER TOOLBAR (Hidden during browser printing) */}
       <div className="no-print sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-xl flex flex-wrap items-center justify-between gap-3 shrink-0">
@@ -382,22 +383,46 @@ export const InvoicePage: React.FC = () => {
       <style>{`
         @page {
           size: A4 portrait;
-          margin: 12mm;
+          margin: 0;
         }
         @media print {
-          body {
-            background: #ffffff !important;
+          html, body {
+            width: 210mm !important;
+            height: 297mm !important;
+            max-height: 297mm !important;
             margin: 0 !important;
             padding: 0 !important;
+            background: #ffffff !important;
+            overflow: hidden !important;
           }
           .no-print {
             display: none !important;
           }
+          .invoice-page-wrapper {
+            padding: 0 !important;
+            margin: 0 !important;
+            background: #ffffff !important;
+            min-height: 0 !important;
+            height: 297mm !important;
+            max-height: 297mm !important;
+            overflow: hidden !important;
+          }
           #standalone-invoice-paper {
             width: 210mm !important;
+            height: 297mm !important;
             min-height: 297mm !important;
+            max-height: 297mm !important;
             margin: 0 !important;
+            padding: 12mm 14mm !important;
+            box-sizing: border-box !important;
             box-shadow: none !important;
+            transform: none !important;
+            page-break-after: avoid !important;
+            break-after: avoid-page !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            overflow: hidden !important;
+            position: relative !important;
           }
         }
       `}</style>

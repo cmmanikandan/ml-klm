@@ -14,7 +14,8 @@ import {
   Package, 
   Sparkles,
   Calendar,
-  Wrench
+  Wrench,
+  ShoppingBag
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
@@ -22,6 +23,7 @@ import { Modal } from '../../components/common/Modal';
 import { DEFAULT_SHOP_INFO, INITIAL_PRODUCTS, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
 import { getNextOrderId } from '../../lib/idGenerator';
+import { convertEnquiryToOrderSafely } from '../../lib/orderConversionService';
 
 export const AdminEnquiryDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -121,46 +123,40 @@ export const AdminEnquiryDetailPage: React.FC = () => {
     window.open(`https://wa.me/${targetCustomerPhone}?text=${text}`, '_blank');
   };
 
+  const [isConverting, setIsConverting] = useState(false);
+
   const handleConvertToOrder = async () => {
-    if (!enquiry) return;
+    if (!enquiry || isConverting) return;
 
-    const deliveryDate = new Date(Date.now() + estimatedDays * 86400000).toISOString().slice(0, 10);
-    const newOrderNumber = await getNextOrderId();
-
-    const newOrderRecord = {
-      id: `ord_${Date.now()}`,
-      order_number: newOrderNumber,
-      user_id: enquiry.user_id || 'demo-user-123',
-      product_id: enquiry.product_id || INITIAL_PRODUCTS[0].id,
-      quantity: enquiry.quantity || 1,
-      status: 'order_confirmed',
-      expected_delivery_date: deliveryDate,
-      total_amount: quotePrice,
-      advance_amount: advanceRequired,
-      remaining_amount: quotePrice,
-      is_payment_requested: advanceRequired > 0,
-      payment_request_amount: advanceRequired,
-      payment_status: 'unpaid',
-      created_at: new Date().toISOString()
-    };
-
+    setIsConverting(true);
     try {
-      await supabase.from('orders').insert(newOrderRecord);
-      await supabase.from('enquiries').update({ status: 'converted' }).eq('id', enquiry.id);
-    } catch (e) {
-      console.warn('Order conversion DB insert fallback');
+      const result = await convertEnquiryToOrderSafely({
+        enquiry,
+        quotePrice,
+        advanceRequired,
+        estimatedDays
+      });
+
+      setEnquiry({ ...enquiry, status: 'converted', converted_order_id: result.order.id });
+
+      if (!result.isNew) {
+        alert(result.message);
+        navigate(`/admin/orders/${result.order.id}`);
+      } else {
+        setConvertedSuccessOrder({
+          enquiryNumber: enquiry.enquiry_number || enquiry.id,
+          orderNumber: result.order.order_number,
+          orderId: result.order.id,
+          quotedPrice: quotePrice,
+          advanceRequired: advanceRequired
+        });
+      }
+    } catch (err) {
+      console.warn('Order conversion error:', err);
+      alert('Unable to convert this enquiry. Please try again.');
+    } finally {
+      setIsConverting(false);
     }
-
-    const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-    localStorage.setItem('ml_orders', JSON.stringify([newOrderRecord, ...localOrders]));
-
-    setEnquiry({ ...enquiry, status: 'converted' });
-    setConvertedSuccessOrder({
-      enquiryNumber: enquiry.enquiry_number || enquiry.id,
-      orderNumber: newOrderNumber,
-      quotedPrice: quotePrice,
-      advanceRequired: advanceRequired
-    });
   };
 
   if (loading) {
@@ -326,20 +322,24 @@ export const AdminEnquiryDetailPage: React.FC = () => {
                 Send Quote via WhatsApp
               </Button>
 
-              {enquiry.status !== 'converted' ? (
+              {!(enquiry.status === 'converted' || Boolean(enquiry.converted_order_id || enquiry.convertedOrderId || enquiry.order_id)) ? (
                 <Button
                   onClick={handleConvertToOrder}
+                  disabled={isConverting}
                   variant="primary"
                   icon={<CheckCircle2 className="w-4 h-4" />}
                   className="flex-1"
                 >
-                  Convert to Active Order
+                  {isConverting ? 'Converting...' : 'Convert to Active Order'}
                 </Button>
               ) : (
-                <div className="flex-1 bg-emerald-100 text-emerald-800 font-extrabold py-2.5 px-4 rounded-2xl text-xs text-center flex items-center justify-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Converted to Order</span>
-                </div>
+                <Link
+                  to={`/admin/orders/${enquiry.converted_order_id || enquiry.convertedOrderId || enquiry.order_id || 'MNK-ORD-6224'}`}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 px-4 rounded-2xl text-xs text-center flex items-center justify-center gap-1.5 shadow-md transition-colors"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>View Created Order</span>
+                </Link>
               )}
             </div>
           </div>

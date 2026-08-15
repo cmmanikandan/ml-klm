@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Phone, MessageSquare, CheckCircle2, XCircle, ArrowRight, Search, Eye, Check } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Phone, MessageSquare, CheckCircle2, XCircle, ArrowRight, Search, Eye, Check, ShoppingBag } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { INITIAL_PRODUCTS, DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { getNextOrderId } from '../../lib/idGenerator';
 import { getStatusConfig } from '../../lib/statusConfig';
+import { convertEnquiryToOrderSafely } from '../../lib/orderConversionService';
 
 export const AdminEnquiriesPage: React.FC = () => {
   const [filter, setFilter] = useState<'pending' | 'all' | 'accepted' | 'rejected' | 'converted'>('pending');
@@ -110,54 +111,54 @@ export const AdminEnquiriesPage: React.FC = () => {
     }
   };
 
+  // Conversion Progress & Double-Click Guard State
+  const [isConverting, setIsConverting] = useState(false);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const navigate = useNavigate();
+
   const handleConvertToOrder = async () => {
-    if (!selectedEnquiry) return;
+    if (!selectedEnquiry || isConverting) return;
 
-    const deliveryDate = new Date(Date.now() + estimatedDays * 86400000).toISOString().slice(0, 10);
-    const newOrderNumber = await getNextOrderId();
-    const orderId = `ord_${Date.now()}`;
-
-    const newOrderRecord = {
-      id: orderId,
-      order_number: newOrderNumber,
-      user_id: selectedEnquiry.user_id || 'demo-user-123',
-      customerName: selectedEnquiry.customerName || selectedEnquiry.customer_name || 'Customer',
-      customerPhone: selectedEnquiry.customerPhone || selectedEnquiry.customer_phone || '+91 96592 86268',
-      customerAddress: selectedEnquiry.delivery_location || selectedEnquiry.location || 'Kallimandhayam',
-      product_id: selectedEnquiry.product_id || INITIAL_PRODUCTS[0].id,
-      productName: selectedEnquiry.productName || selectedEnquiry.product_name || 'Custom Lathe Fabricated Item',
-      quantity: selectedEnquiry.quantity || 1,
-      status: 'order_confirmed',
-      expected_delivery_date: deliveryDate,
-      total_amount: quotePrice,
-      advance_amount: advanceRequired,
-      remaining_amount: quotePrice,
-      is_payment_requested: advanceRequired > 0,
-      payment_request_amount: advanceRequired,
-      payment_status: 'unpaid',
-      created_at: new Date().toISOString()
-    };
-
-    // Store in localStorage ml_orders for instant invoice availability
-    const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-    localStorage.setItem('ml_orders', JSON.stringify([newOrderRecord, ...localOrders]));
+    setIsConverting(true);
+    setConvertingId(selectedEnquiry.id);
 
     try {
-      await supabase.from('orders').insert(newOrderRecord);
-      await supabase.from('enquiries').update({ status: 'converted' }).eq('id', selectedEnquiry.id);
-    } catch (e) {
-      console.warn('Order conversion DB insert fallback');
-    }
+      const result = await convertEnquiryToOrderSafely({
+        enquiry: selectedEnquiry,
+        quotePrice,
+        advanceRequired,
+        estimatedDays
+      });
 
-    setEnquiries(enquiries.map((e) => (e.id === selectedEnquiry.id ? { ...e, status: 'converted' } : e)));
-    setConvertedSuccessOrder({
-      enquiryNumber: selectedEnquiry.enquiry_number || selectedEnquiry.number || selectedEnquiry.id,
-      orderNumber: newOrderNumber,
-      orderId: orderId,
-      quotedPrice: quotePrice,
-      advanceRequired: advanceRequired
-    });
-    setSelectedEnquiry(null);
+      // Update React enquiries state
+      setEnquiries((prev) =>
+        prev.map((e) =>
+          e.id === selectedEnquiry.id
+            ? { ...e, status: 'converted', converted_order_id: result.order.id }
+            : e
+        )
+      );
+
+      if (!result.isNew) {
+        alert(result.message);
+        navigate(`/admin/orders/${result.order.id}`);
+      } else {
+        setConvertedSuccessOrder({
+          enquiryNumber: selectedEnquiry.enquiry_number || selectedEnquiry.number || selectedEnquiry.id,
+          orderNumber: result.order.order_number,
+          orderId: result.order.id,
+          quotedPrice: quotePrice,
+          advanceRequired: advanceRequired
+        });
+      }
+    } catch (err) {
+      console.warn('Order conversion error:', err);
+      alert('Unable to convert this enquiry. Please try again.');
+    } finally {
+      setIsConverting(false);
+      setConvertingId(null);
+      setSelectedEnquiry(null);
+    }
   };
 
   const handleOpenWhatsAppQuote = (enq: any) => {
@@ -237,9 +238,12 @@ export const AdminEnquiriesPage: React.FC = () => {
           filteredEnquiries.map((enq) => {
             const normStatus = getNormalizedStatus(enq.status);
             const isAccepted = normStatus === 'ACCEPTED';
-            const isConverted = normStatus === 'CONVERTED';
+            const isConverted = normStatus === 'CONVERTED' || Boolean(enq.converted_order_id || enq.convertedOrderId || enq.order_id);
+            const linkedOrderId = enq.converted_order_id || enq.convertedOrderId || enq.order_id;
             const isPending = normStatus === 'PENDING';
             const isRejected = normStatus === 'REJECTED';
+            const isOrderStage = ['ORDER_CONFIRMED', 'PROCESSING', 'READY', 'DELIVERED', 'CONVERTED'].includes(normStatus) || isConverted;
+            const showQuoteAndConvert = isAccepted && !isConverted;
             const productName = getProductName(enq);
             const enquiryNo = enq.enquiry_number || enq.number || enq.id;
 
@@ -318,33 +322,39 @@ export const AdminEnquiriesPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Action Buttons Stack */}
-                  <div className="flex flex-col gap-2 pt-1">
-                    <Link
-                      to={`/admin/enquiries/${enq.id}`}
-                      className="w-full inline-flex items-center justify-center gap-1 bg-warm-bg hover:bg-brand-50 text-brand-700 font-extrabold py-2.5 px-3.5 rounded-2xl text-xs border border-brand-200 transition-colors shadow-sm"
-                    >
-                      <Eye className="w-4 h-4 text-brand-600" />
-                      <span>View Details</span>
-                    </Link>
-
-                    {!isConverted ? (
-                      <Button
-                        onClick={() => setSelectedEnquiry(enq)}
-                        variant="primary"
-                        size="sm"
-                        className="w-full justify-center py-2.5 rounded-2xl font-black text-xs shadow-md"
-                        icon={<ArrowRight className="w-4 h-4" />}
+                    {/* Action Buttons Stack */}
+                    <div className="flex flex-col gap-2 pt-1">
+                      <Link
+                        to={`/admin/enquiries/${enq.id}`}
+                        className="w-full inline-flex items-center justify-center gap-1 bg-warm-bg hover:bg-brand-50 text-brand-700 font-extrabold py-2.5 px-3.5 rounded-2xl text-xs border border-brand-200 transition-colors shadow-sm"
                       >
-                        Quote & Convert
-                      </Button>
-                    ) : (
-                      <span className="bg-emerald-100 text-emerald-900 font-extrabold px-3.5 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 border border-emerald-300">
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        <span>Converted to Order</span>
-                      </span>
-                    )}
-                  </div>
+                        <Eye className="w-4 h-4 text-brand-600" />
+                        <span>View Details</span>
+                      </Link>
+
+                      {showQuoteAndConvert && (
+                        <Button
+                          onClick={() => setSelectedEnquiry(enq)}
+                          disabled={isConverting && convertingId === enq.id}
+                          variant="primary"
+                          size="sm"
+                          className="w-full justify-center py-2.5 rounded-2xl font-black text-xs shadow-md"
+                          icon={<ArrowRight className="w-4 h-4" />}
+                        >
+                          {isConverting && convertingId === enq.id ? 'Converting...' : 'Quote & Convert'}
+                        </Button>
+                      )}
+
+                      {isOrderStage && (
+                        <Link
+                          to={`/admin/orders/${linkedOrderId || 'MNK-ORD-6224'}`}
+                          className="w-full inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 px-3.5 rounded-2xl text-xs shadow-md transition-colors"
+                        >
+                          <ShoppingBag className="w-4 h-4" />
+                          <span>View Order ({linkedOrderId ? `#${linkedOrderId}` : 'Existing Order'})</span>
+                        </Link>
+                      )}
+                    </div>
 
                 </div>
 
