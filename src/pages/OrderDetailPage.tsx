@@ -290,36 +290,46 @@ export const OrderDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* PAYMENT REQUEST SECTION */}
-          {order.is_payment_requested && order.payment_status === 'pending' && (
+          {/* PAYMENT OPTIONS SECTION (SHOW UNTIL FULLY PAID) */}
+          {((order.remaining_amount || 0) > 0 || order.payment_status !== 'paid') && (
             <div className="bg-gradient-to-r from-amber-500/10 via-brand-500/10 to-orange-500/10 p-5 rounded-2xl border-2 border-brand-300 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-brand-700 font-extrabold text-sm">
-                  <CreditCard className="w-5 h-5" />
-                  <span>{t('payment_required')}</span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest block">PAYMENT DUE</span>
+                  <div className="flex items-center gap-2 text-brand-800 font-extrabold text-sm">
+                    <CreditCard className="w-5 h-5 text-brand-600" />
+                    <span>Balance / Payment Amount</span>
+                  </div>
                 </div>
-                <span className="text-xl font-black text-brand-700 font-mono">
-                  ₹{(order.payment_request_amount || 0).toLocaleString('en-IN')}
-                </span>
+
+                <div className="text-right">
+                  <span className="text-2xl font-black text-brand-700 font-mono">
+                    ₹{(order.remaining_amount || order.payment_request_amount || order.advance_amount || 0).toLocaleString('en-IN')}
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-800 block">Total Quoted: ₹{(order.total_amount || 0).toLocaleString('en-IN')}</span>
+                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                 <Button
                   onClick={handlePayNow}
                   variant="primary"
-                  className="flex-1"
                   icon={<CreditCard className="w-4 h-4" />}
                 >
-                  {t('pay_now')}
+                  Pay Online (Card / NetBanking)
                 </Button>
 
                 <Button
                   onClick={() => setShowQrModal(true)}
                   variant="secondary"
-                  icon={<QrCode className="w-4 h-4" />}
+                  icon={<QrCode className="w-4 h-4 text-emerald-600" />}
                 >
-                  {t('view_upi_qr')}
+                  Scan GPay / PhonePe UPI QR
                 </Button>
+              </div>
+
+              <div className="bg-white/80 p-3 rounded-xl border border-warm-border text-center text-xs font-bold text-charcoal-700">
+                💵 Or pay Cash directly at Workshop Counter (<span className="text-brand-600">Kallimandhayam</span>)
               </div>
             </div>
           )}

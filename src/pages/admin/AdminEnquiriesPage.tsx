@@ -8,7 +8,7 @@ import { INITIAL_PRODUCTS, DEFAULT_SHOP_INFO, supabase } from '../../lib/supabas
 import { getNextOrderId } from '../../lib/idGenerator';
 
 export const AdminEnquiriesPage: React.FC = () => {
-  const [filter, setFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected' | 'converted'>('all');
+  const [filter, setFilter] = useState<'pending' | 'all' | 'accepted' | 'rejected' | 'converted'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   
@@ -129,7 +129,7 @@ export const AdminEnquiriesPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-warm-border shadow-sm">
-          {(['all', 'pending', 'accepted', 'rejected', 'converted'] as const).map((key) => (
+          {(['pending', 'all', 'accepted', 'rejected', 'converted'] as const).map((key) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
@@ -137,7 +137,7 @@ export const AdminEnquiriesPage: React.FC = () => {
                 filter === key ? 'bg-brand-600 text-white shadow-sm' : 'text-charcoal-600 hover:bg-warm-hover'
               }`}
             >
-              {key}
+              {key === 'pending' ? 'New Enquiries' : key === 'all' ? 'All Enquiries' : key}
             </button>
           ))}
         </div>

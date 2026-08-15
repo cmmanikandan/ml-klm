@@ -16,7 +16,8 @@ import {
   CheckCircle2, 
   AlertTriangle,
   History,
-  MessageSquare
+  MessageSquare,
+  QrCode
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
@@ -36,6 +37,7 @@ export const AdminOrderDetailPage: React.FC = () => {
   // Modals
   const [orderToDelete, setOrderToDelete] = useState<any | null>(null);
   const [showCashModal, setShowCashModal] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
   const [cashAmount, setCashAmount] = useState<number>(2000);
   const [cashNotes, setCashNotes] = useState<string>('Cash received at workshop counter');
   const [paymentReqAmount, setPaymentReqAmount] = useState<number>(5000);
@@ -364,6 +366,14 @@ export const AdminOrderDetailPage: React.FC = () => {
           </Button>
 
           <Button
+            onClick={() => setShowQrModal(true)}
+            variant="secondary"
+            icon={<QrCode className="w-4 h-4 text-emerald-600" />}
+          >
+            Show Shop UPI QR Code
+          </Button>
+
+          <Button
             onClick={() => setShowCashModal(true)}
             variant="secondary"
             icon={<DollarSign className="w-4 h-4 text-emerald-600" />}
@@ -623,6 +633,35 @@ export const AdminOrderDetailPage: React.FC = () => {
             </div>
             <Button onClick={handleRecordCashPayment} variant="primary" fullWidth icon={<CheckCircle2 className="w-4 h-4" />}>
               Save Cash Payment
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* SHOP UPI QR CODE MODAL */}
+      {showQrModal && (
+        <Modal isOpen={showQrModal} onClose={() => setShowQrModal(false)} title="Shop Official UPI QR Code" maxWidth="sm">
+          <div className="text-center space-y-4 py-3">
+            <p className="text-xs text-charcoal-600 font-bold">
+              Scan using any GPay, PhonePe, Paytm, or BHIM app
+            </p>
+
+            <div className="p-4 bg-white border-2 border-brand-300 rounded-2xl inline-block shadow-md">
+              <img src={DEFAULT_SHOP_INFO.upi_qr_url} alt="Shop UPI QR" className="w-52 h-52 mx-auto object-contain" />
+            </div>
+
+            <div className="bg-warm-bg p-3 rounded-xl border border-warm-border space-y-1">
+              <span className="text-xs text-charcoal-500 block font-bold">Shop Official UPI ID</span>
+              <span className="text-sm font-black font-mono text-brand-600">{DEFAULT_SHOP_INFO.upi_id}</span>
+              <span className="text-[10px] text-charcoal-400 block font-bold">Account Name: MANIKANDAN LATHE</span>
+            </div>
+
+            <Button
+              onClick={() => setShowQrModal(false)}
+              variant="primary"
+              fullWidth
+            >
+              Close QR Code
             </Button>
           </div>
         </Modal>
