@@ -167,6 +167,10 @@ export interface ShopInfo {
   google_maps_url?: string;
   upi_id: string;
   upi_qr_url: string;
+  gstin?: string;
+  owner_signature?: string;
+  founder_name?: string;
+  experience_years?: string;
   working_hours_en: string;
   working_hours_ta: string;
 }

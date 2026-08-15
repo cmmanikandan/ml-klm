@@ -288,7 +288,7 @@ INSERT INTO public.categories (id, name_en, name_ta, slug, image_url, sort_order
 ('66666666-6666-6666-6666-666666666666', 'Custom Welding', 'கஸ்டம் வெல்டிங்', 'custom-welding', 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80', 6)
 ON CONFLICT (slug) DO NOTHING;
 
--- Seed Admin Settings
+-- Seed Admin Settings & Complete Workshop Profile
 INSERT INTO public.admin_settings (key, value) VALUES
 ('shop_info', '{
     "name": "MANIKANDAN LATHE",
@@ -297,13 +297,17 @@ INSERT INTO public.admin_settings (key, value) VALUES
     "whatsapp": "919659286268",
     "email": "manikandanlatheklm@gmail.com",
     "address": "K. Keeranur Road, Kallimandhayam - 624616, Dindigul District, Tamil Nadu",
-    "google_maps_url": "https://maps.app.goo.gl/WP632nSNc73yiBsE7",
+    "google_maps_url": "https://maps.app.goo.gl/s2HsgvoXYCNC9YzPA",
     "upi_id": "9659286268@upi",
     "upi_qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=9659286268@upi&pn=MANIKANDAN%20LATHE",
-    "working_hours_en": "Mon - Sat: 8:00 AM - 8:00 PM",
-    "working_hours_ta": "திங்கள் - சனி: காலை 8:00 - இரவு 8:00"
+    "gstin": "33ABCDE1234F1Z5",
+    "owner_signature": "C. MANIKANDAN (Proprietor)",
+    "founder_name": "K. Chellamuthu",
+    "experience_years": "25+",
+    "working_hours_en": "Mon - Sat: 8:30 AM - 8:30 PM",
+    "working_hours_ta": "திங்கள் - சனி: காலை 8:30 - இரவு 8:30"
 }'::jsonb)
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
 -- Seed Master Admin Profile (Using Firebase Auth UID string 9QFtBzZ3Z8f2f8QH4bxgkn4sXVq1)
 INSERT INTO public.profiles (id, full_name, email, role, is_profile_completed) VALUES

@@ -49,22 +49,37 @@ export const AdminLayout: React.FC = () => {
 
   const fetchCounts = async () => {
     try {
-      // 1. Pending / Active Enquiries Count
-      const { data: enqData } = await supabase.from('enquiries').select('id, status');
+      // 1. Pending / Active Enquiries Count (Deduplicated, excl. converted)
+      const { data: enqData } = await supabase.from('enquiries').select('id, enquiry_number, status');
       const localEnq: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-      const allEnq = [...(enqData || []), ...localEnq];
-      const activeEnquiries = allEnq.filter((e: any) => (e.status || '').toLowerCase() !== 'converted');
+      const rawEnquiries = [...(enqData || []), ...localEnq];
+
+      const seenEnq = new Set();
+      const uniqueEnquiries = rawEnquiries.filter((e: any) => {
+        const key = e.id || e.enquiry_number || e.number;
+        if (!key || seenEnq.has(key)) return false;
+        seenEnq.add(key);
+        return true;
+      });
+
+      // Active enquiries: status is NOT converted
+      const activeEnquiries = uniqueEnquiries.filter((e: any) => {
+        const status = (e.status || '').toLowerCase();
+        return status !== 'converted';
+      });
+
       setPendingEnquiriesCount(activeEnquiries.length);
 
-      // 2. Not Delivered Orders Count (Accepted, Confirmed, Processing, Ready)
-      const { data: dbOrders } = await supabase.from('orders').select('id, status');
+      // 2. Not Delivered Orders Count (Deduplicated, excl. delivered)
+      const { data: dbOrders } = await supabase.from('orders').select('id, order_number, status');
       const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      const allOrders = [...(dbOrders || []), ...localOrders];
+      const rawOrders = [...(dbOrders || []), ...localOrders];
 
-      const seen = new Set();
-      const uniqueOrders = allOrders.filter((o: any) => {
-        if (!o.id || seen.has(o.id)) return false;
-        seen.add(o.id);
+      const seenOrd = new Set();
+      const uniqueOrders = rawOrders.filter((o: any) => {
+        const key = o.id || o.order_number;
+        if (!key || seenOrd.has(key)) return false;
+        seenOrd.add(key);
         return true;
       });
 

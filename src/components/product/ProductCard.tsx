@@ -17,12 +17,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const navigate = useNavigate();
 
   const isTamil = language === 'ta';
-  const isWishlisted = isInWishlist(product.id);
+  const isWishlisted = Boolean(product?.id && isInWishlist(String(product.id)));
 
   const title = isTamil ? product.name_ta || product.name_en : product.name_en;
   const category = isTamil
     ? product.category_name || 'பொதுவானது'
     : product.category_name || 'General';
+  const featuresText = product.materials || product.available_sizes || (isTamil ? '304 ஸ்டெயின்லெஸ் ஸ்டீல்' : 'Grade 304 Stainless Steel');
 
   const imageUrl =
     product.primary_image ||
@@ -44,7 +45,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       return;
     }
     
-    toggleWishlist(product.id);
+    if (product?.id) {
+      toggleWishlist(String(product.id));
+    }
   };
 
   return (
@@ -92,8 +95,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
       </div>
 
-      {/* Product Details (COMPACT - NO PRICE SHOWN) */}
-      <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+      {/* Product Details & Specifications */}
+      <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between space-y-2">
         <div>
           <span className="text-[11px] font-bold text-brand-600 tracking-wider uppercase block mb-0.5 truncate">
             {category}
@@ -101,10 +104,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <h3 className="text-xs sm:text-sm font-bold text-charcoal-900 group-hover:text-brand-600 transition-colors line-clamp-2 leading-snug">
             {title}
           </h3>
+          {featuresText && (
+            <span className="inline-block mt-1 text-[10px] font-extrabold text-charcoal-500 bg-warm-bg px-2 py-0.5 rounded-md border border-warm-border/60 truncate max-w-full">
+              {featuresText}
+            </span>
+          )}
         </div>
 
         {/* Action Trigger Link */}
-        <div className="mt-3 pt-2 border-t border-warm-muted flex items-center justify-between">
+        <div className="pt-2 border-t border-warm-muted flex items-center justify-between">
           <span className="text-[11px] font-bold text-charcoal-500 group-hover:text-brand-600 transition-colors">
             {isTamil ? 'விவரங்களை பார்' : 'View Details'}
           </span>

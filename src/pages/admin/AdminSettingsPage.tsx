@@ -111,16 +111,9 @@ export const AdminSettingsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 bg-warm-bg/50 rounded-2xl border border-warm-border space-y-1">
-                <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">Operating Hours</span>
-                <span className="text-xs font-extrabold text-charcoal-900">{operatingHours}</span>
-              </div>
-
-              <div className="p-4 bg-warm-bg/50 rounded-2xl border border-warm-border space-y-1">
-                <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">GSTIN / Tax ID</span>
-                <span className="text-xs font-mono font-bold text-slate-800">{gstin}</span>
-              </div>
+            <div className="p-4 bg-warm-bg/50 rounded-2xl border border-warm-border space-y-1">
+              <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">Operating Hours</span>
+              <span className="text-xs font-extrabold text-charcoal-900">{operatingHours}</span>
             </div>
 
             <div className="p-4 bg-warm-bg/50 rounded-2xl border border-warm-border space-y-1">
@@ -192,26 +185,14 @@ export const AdminSettingsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-charcoal-700 mb-1">Operating Hours</label>
-                <input
-                  type="text"
-                  value={operatingHours}
-                  onChange={(e) => setOperatingHours(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-charcoal-700 mb-1">GSTIN / Tax ID</label>
-                <input
-                  type="text"
-                  value={gstin}
-                  onChange={(e) => setGstin(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-charcoal-700 mb-1">Operating Hours</label>
+              <input
+                type="text"
+                value={operatingHours}
+                onChange={(e) => setOperatingHours(e.target.value)}
+                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+              />
             </div>
 
             <div>

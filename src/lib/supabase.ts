@@ -20,8 +20,12 @@ export const DEFAULT_SHOP_INFO: ShopInfo = {
   google_maps_url: 'https://maps.app.goo.gl/s2HsgvoXYCNC9YzPA',
   upi_id: '9659286268@upi',
   upi_qr_url: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=9659286268@upi&pn=MANIKANDAN%20LATHE',
-  working_hours_en: 'Mon - Sat: 8:00 AM - 8:00 PM',
-  working_hours_ta: 'திங்கள் - சனி: காலை 8:00 - இரவு 8:00'
+  gstin: '33ABCDE1234F1Z5',
+  owner_signature: 'C. MANIKANDAN (Proprietor)',
+  founder_name: 'K. Chellamuthu',
+  experience_years: '25+',
+  working_hours_en: 'Mon - Sat: 8:30 AM - 8:30 PM',
+  working_hours_ta: 'திங்கள் - சனி: காலை 8:30 - இரவு 8:30'
 };
 
 export const INITIAL_CATEGORIES: Category[] = [

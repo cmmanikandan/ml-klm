@@ -33,7 +33,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         .eq('user_id', userId);
 
       if (data) {
-        const ids = data.map((item) => item.product_id);
+        const ids = data.map((item) => String(item.product_id)).filter(Boolean);
         setWishlistProductIds(ids);
         localStorage.setItem('ml_wishlist', JSON.stringify(ids));
       }
@@ -43,14 +43,17 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const addToWishlist = async (productId: string) => {
-    if (wishlistProductIds.includes(productId)) return;
-    const updated = [...wishlistProductIds, productId];
+    if (!productId) return;
+    const pid = String(productId);
+    if (wishlistProductIds.includes(pid)) return;
+
+    const updated = [...wishlistProductIds, pid];
     setWishlistProductIds(updated);
     localStorage.setItem('ml_wishlist', JSON.stringify(updated));
 
     if (user?.id) {
       try {
-        await supabase.from('wishlists').insert({ user_id: user.id, product_id: productId });
+        await supabase.from('wishlists').insert({ user_id: user.id, product_id: pid });
       } catch (e) {
         console.warn('Wishlist insert fallback');
       }
@@ -58,7 +61,9 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const removeFromWishlist = async (productId: string) => {
-    const updated = wishlistProductIds.filter((id) => id !== productId);
+    if (!productId) return;
+    const pid = String(productId);
+    const updated = wishlistProductIds.filter((id) => id !== pid);
     setWishlistProductIds(updated);
     localStorage.setItem('ml_wishlist', JSON.stringify(updated));
 
@@ -68,7 +73,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           .from('wishlists')
           .delete()
           .eq('user_id', user.id)
-          .eq('product_id', productId);
+          .eq('product_id', pid);
       } catch (e) {
         console.warn('Wishlist delete fallback');
       }
@@ -76,6 +81,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const toggleWishlist = async (productId: string) => {
+    if (!productId) return;
     if (isInWishlist(productId)) {
       await removeFromWishlist(productId);
     } else {
@@ -83,7 +89,10 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const isInWishlist = (productId: string) => wishlistProductIds.includes(productId);
+  const isInWishlist = (productId: string) => {
+    if (!productId) return false;
+    return wishlistProductIds.includes(String(productId));
+  };
 
   return (
     <WishlistContext.Provider
