@@ -29,6 +29,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { HelpPage } from './pages/HelpPage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
+import { InvoicePage } from './pages/InvoicePage';
 
 // Admin Components & Pages
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -64,6 +65,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   const isAdmin = location.pathname.startsWith('/admin');
+  const isInvoicePage = location.pathname.startsWith('/invoice/');
   const isAuthPage = location.pathname === '/login' || location.pathname === '/onboarding';
   
   // Public static pages (Landing, About, Contact)
@@ -77,6 +79,10 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   // Product detail page handles its own bottom sticky enquiry bar
   const isProductDetailPage = location.pathname.startsWith('/products/') && location.pathname !== '/products';
+
+  if (isInvoicePage) {
+    return <main className="flex-1">{children}</main>;
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -165,6 +171,7 @@ export const App: React.FC = () => {
                   <Route path="/wishlist" element={<WishlistPage />} />
                   <Route path="/orders" element={<OrdersPage />} />
                   <Route path="/orders/:id" element={<OrderDetailPage />} />
+                  <Route path="/invoice/:id" element={<InvoicePage />} />
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/profile/details" element={<ProfileDetailsPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />

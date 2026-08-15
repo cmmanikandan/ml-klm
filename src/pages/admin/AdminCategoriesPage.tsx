@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Edit, Trash2, CheckCircle2, Upload, Image as ImageIcon } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { Category } from '../../types';
 import { fetchActiveCategories, saveCategoryToStore, deleteCategoryFromStore } from '../../lib/categoriesStore';
 
 export const AdminCategoriesPage: React.FC = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -80,6 +81,19 @@ export const AdminCategoriesPage: React.FC = () => {
     setIsModalOpen(false);
     showToast(`Category "${nameEn}" ${editingCat ? 'updated' : 'added'} successfully!`);
     loadCategories();
+  };
+
+  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        setImageUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -175,14 +189,56 @@ export const AdminCategoriesPage: React.FC = () => {
             />
           </div>
 
+          {/* Category Image Upload Card & Preview */}
           <div>
-            <label className="block text-xs font-bold text-charcoal-700 mb-1">Image URL</label>
+            <label className="block text-xs font-bold text-charcoal-700 mb-1">Category Image & Live Preview</label>
+            
+            {/* Clickable Image Upload Card */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="p-4 bg-warm-bg/70 rounded-2xl border-2 border-dashed border-warm-border hover:border-brand-500 cursor-pointer text-center space-y-3 transition-colors group"
+            >
+              {imageUrl ? (
+                <div className="space-y-2">
+                  <div className="relative inline-block">
+                    <img
+                      src={imageUrl}
+                      alt="Category Preview"
+                      className="w-32 h-24 object-cover rounded-xl border-2 border-brand-500 shadow-md mx-auto"
+                    />
+                    <span className="absolute -top-2 -right-2 bg-emerald-600 text-white font-extrabold text-[9px] px-2 py-0.5 rounded-full shadow-sm">
+                      Live Preview
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-brand-600 font-extrabold group-hover:underline">
+                    Click card to upload or change image
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1 py-2">
+                  <div className="w-10 h-10 bg-brand-100 text-brand-600 rounded-xl flex items-center justify-center mx-auto">
+                    <Upload className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-extrabold text-charcoal-900">Click card to upload category image</p>
+                  <p className="text-[10px] text-charcoal-400 font-semibold">JPG, PNG, WEBP or GIF supported</p>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageFileUpload}
+                className="hidden"
+              />
+            </div>
+
             <input
               type="url"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full px-3.5 py-2.5 text-xs font-bold border border-warm-border rounded-xl bg-white focus:outline-none"
+              placeholder="Or paste direct image URL (https://...)"
+              className="w-full mt-2 px-3.5 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white focus:outline-none"
             />
           </div>
 

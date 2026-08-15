@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Phone, MapPin, CheckCircle2, CreditCard, QrCode, Star, Package } from 'lucide-react';
+import { ArrowLeft, Calendar, Phone, MapPin, CheckCircle2, CreditCard, QrCode, Star, Package, Printer } from 'lucide-react';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
@@ -8,6 +8,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { DEFAULT_SHOP_INFO, INITIAL_PRODUCTS, supabase } from '../lib/supabase';
 import { Order, OrderStatus, PaymentStatus } from '../types';
+import { InvoicePreviewModal } from '../components/invoice/InvoicePreviewModal';
 import confetti from 'canvas-confetti';
 
 export const OrderDetailPage: React.FC = () => {
@@ -20,6 +21,7 @@ export const OrderDetailPage: React.FC = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [showInvoicePreviewModal, setShowInvoicePreviewModal] = useState(false);
 
   // Feedback State
   const [rating, setRating] = useState(5);
@@ -237,9 +239,19 @@ export const OrderDetailPage: React.FC = () => {
             <span>{isTamil ? 'ஆர்டர்களுக்குத் திரும்புக' : 'Back to My Orders'}</span>
           </button>
 
-          <span className="text-xs font-mono font-black text-brand-600">
-            #{order.order_number}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowInvoicePreviewModal(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white bg-brand-600 px-3.5 py-2 rounded-full shadow-md hover:bg-brand-700 transition-colors"
+            >
+              <Printer className="w-4 h-4" />
+              <span>{isTamil ? 'பில் பார்க்க' : 'View Bill'}</span>
+            </button>
+
+            <span className="text-xs font-mono font-black text-brand-600 bg-white px-3 py-2 rounded-full border border-warm-border">
+              #{order.order_number}
+            </span>
+          </div>
         </div>
 
         {/* Main Order Detail Card */}
@@ -514,6 +526,13 @@ export const OrderDetailPage: React.FC = () => {
           </Button>
         </div>
       </Modal>
+
+      {/* A4 INVOICE PREVIEW MODAL */}
+      <InvoicePreviewModal
+        isOpen={showInvoicePreviewModal}
+        onClose={() => setShowInvoicePreviewModal(false)}
+        order={order}
+      />
     </div>
   );
 };

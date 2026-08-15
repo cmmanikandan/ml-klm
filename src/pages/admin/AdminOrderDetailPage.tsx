@@ -24,6 +24,7 @@ import {
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { InvoicePreviewModal } from '../../components/invoice/InvoicePreviewModal';
 import { OrderStatus } from '../../types';
 import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
@@ -42,6 +43,7 @@ export const AdminOrderDetailPage: React.FC = () => {
   const [customPayAmount, setCustomPayAmount] = useState<number>(0);
   const [customPayNotes, setCustomPayNotes] = useState<string>('Payment collected at workshop');
   const [showGeneratedQr, setShowGeneratedQr] = useState(false);
+  const [showInvoicePreviewModal, setShowInvoicePreviewModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -263,333 +265,7 @@ export const AdminOrderDetailPage: React.FC = () => {
 
   // Standard A4 Paper Format Invoice Generator & Auto Print
   const handlePrintA4Invoice = () => {
-    if (!order) return;
-    const printWin = window.open('', '_blank');
-    if (!printWin) return;
-
-    const total = order.total_amount || 0;
-    const remaining = order.remaining_amount || 0;
-    const advancePaid = Math.max(0, total - remaining);
-
-    const isFullyPaid = remaining === 0;
-    const isPartiallyPaid = advancePaid > 0 && remaining > 0;
-    const statusStampText = isFullyPaid ? 'PAID IN FULL' : isPartiallyPaid ? 'PARTIALLY PAID' : 'PAYMENT PENDING';
-    const statusStampColor = isFullyPaid ? '#059669' : isPartiallyPaid ? '#d97706' : '#dc2626';
-    const statusStampBorder = isFullyPaid ? '#10b981' : isPartiallyPaid ? '#f59e0b' : '#ef4444';
-
-    printWin.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8"/>
-          <title>Tax Invoice - ${order.order_number || order.id}</title>
-          <style>
-            @page {
-              size: A4 portrait;
-              margin: 10mm;
-            }
-            @media print {
-              body { margin: 0; padding: 0; background: #fff; }
-              .no-print { display: none !important; }
-            }
-            * { box-sizing: border-box; }
-            body {
-              font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-              color: #0f172a;
-              line-height: 1.4;
-              padding: 15px;
-              max-width: 800px;
-              margin: 0 auto;
-              background: #fff;
-            }
-            .page-border {
-              border: 2px solid #0f172a;
-              padding: 20px;
-              position: relative;
-              min-height: 980px;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-            }
-            .no-print-bar {
-              background: #f8fafc;
-              border: 1px solid #cbd5e1;
-              padding: 10px 16px;
-              border-radius: 10px;
-              margin-bottom: 15px;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-            }
-            .print-btn {
-              background: #ea580c;
-              color: white;
-              border: none;
-              padding: 8px 18px;
-              font-size: 12px;
-              font-weight: 800;
-              border-radius: 8px;
-              cursor: pointer;
-            }
-            .header-box {
-              border-bottom: 2px solid #ea580c;
-              padding-bottom: 12px;
-              margin-bottom: 16px;
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-            }
-            .brand-title {
-              font-size: 26px;
-              font-weight: 900;
-              color: #0f172a;
-              letter-spacing: -0.5px;
-            }
-            .brand-title span { color: #ea580c; }
-            .brand-subtitle {
-              font-size: 10px;
-              font-weight: 800;
-              color: #ea580c;
-              letter-spacing: 2px;
-              text-transform: uppercase;
-              margin-top: 1px;
-            }
-            .shop-address {
-              font-size: 11px;
-              color: #475569;
-              margin-top: 4px;
-            }
-            .invoice-head-right { text-align: right; }
-            .doc-title { font-size: 20px; font-weight: 900; color: #0f172a; }
-            .doc-no { font-size: 13px; font-weight: 800; color: #ea580c; font-family: monospace; }
-            .stamp-badge {
-              display: inline-block;
-              padding: 3px 10px;
-              border: 2px solid ${statusStampBorder};
-              color: ${statusStampColor};
-              font-weight: 900;
-              font-size: 10px;
-              letter-spacing: 1px;
-              border-radius: 4px;
-              text-transform: uppercase;
-              margin-top: 4px;
-            }
-            .from-to-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 16px;
-              margin-bottom: 18px;
-            }
-            .address-card {
-              border: 1px solid #cbd5e1;
-              border-radius: 8px;
-              padding: 12px 14px;
-              background: #f8fafc;
-            }
-            .card-heading {
-              font-size: 10px;
-              font-weight: 900;
-              color: #ea580c;
-              text-transform: uppercase;
-              letter-spacing: 0.8px;
-              border-bottom: 1px solid #e2e8f0;
-              padding-bottom: 4px;
-              margin-bottom: 6px;
-            }
-            .party-name { font-size: 13px; font-weight: 900; color: #0f172a; }
-            .party-info { font-size: 11px; color: #334155; font-weight: 600; }
-            .items-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 18px;
-            }
-            .items-table th {
-              background: #0f172a;
-              color: #ffffff;
-              font-size: 10px;
-              font-weight: 800;
-              text-transform: uppercase;
-              padding: 8px 10px;
-              text-align: left;
-              border: 1px solid #0f172a;
-            }
-            .items-table td {
-              padding: 10px;
-              border: 1px solid #cbd5e1;
-              font-size: 11px;
-            }
-            .item-name { font-weight: 800; color: #0f172a; font-size: 12px; }
-            .item-desc { font-size: 10px; color: #64748b; margin-top: 2px; }
-            .summary-flex {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              margin-bottom: 20px;
-            }
-            .amount-in-words {
-              font-size: 11px;
-              font-weight: 700;
-              color: #334155;
-              max-width: 360px;
-              background: #f1f5f9;
-              padding: 8px 12px;
-              border-radius: 6px;
-              border-left: 3px solid #ea580c;
-            }
-            .totals-table { width: 280px; border-collapse: collapse; }
-            .totals-table td { padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #e2e8f0; }
-            .totals-table .total-row td {
-              font-size: 14px;
-              font-weight: 900;
-              color: #ea580c;
-              border-top: 2px solid #ea580c;
-              border-bottom: 2px solid #ea580c;
-              padding: 8px 10px;
-            }
-            .footer-signature-section {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-end;
-              padding-top: 15px;
-              border-top: 1px solid #cbd5e1;
-              margin-top: 30px;
-            }
-            .customer-sign-box { text-align: center; width: 180px; }
-            .owner-sign-box { text-align: center; width: 220px; }
-            .sign-line {
-              border-top: 1px solid #64748b;
-              margin-top: 45px;
-              padding-top: 4px;
-              font-size: 10px;
-              font-weight: 800;
-              color: #0f172a;
-            }
-            .shop-seal { font-size: 9px; color: #64748b; font-weight: 700; }
-          </style>
-        </head>
-        <body>
-          <div className="no-print-bar no-print">
-            <span style="font-size: 12px; font-weight: bold;">MANIKANDAN LATHE — Official Printable Tax Bill</span>
-            <button onclick="window.print()" className="print-btn">🖨️ Print Invoice Now</button>
-          </div>
-
-          <div className="page-border">
-            <div>
-              <div className="header-box">
-                <div>
-                  <div className="brand-title">MANIKANDAN <span>LATHE</span></div>
-                  <div className="brand-subtitle">— WELDING WORKS & FABRICATION SHOP —</div>
-                  <div className="shop-address">
-                    Kallimandhayam - 624616, Dindigul District, Tamil Nadu<br/>
-                    <strong>Phone:</strong> +91 96592 86268 | <strong>Email:</strong> manikandanlatheklm@gmail.com
-                  </div>
-                </div>
-
-                <div className="invoice-head-right">
-                  <div className="doc-title">TAX INVOICE / BILL</div>
-                  <div className="doc-no">#${order.order_number || order.id}</div>
-                  <div className="stamp-badge">${statusStampText}</div>
-                </div>
-              </div>
-
-              <div className="from-to-grid">
-                <div className="address-card">
-                  <div className="card-heading">FROM (SUPPLIER / WORKSHOP):</div>
-                  <div className="party-name">MANIKANDAN LATHE WORKS</div>
-                  <div className="party-info">Kallimandhayam - 624616</div>
-                  <div className="party-info">Dindigul District, Tamil Nadu</div>
-                  <div className="party-info">Phone: +91 96592 86268</div>
-                </div>
-
-                <div className="address-card">
-                  <div className="card-heading">TO (BILLED CUSTOMER):</div>
-                  <div className="party-name">${order.customerName || 'Customer'}</div>
-                  <div className="party-info">Phone: ${order.customerPhone || 'N/A'}</div>
-                  <div className="party-info">Location: ${order.customerAddress || 'Kallimandhayam'}</div>
-                  <div className="party-info">Date: ${order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN')}</div>
-                </div>
-              </div>
-
-              <table className="items-table">
-                <thead>
-                  <tr>
-                    <th style="width: 8%; text-align: center;">S.No</th>
-                    <th style="width: 52%;">Product / Fabrication Description</th>
-                    <th style="width: 12%; text-align: center;">Qty</th>
-                    <th style="width: 14%; text-align: right;">Rate (₹)</th>
-                    <th style="width: 14%; text-align: right;">Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style="text-align: center; font-weight: 800;">1</td>
-                    <td>
-                      <div className="item-name">${order.productName || 'Custom Lathe Fabricated Item'}</div>
-                      <div className="item-desc">Precision heavy duty steel lathe work & welding fabrication.</div>
-                    </td>
-                    <td style="text-align: center; font-weight: 800;">${order.quantity || 1}</td>
-                    <td style="text-align: right; font-weight: 800; font-family: monospace;">₹${total.toLocaleString('en-IN')}</td>
-                    <td style="text-align: right; font-weight: 900; font-family: monospace;">₹${total.toLocaleString('en-IN')}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <div className="summary-flex">
-                <div className="amount-in-words">
-                  <strong>Payment Status:</strong> ${statusStampText}<br/>
-                  Thank you for choosing Manikandan Lathe Works!
-                </div>
-
-                <table className="totals-table">
-                  <tr>
-                    <td>Subtotal Amount:</td>
-                    <td style="text-align: right; font-weight: 800;">₹${total.toLocaleString('en-IN')}</td>
-                  </tr>
-                  <tr>
-                    <td>Advance / Paid:</td>
-                    <td style="text-align: right; font-weight: 800; color: #059669;">- ₹${advancePaid.toLocaleString('en-IN')}</td>
-                  </tr>
-                  <tr className="total-row">
-                    <td>Balance Due:</td>
-                    <td style="text-align: right; font-family: monospace;">₹${remaining.toLocaleString('en-IN')}</td>
-                  </tr>
-                </table>
-              </div>
-            </div>
-
-            <div>
-              <div className="footer-signature-section">
-                <div className="customer-sign-box">
-                  <div className="sign-line">Customer Signature</div>
-                </div>
-
-                <div className="owner-sign-box">
-                  <div className="sign-line">
-                    Shop Owner Signature<br/>
-                    <span className="shop-seal">MANIKANDAN LATHE WORKS</span>
-                  </div>
-                </div>
-              </div>
-
-              <div style="text-align: center; font-size: 9px; color: #94a3b8; margin-top: 15px;">
-                Computer Generated Tax Invoice • Kallimandhayam - 624616, Dindigul District, Tamil Nadu
-              </div>
-            </div>
-          </div>
-
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-              }, 400);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-
-    printWin.document.close();
-    printWin.focus();
+    setShowInvoicePreviewModal(true);
   };
 
   if (loading) {
@@ -767,40 +443,66 @@ export const AdminOrderDetailPage: React.FC = () => {
               </span>
             </div>
 
-            {paymentsHistory.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-warm-bg text-charcoal-500 font-extrabold border-b border-warm-border uppercase text-[10px] tracking-wider">
-                    <tr>
-                      <th className="py-2.5 px-3">S.No</th>
-                      <th className="py-2.5 px-3">Date & Time</th>
-                      <th className="py-2.5 px-3">Payment Mode</th>
-                      <th className="py-2.5 px-3">Amount Received</th>
-                      <th className="py-2.5 px-3">Notes</th>
-                      <th className="py-2.5 px-3">Status</th>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-warm-bg text-charcoal-500 font-extrabold border-b border-warm-border uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="py-2.5 px-3">S.No</th>
+                    <th className="py-2.5 px-3">Date & Time</th>
+                    <th className="py-2.5 px-3">Payment Mode</th>
+                    <th className="py-2.5 px-3">Amount</th>
+                    <th className="py-2.5 px-3">Notes</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-warm-muted font-medium">
+                  {/* Unpaid Balance Entry Row if remaining > 0 */}
+                  {order.remaining_amount > 0 && (
+                    <tr className="bg-amber-50/50">
+                      <td className="py-3 px-3 font-extrabold text-amber-800">#Due</td>
+                      <td className="py-3 px-3 font-mono font-bold text-amber-700">Pending Collection</td>
+                      <td className="py-3 px-3 font-bold text-charcoal-900">Balance Due Amount</td>
+                      <td className="py-3 px-3 font-black text-amber-700 font-mono">₹{order.remaining_amount.toLocaleString('en-IN')}</td>
+                      <td className="py-3 px-3 text-charcoal-500 text-[11px]">Awaiting payment from customer</td>
+                      <td className="py-3 px-3">
+                        <span className="bg-red-100 text-red-800 font-extrabold px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider">
+                          UNPAID
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomPayAmount(order.remaining_amount);
+                            setShowGeneratedQr(false);
+                            setShowPaymentModal(true);
+                          }}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
+                        >
+                          Collect Payment
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-warm-muted font-medium">
-                    {paymentsHistory.map((pay, idx) => (
-                      <tr key={pay.id || idx}>
-                        <td className="py-3 px-3 font-extrabold text-charcoal-500">#{idx + 1}</td>
-                        <td className="py-3 px-3 font-mono font-bold text-charcoal-700">
-                          {pay.created_at ? new Date(pay.created_at).toLocaleString('en-IN') : 'Recent'}
-                        </td>
-                        <td className="py-3 px-3 font-bold text-charcoal-900">{pay.payment_mode || 'Online Payment'}</td>
-                        <td className="py-3 px-3 font-black text-emerald-700 font-mono">+₹{(pay.amount || 0).toLocaleString('en-IN')}</td>
-                        <td className="py-3 px-3 text-charcoal-500 text-[11px]">{pay.notes || '-'}</td>
-                        <td className="py-3 px-3"><Badge variant="paid">COMPLETED</Badge></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="p-6 text-center text-xs font-bold text-charcoal-500 bg-warm-bg rounded-2xl border border-warm-border">
-                No payment transactions recorded for this order yet.
-              </div>
-            )}
+                  )}
+
+                  {/* Completed Payments Rows */}
+                  {paymentsHistory.map((pay, idx) => (
+                    <tr key={pay.id || idx}>
+                      <td className="py-3 px-3 font-extrabold text-charcoal-500">#{idx + 1}</td>
+                      <td className="py-3 px-3 font-mono font-bold text-charcoal-700">
+                        {pay.created_at ? new Date(pay.created_at).toLocaleString('en-IN') : 'Recent'}
+                      </td>
+                      <td className="py-3 px-3 font-bold text-charcoal-900">{pay.payment_mode || 'Online Payment'}</td>
+                      <td className="py-3 px-3 font-black text-emerald-700 font-mono">+₹{(pay.amount || 0).toLocaleString('en-IN')}</td>
+                      <td className="py-3 px-3 text-charcoal-500 text-[11px]">{pay.notes || '-'}</td>
+                      <td className="py-3 px-3"><Badge variant="paid">PAID</Badge></td>
+                      <td className="py-3 px-3 text-center font-bold text-charcoal-400 text-[11px]">-</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
         </div>
@@ -1039,6 +741,13 @@ export const AdminOrderDetailPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* A4 INVOICE PREVIEW MODAL */}
+      <InvoicePreviewModal
+        isOpen={showInvoicePreviewModal}
+        onClose={() => setShowInvoicePreviewModal(false)}
+        order={order}
+      />
 
     </div>
   );
