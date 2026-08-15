@@ -38,14 +38,9 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
         {/* HEADER SECTION: Left Brand & Right Tax Invoice Details */}
         <div className="flex justify-between items-start border-b-2 border-brand-600 pb-5 mb-6">
           <div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-brand-600 text-white font-black text-lg flex items-center justify-center shadow-sm">
-                ML
-              </div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                MANIKANDAN <span className="text-brand-600">LATHE</span>
-              </h1>
-            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              MANIKANDAN <span className="text-brand-600">LATHE</span>
+            </h1>
             <p className="text-[10px] font-extrabold text-brand-600 tracking-widest uppercase mt-1">
               WELDING WORKS & FABRICATION SHOP
             </p>

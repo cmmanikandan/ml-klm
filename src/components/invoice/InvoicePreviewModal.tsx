@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Printer, ExternalLink, Download, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Printer, ExternalLink, Download, CheckCircle2, AlertCircle, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { InvoiceDocument } from './InvoiceDocument';
 
 interface InvoicePreviewModalProps {
@@ -16,10 +16,15 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [pdfDownloaded, setPdfDownloaded] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(1.0);
 
   if (!isOpen || !order) return null;
 
   const invoiceNo = order.order_number || order.id || 'MNK-ORD-6224';
+
+  const handleZoomIn = () => setZoomLevel((prev) => Math.min(1.8, Number((prev + 0.15).toFixed(2))));
+  const handleZoomOut = () => setZoomLevel((prev) => Math.max(0.4, Number((prev - 0.15).toFixed(2))));
+  const handleResetZoom = () => setZoomLevel(1.0);
 
   // 1. PRINT HANDLER
   const handlePrint = () => {
@@ -114,7 +119,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
         margin: [0, 0, 0, 0],
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
+        html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 1200 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
@@ -138,8 +143,8 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
       {/* Modal Container Card */}
       <div className="bg-slate-100 rounded-3xl shadow-2xl w-full max-w-[1150px] max-h-[94vh] flex flex-col border border-slate-700 overflow-hidden">
         
-        {/* MODAL HEADER */}
-        <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between border-b border-slate-800 shrink-0">
+        {/* MODAL HEADER WITH ZOOM CONTROLS */}
+        <div className="bg-slate-900 text-white px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 shrink-0">
           <div>
             <h3 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
               <span>Invoice Preview</span>
@@ -152,21 +157,53 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
             </p>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-2xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-            title="Close Preview"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Interactive Mobile & Desktop Zoom Controls */}
+            <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700 shadow-sm">
+              <button
+                onClick={handleZoomOut}
+                className="p-1.5 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
+                title="Zoom Out (-)"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={handleResetZoom}
+                className="px-2.5 py-1 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-mono font-bold transition-colors"
+                title="Reset Zoom (100%)"
+              >
+                {Math.round(zoomLevel * 100)}%
+              </button>
+
+              <button
+                onClick={handleZoomIn}
+                className="p-1.5 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
+                title="Zoom In (+)"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-2xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              title="Close Preview"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        {/* MODAL BODY (BI-DIRECTIONAL SCROLLABLE A4 PREVIEW AREA) */}
+        {/* MODAL BODY (SCROLLABLE A4 PREVIEW AREA WITH ZOOM TRANSFORM) */}
         <div 
           className="flex-1 p-4 sm:p-8 bg-slate-800/90 flex justify-start sm:justify-center items-start overflow-auto"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          <div className="shadow-2xl rounded-sm bg-white shrink-0 my-auto sm:my-0">
+          <div 
+            className="shadow-2xl rounded-sm bg-white shrink-0 my-auto sm:my-0 transition-transform origin-top"
+            style={{ transform: `scale(${zoomLevel})` }}
+          >
             <InvoiceDocument order={order} id="a4-preview-document" />
           </div>
         </div>
