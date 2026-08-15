@@ -27,6 +27,12 @@ import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
 import { getStatusConfig } from '../../lib/statusConfig';
 import { InvoicePreviewModal } from '../../components/invoice/InvoicePreviewModal';
+import { 
+  sendOrderConfirmationWhatsApp, 
+  sendStatusUpdateWhatsApp, 
+  sendInvoiceLinkWhatsApp, 
+  sendPaymentReceiptWhatsApp 
+} from '../../lib/whatsappService';
 
 export const AdminOrdersPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -400,6 +406,14 @@ export const AdminOrdersPage: React.FC = () => {
                           <Eye className="w-3.5 h-3.5" />
                           <span>View Details</span>
                         </Link>
+
+                        <button
+                          onClick={() => sendInvoiceLinkWhatsApp(ord)}
+                          className="p-1.5 rounded-xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                          title="Send Tax Invoice via WhatsApp"
+                        >
+                          <MessageSquare className="w-4 h-4 text-emerald-600" />
+                        </button>
 
                         <button
                           onClick={() => handlePrintA4Invoice(ord)}

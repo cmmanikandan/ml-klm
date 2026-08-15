@@ -29,6 +29,12 @@ import { OrderStatus } from '../../types';
 import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
 import { getStatusConfig } from '../../lib/statusConfig';
+import { 
+  sendOrderConfirmationWhatsApp, 
+  sendStatusUpdateWhatsApp, 
+  sendInvoiceLinkWhatsApp, 
+  sendPaymentReceiptWhatsApp 
+} from '../../lib/whatsappService';
 
 export const AdminOrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -616,18 +622,44 @@ export const AdminOrderDetailPage: React.FC = () => {
                     className="flex-1 flex items-center justify-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white font-extrabold py-2 px-3 rounded-xl text-xs shadow-sm transition-colors"
                   >
                     <Phone className="w-3.5 h-3.5" />
-                    <span>Call</span>
+                    <span>Call Customer</span>
                   </a>
 
-                  <a
-                    href={`https://wa.me/${(order.customerPhone || '').replace(/[^0-9]/g, '')}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => sendInvoiceLinkWhatsApp(order)}
                     className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2 px-3 rounded-xl text-xs shadow-sm transition-colors"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
-                    <span>WhatsApp</span>
-                  </a>
+                    <span>WhatsApp Invoice</span>
+                  </button>
+                </div>
+
+                {/* 1-Click WhatsApp Quick Notifications */}
+                <div className="pt-2 space-y-1.5 border-t border-warm-border/60">
+                  <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest block">
+                    Customer WhatsApp Alerts
+                  </span>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => sendOrderConfirmationWhatsApp(order)}
+                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold p-2 rounded-xl text-[11px] border border-emerald-200 transition-colors flex items-center justify-center gap-1"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Order Confirm</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => sendStatusUpdateWhatsApp(order, order.status || 'processing')}
+                      className="bg-brand-50 hover:bg-brand-100 text-brand-800 font-extrabold p-2 rounded-xl text-[11px] border border-brand-200 transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Send className="w-3.5 h-3.5 text-brand-600" />
+                      <span>Status Update</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
