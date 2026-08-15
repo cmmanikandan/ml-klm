@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, PackageX } from 'lucide-react';
+import { Filter, Search, X, ArrowUpDown, PackageX } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
 import { Product, Category } from '../types';
@@ -18,6 +18,10 @@ export const ProductsPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // In-page search and sorting state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'price_asc' | 'price_desc' | 'bestselling'>('newest');
 
   useEffect(() => {
     loadCatalogue();
@@ -38,16 +42,37 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
-  const filteredProducts = selectedCategorySlug === 'all'
+  // 1. Filter by category
+  let processedProducts = selectedCategorySlug === 'all'
     ? products
     : products.filter((p) => {
         const cat = categories.find((c) => c.slug === selectedCategorySlug);
         return cat ? p.category_id === cat.id : true;
       });
 
+  // 2. Filter by search query
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase();
+    processedProducts = processedProducts.filter((p) => {
+      const titleEn = (p.name_en || '').toLowerCase();
+      const titleTa = (p.name_ta || '').toLowerCase();
+      const mat = (p.materials || '').toLowerCase();
+      return titleEn.includes(q) || titleTa.includes(q) || mat.includes(q);
+    });
+  }
+
+  // 3. Sort products by price / best seller / date
+  if (sortBy === 'price_asc') {
+    processedProducts = [...processedProducts].sort((a, b) => (a.admin_price || 0) - (b.admin_price || 0));
+  } else if (sortBy === 'price_desc') {
+    processedProducts = [...processedProducts].sort((a, b) => (b.admin_price || 0) - (a.admin_price || 0));
+  } else if (sortBy === 'bestselling') {
+    processedProducts = [...processedProducts].sort((a, b) => (b.is_best_selling ? 1 : 0) - (a.is_best_selling ? 1 : 0));
+  }
+
   return (
     <div className="min-h-screen bg-warm-bg pb-24 md:pb-12 pt-4">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
         
         {/* Page Header */}
         <div className="flex items-center justify-between">
@@ -58,15 +83,54 @@ export const ProductsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs font-extrabold text-brand-600 bg-brand-50 px-3 py-1.5 rounded-full border border-brand-200">
+          <div className="flex items-center gap-1.5 text-xs font-extrabold text-brand-600 bg-brand-50 px-3 py-1.5 rounded-full border border-brand-200 shadow-sm">
             <Filter className="w-3.5 h-3.5" />
-            <span>{filteredProducts.length} {isTamil ? 'பொருட்கள்' : 'Items'}</span>
+            <span>{processedProducts.length} {isTamil ? 'பொருட்கள்' : 'Items'}</span>
+          </div>
+        </div>
+
+        {/* Top Interactive Search Bar & Sort Dropdown Filter */}
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {/* Search Bar Input */}
+          <div className="relative flex-1 w-full">
+            <Search className="w-4 h-4 text-brand-600 absolute left-3.5 top-3.5" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={isTamil ? 'பொருட்கள் அல்லது பொருளின் பெயர் தேடுக...' : 'Search products by title, Tamil name, or material...'}
+              className="w-full pl-10 pr-9 py-2.5 text-xs font-bold border-2 border-warm-border focus:border-brand-500 rounded-2xl bg-white focus:outline-none shadow-card transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-3 text-charcoal-400 hover:text-charcoal-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Price & Priority Sort Dropdown */}
+          <div className="relative w-full sm:w-auto shrink-0 flex items-center gap-2 bg-white px-3 py-2 rounded-2xl border-2 border-warm-border shadow-card">
+            <ArrowUpDown className="w-4 h-4 text-brand-600 shrink-0" />
+            <span className="text-xs font-bold text-charcoal-500 hidden sm:inline">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-transparent text-xs font-extrabold text-charcoal-900 focus:outline-none cursor-pointer pr-2"
+            >
+              <option value="newest">{isTamil ? 'புதியவை முதலிடம் (Newest)' : 'Newest Arrivals'}</option>
+              <option value="price_asc">{isTamil ? 'விலை: குறைந்ததிலிருந்து அதிகம் (Low to High)' : 'Price: Low to High'}</option>
+              <option value="price_desc">{isTamil ? 'விலை: அதிகத்திலிருந்து குறைவு (High to Low)' : 'Price: High to Low'}</option>
+              <option value="bestselling">{isTamil ? 'பிரபலமானவை முதலிடம் (Bestsellers)' : 'Bestsellers First'}</option>
+            </select>
           </div>
         </div>
 
         {/* Category Horizontal Filter Pills */}
         {categories.length > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             <button
               onClick={() => setSearchParams({})}
               className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all whitespace-nowrap border ${
@@ -105,24 +169,24 @@ export const ProductsPage: React.FC = () => {
               </div>
             ))}
           </div>
-        ) : filteredProducts.length > 0 ? (
+        ) : processedProducts.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-            {filteredProducts.map((product) => (
+            {processedProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-3xl p-12 text-center border border-warm-border shadow-card max-w-md mx-auto my-8 space-y-3">
+          <div className="bg-white rounded-3xl p-12 text-center border border-warm-border shadow-card max-w-md mx-auto my-6 space-y-3">
             <div className="w-14 h-14 rounded-full bg-brand-50 border border-brand-200 text-brand-600 flex items-center justify-center mx-auto">
               <PackageX className="w-7 h-7" />
             </div>
             <h3 className="text-base font-black text-charcoal-900">
-              {isTamil ? 'தயாரிப்புகள் ஏதும் இல்லை' : 'No Products Available'}
+              {isTamil ? 'தயாரிப்புகள் ஏதும் இல்லை' : 'No Products Matching Filter'}
             </h3>
             <p className="text-xs text-charcoal-500 font-medium leading-relaxed">
               {isTamil
-                ? 'தற்போது பொருட்கள் எதுவும் பட்டியலில் இல்லை. புதிய தயாரிப்புகள் விரைவில் சேர்க்கப்படும்.'
-                : 'No products are currently available in this catalogue section. Please check back soon!'}
+                ? 'உங்கள் தேடலுக்கு ஏற்ற பொருட்கள் ஏதும் கிடைக்கவில்லை. வேறு சொல்லைப் பயன்படுத்தி தேடவும்.'
+                : 'No products match your search or filter selection. Try adjusting your search query or sorting option.'}
             </p>
           </div>
         )}

@@ -73,6 +73,9 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Guest browsing products without logging in
   const isGuestProductBrowse = !user && location.pathname.startsWith('/products');
 
+  // Product detail page handles its own bottom sticky enquiry bar
+  const isProductDetailPage = location.pathname.startsWith('/products/') && location.pathname !== '/products';
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Public Header with Home, Products, About, Contact links for visitors */}
@@ -86,7 +89,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {!isAdmin && !isAuthPage && <FloatingWhatsApp />}
 
       {/* MobileNav bottom bar for customer portal pages */}
-      {!isAdmin && !isAuthPage && !isPublicPage && !isGuestProductBrowse && <MobileNav />}
+      {!isAdmin && !isAuthPage && !isPublicPage && !isGuestProductBrowse && !isProductDetailPage && <MobileNav />}
 
       {/* Footer ONLY on public static pages (/, /about, /contact) */}
       {!isAdmin && isPublicPage && <Footer />}
@@ -117,6 +120,17 @@ const LandingGuard: React.FC = () => {
   return <LandingPage />;
 };
 
+// Auto-Scroll to Top on Route / Product Click Navigation
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname]);
+
+  return null;
+};
+
 export const App: React.FC = () => {
   return (
     <LanguageProvider>
@@ -124,6 +138,7 @@ export const App: React.FC = () => {
         <WishlistProvider>
           <RecentlyViewedProvider>
             <BrowserRouter>
+              <ScrollToTop />
               <AppLayout>
                 <Routes>
                   {/* Public & Customer Routes */}

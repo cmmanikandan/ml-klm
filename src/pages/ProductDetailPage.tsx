@@ -11,16 +11,18 @@ import {
   Building2,
   Sparkles,
   Package,
-  Wrench
+  Wrench,
+  ThumbsUp
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
+import { ProductCard } from '../components/product/ProductCard';
 import { EnquiryModal } from '../components/product/EnquiryModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { DEFAULT_SHOP_INFO } from '../lib/supabase';
-import { fetchProductById } from '../lib/productsStore';
+import { fetchProductById, fetchActiveProducts } from '../lib/productsStore';
 import { Product } from '../types';
 
 export const ProductDetailPage: React.FC = () => {
@@ -34,6 +36,7 @@ export const ProductDetailPage: React.FC = () => {
   const isTamil = language === 'ta';
 
   const [product, setProduct] = useState<Product | null>(null);
+  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isEnquiryOpen, setIsEnquiryOpen] = useState(false);
@@ -49,7 +52,18 @@ export const ProductDetailPage: React.FC = () => {
     setLoading(true);
     const prod = await fetchProductById(productId);
     setProduct(prod);
-    if (prod) trackProductView(prod.id);
+
+    if (prod) {
+      trackProductView(prod.id);
+
+      // Fetch recommended products from same catalogue
+      const allActive = await fetchActiveProducts();
+      const filtered = allActive
+        .filter((p) => p.id !== productId)
+        .slice(0, 4);
+      setRecommendedProducts(filtered);
+    }
+
     setLoading(false);
   };
 
@@ -245,6 +259,24 @@ export const ProductDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Recommended Products Section */}
+        {recommendedProducts.length > 0 && (
+          <div className="space-y-4 pt-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-black text-charcoal-900 flex items-center gap-2">
+                <ThumbsUp className="w-4 h-4 text-brand-600" />
+                <span>{isTamil ? 'பரிந்துரைக்கப்பட்ட தயாரிப்புகள்' : 'Recommended Fabricated Products'}</span>
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {recommendedProducts.map((recProd) => (
+                <ProductCard key={recProd.id} product={recProd} />
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
 
