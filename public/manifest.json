@@ -1,6 +1,7 @@
 {
-  "short_name": "Manikandan Lathe",
-  "name": "Manikandan Lathe - Welding Works",
+  "short_name": "MANIKANDAN LATHE",
+  "name": "MANIKANDAN LATHE",
+  "description": "Manikandan Lathe - Premium Welding & Metal Fabrication Works",
   "icons": [
     {
       "src": "/logo.png",
@@ -9,8 +10,8 @@
     }
   ],
   "start_url": "/",
-  "background_color": "#FFF9F2",
-  "theme_color": "#EA580C",
+  "background_color": "#0F172A",
+  "theme_color": "#F56600",
   "display": "standalone",
   "orientation": "portrait"
 }

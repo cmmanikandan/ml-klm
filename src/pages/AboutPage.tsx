@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Wrench, Award, CheckCircle2, ArrowRight, Clock, Users, Building } from 'lucide-react';
+import { ShieldCheck, Wrench, Award, CheckCircle2, ArrowRight, Clock, Users, Building, MapPin, Navigation } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { DEFAULT_SHOP_INFO } from '../lib/supabase';
 
@@ -55,7 +55,7 @@ export const AboutPage: React.FC = () => {
       </section>
 
       {/* Founder & Workshop Leadership Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <div className="bg-gradient-to-r from-brand-600 to-amber-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center font-black text-2xl border border-white/30 shrink-0">
@@ -76,18 +76,45 @@ export const AboutPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Real Workshop Photo Showcase */}
-        <div className="mt-6 bg-white p-4 rounded-3xl border border-warm-border shadow-card overflow-hidden">
-          <div className="aspect-video w-full rounded-2xl overflow-hidden border border-warm-border max-h-[420px]">
-            <img
-              src="/manikandan_shop_real.jpg"
-              alt="Manikandan Lathe - Welding Works Workshop"
-              className="w-full h-full object-cover"
-            />
+        {/* Shop Location Google Map Section */}
+        <div className="bg-white p-6 rounded-3xl border border-warm-border shadow-card space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-brand-100 text-brand-600 rounded-2xl">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-charcoal-900">
+                  {isTamil ? 'மணிகண்டன் லேத் பட்டறை அமைவிடம்' : 'Manikandan Lathe Workshop Location'}
+                </h3>
+                <p className="text-xs text-charcoal-500 font-bold">
+                  {DEFAULT_SHOP_INFO.address}
+                </p>
+              </div>
+            </div>
+
+            <a
+              href="https://maps.app.goo.gl/s2HsgvoXYCNC9YzPA"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-5 py-3 rounded-2xl shadow-md transition-all text-xs shrink-0"
+            >
+              <Navigation className="w-4 h-4" />
+              <span>{isTamil ? 'கூகிள் மேப்பில் வழிகாட்டல் பெற' : 'Open Location in Google Maps'}</span>
+            </a>
           </div>
-          <div className="pt-3 px-2 flex items-center justify-between text-xs font-extrabold text-charcoal-700">
-            <span>மணிகண்டன் லேத் – கிரில், கலப்பை, டாப் & வெல்டிங் ஒர்க்ஸ்</span>
-            <span className="text-brand-600">கள்ளிமந்தையம் | செல்: 96592 86268</span>
+
+          <div className="w-full h-[280px] sm:h-[320px] rounded-2xl overflow-hidden border border-warm-border shadow-inner">
+            <iframe
+              title="Manikandan Lathe About Page Map"
+              src="https://maps.google.com/maps?q=Cm%20Manikandan%20lathe,%20Kallimandayam,%20Tamil%20Nadu&t=&z=16&ie=UTF8&iwloc=&output=embed"
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              allowFullScreen={true}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
           </div>
         </div>
       </section>

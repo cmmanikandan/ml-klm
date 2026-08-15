@@ -17,7 +17,7 @@ export const DEFAULT_SHOP_INFO: ShopInfo = {
   whatsapp: '919659286268',
   email: 'manikandanlatheklm@gmail.com',
   address: 'K. Keeranur Road, Kallimandhayam - 624616, Dindigul District, Tamil Nadu',
-  google_maps_url: 'https://maps.app.goo.gl/bfGncbqtGsvYgPT38',
+  google_maps_url: 'https://maps.app.goo.gl/s2HsgvoXYCNC9YzPA',
   upi_id: '9659286268@upi',
   upi_qr_url: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=9659286268@upi&pn=MANIKANDAN%20LATHE',
   working_hours_en: 'Mon - Sat: 8:00 AM - 8:00 PM',

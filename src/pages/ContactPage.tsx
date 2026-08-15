@@ -103,8 +103,8 @@ export const ContactPage: React.FC = () => {
 
             <div className="w-full h-[360px] sm:h-[400px] rounded-2xl overflow-hidden border border-warm-border shadow-inner">
               <iframe
-                title="Manikandan Lathe Google Map"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3930.1257412852726!2d78.1189445147926!3d9.91950599290637!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3b00c582b1189269%3A0x86915155799a770!2sMadurai%2C%20Tamil%20Nadu!5e0!3m2!1sen!2sin!4v1690000000000!5m2!1sen!2sin"
+                title="Manikandan Lathe Kallimandhayam Google Map"
+                src="https://maps.google.com/maps?q=Cm%20Manikandan%20lathe,%20Kallimandayam,%20Tamil%20Nadu&t=&z=16&ie=UTF8&iwloc=&output=embed"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
