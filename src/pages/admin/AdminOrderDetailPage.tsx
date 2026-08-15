@@ -87,14 +87,43 @@ export const AdminOrderDetailPage: React.FC = () => {
         const { data: dbPayments } = await supabase
           .from('payments')
           .select('*')
-          .eq('order_id', orderId)
+          .or(`order_id.eq.${orderId},order_id.eq.${hydrated.order_number}`)
           .order('created_at', { ascending: false });
 
-        if (dbPayments && dbPayments.length > 0) {
-          setPaymentsHistory(dbPayments);
-        } else {
-          setPaymentsHistory([]);
+        const localPayments: any[] = JSON.parse(localStorage.getItem('ml_payments') || '[]');
+        const matchingLocal = localPayments.filter(
+          (p: any) => p.order_id === orderId || p.order_id === hydrated.order_number || p.order_number === hydrated.order_number
+        );
+
+        let combined = [...(dbPayments || []), ...matchingLocal];
+        const seen = new Set();
+        combined = combined.filter((p: any) => {
+          if (!p.id || seen.has(p.id)) return false;
+          seen.add(p.id);
+          return true;
+        });
+
+        // Synthesize advance payment if advance paid > 0 but payments table empty
+        const total = hydrated.total_amount || 0;
+        const remaining = hydrated.remaining_amount || 0;
+        const advancePaid = Math.max(0, total - remaining);
+
+        if (combined.length === 0 && advancePaid > 0) {
+          combined = [
+            {
+              id: `pay_adv_${hydrated.id}`,
+              order_id: hydrated.id,
+              order_number: hydrated.order_number || hydrated.id,
+              amount: advancePaid,
+              payment_mode: 'UPI / Online Advance',
+              notes: 'Order advance payment',
+              created_at: hydrated.created_at || new Date().toISOString(),
+              status: 'completed'
+            }
+          ];
         }
+
+        setPaymentsHistory(combined);
       }
     } catch (e) {
       console.warn('Order detail fetch fallback');
@@ -202,7 +231,15 @@ export const AdminOrderDetailPage: React.FC = () => {
       status: 'completed'
     };
 
-    setPaymentsHistory([newPaymentObj, ...paymentsHistory]);
+    const updatedHistory = [newPaymentObj, ...paymentsHistory];
+    setPaymentsHistory(updatedHistory);
+
+    const localPayments = JSON.parse(localStorage.getItem('ml_payments') || '[]');
+    localStorage.setItem('ml_payments', JSON.stringify([newPaymentObj, ...localPayments]));
+
+    const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocalOrders = localOrders.map((l: any) => l.id === order.id ? updatedOrder : l);
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocalOrders));
 
     try {
       await supabase
@@ -619,18 +656,18 @@ export const AdminOrderDetailPage: React.FC = () => {
 
           {/* Action ONLY for Unpaid / Partially Paid Orders */}
           {isUnpaid ? (
-            <Button
+            <button
+              type="button"
               onClick={() => {
                 setCustomPayAmount(remainingBalance);
                 setShowGeneratedQr(false);
                 setShowPaymentModal(true);
               }}
-              variant="secondary"
-              className="bg-brand-50 border-brand-200 text-brand-700 hover:bg-brand-100"
-              icon={<DollarSign className="w-4 h-4 text-brand-600" />}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-4 py-2 rounded-2xl text-xs shadow-md transition-colors flex items-center gap-1.5"
             >
-              Collect / Record Payment (Due: ₹{remainingBalance.toLocaleString('en-IN')})
-            </Button>
+              <DollarSign className="w-4 h-4 text-emerald-300" />
+              <span>Collect Payment</span>
+            </button>
           ) : (
             <span className="bg-emerald-100 text-emerald-800 font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1">
               <Check className="w-4 h-4 text-emerald-600" />
