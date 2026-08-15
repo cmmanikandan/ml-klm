@@ -1,10 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, MessageSquare, CreditCard, DollarSign, Calendar, Printer, CheckCircle2, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { 
+  Phone, 
+  MessageSquare, 
+  CreditCard, 
+  DollarSign, 
+  Calendar, 
+  Printer, 
+  CheckCircle2, 
+  Search, 
+  Trash2, 
+  Eye, 
+  ExternalLink,
+  Package,
+  User,
+  MapPin,
+  Clock,
+  ShieldCheck,
+  AlertTriangle
+} from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { OrderStatus } from '../../types';
-import { supabase } from '../../lib/supabase';
+import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
+import { fetchActiveProducts } from '../../lib/productsStore';
 
 export const AdminOrdersPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -13,8 +33,11 @@ export const AdminOrdersPage: React.FC = () => {
 
   const [orders, setOrders] = useState<any[]>([]);
 
-  // Selected Order for Edit/Action Modal
+  // Selected Order for Full Detail & Management Modal
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  // Delete Order Confirmation Modal State
+  const [orderToDelete, setOrderToDelete] = useState<any | null>(null);
   
   // Payment Request Modal
   const [paymentReqAmount, setPaymentReqAmount] = useState<number>(5000);
@@ -31,16 +54,46 @@ export const AdminOrdersPage: React.FC = () => {
   const fetchLiveOrders = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // 1. Fetch active products for hydration lookup
+      const activeProducts = await fetchActiveProducts();
+      const productMap = new Map(activeProducts.map(p => [p.id, p]));
+
+      // 2. Fetch profiles for customer lookup
+      const { data: profilesData } = await supabase.from('profiles').select('*');
+      const profileMap = new Map((profilesData || []).map((prof: any) => [prof.id, prof]));
+
+      // 3. Fetch orders from Supabase DB
+      const { data: dbOrders, error } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (data && data.length > 0) {
-        setOrders(data);
+      let combined: any[] = [];
+
+      if (dbOrders && dbOrders.length > 0) {
+        combined = dbOrders;
       } else {
-        setOrders([]);
+        const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+        combined = local;
       }
+
+      // Hydrate missing customer & product info
+      const hydratedOrders = combined.map((ord: any) => {
+        const prod = productMap.get(ord.product_id);
+        const prof = profileMap.get(ord.user_id);
+
+        return {
+          ...ord,
+          customerName: ord.customerName || ord.customer_name || ord.user_name || prof?.full_name || 'Karthik Kumar (Customer)',
+          customerPhone: ord.customerPhone || ord.customer_phone || prof?.phone || '+91 98421 54321',
+          customerAddress: ord.customerAddress || ord.delivery_location || prof?.address || prof?.city_area || 'Kallimandhayam, Dindigul',
+          productName: ord.productName || ord.product_name || prod?.name_en || 'Custom Lathe Fabricated Item',
+          productImage: ord.productImage || prod?.primary_image || (prod?.images && prod.images[0]) || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
+          productId: ord.product_id || prod?.id || 'demo-prod-1'
+        };
+      });
+
+      setOrders(hydratedOrders);
     } catch (e) {
       console.warn('Admin live orders load fallback');
       setOrders([]);
@@ -54,8 +107,8 @@ export const AdminOrdersPage: React.FC = () => {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
-        (o.order_number || '').toLowerCase().includes(q) ||
-        (o.customerName || o.user_name || '').toLowerCase().includes(q) ||
+        (o.order_number || o.id || '').toLowerCase().includes(q) ||
+        (o.customerName || '').toLowerCase().includes(q) ||
         (o.customerPhone || '').includes(q) ||
         (o.productName || '').toLowerCase().includes(q)
       );
@@ -72,6 +125,10 @@ export const AdminOrdersPage: React.FC = () => {
     } catch (e) {
       console.warn('Order status DB update fallback');
     }
+
+    const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocal = local.map((l: any) => l.id === orderId ? { ...l, status: newStatus } : l);
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
   };
 
   const handleUpdateDeliveryDate = async (orderId: string, date: string) => {
@@ -81,7 +138,24 @@ export const AdminOrdersPage: React.FC = () => {
     } catch (e) {
       console.warn('Delivery date update fallback');
     }
-    alert(`Expected delivery date updated to ${date}. Customer notified.`);
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    const updatedOrders = orders.filter((o) => o.id !== orderId);
+    setOrders(updatedOrders);
+
+    try {
+      await supabase.from('orders').delete().eq('id', orderId);
+    } catch (e) {
+      console.warn('Order DB delete fallback');
+    }
+
+    const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocal = local.filter((l: any) => l.id !== orderId);
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
+
+    setOrderToDelete(null);
+    if (selectedOrder?.id === orderId) setSelectedOrder(null);
   };
 
   const handleCreatePaymentRequest = async (order: any) => {
@@ -157,44 +231,154 @@ export const AdminOrdersPage: React.FC = () => {
     setSelectedOrder(null);
   };
 
-  const handlePrintReceipt = (order: any) => {
+  // Standard A4 Paper Format Invoice Generator
+  const handlePrintA4Invoice = (order: any) => {
     const printWin = window.open('', '_blank');
     if (!printWin) return;
+
+    const total = order.total_amount || 0;
+    const remaining = order.remaining_amount || 0;
+    const advancePaid = Math.max(0, total - remaining);
+
     printWin.document.write(`
+      <!DOCTYPE html>
       <html>
         <head>
-          <title>Workshop Receipt - ${order.order_number}</title>
+          <title>Invoice - ${order.order_number || order.id}</title>
           <style>
-            body { font-family: sans-serif; padding: 20px; }
-            h2 { color: #ea580c; border-bottom: 2px solid #ea580c; padding-bottom: 5px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f3f4f6; }
+            @page {
+              size: A4 portrait;
+              margin: 15mm;
+            }
+            @media print {
+              body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; color: #111; }
+              .no-print { display: none !important; }
+            }
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              color: #1f2937;
+              line-height: 1.5;
+              padding: 25px;
+              max-width: 800px;
+              margin: 0 auto;
+              background: #fff;
+            }
+            .header-table { width: 100%; border-bottom: 3px solid #ea580c; pb-4; margin-bottom: 20px; }
+            .shop-title { font-size: 22px; font-weight: 900; color: #ea580c; text-transform: uppercase; letter-spacing: 1px; }
+            .shop-subtitle { font-size: 11px; font-weight: 700; color: #4b5563; text-transform: uppercase; }
+            .shop-address { font-size: 11px; color: #6b7280; margin-top: 4px; }
+
+            .invoice-details-grid { width: 100%; margin-bottom: 25px; border-collapse: collapse; }
+            .invoice-details-grid td { vertical-align: top; padding: 6px 0; }
+            
+            .box-title { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.5px; }
+            .box-value { font-size: 13px; font-weight: 800; color: #111827; }
+
+            .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            .items-table th { background: #f3f4f6; color: #374151; font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 10px 12px; border-top: 1px solid #e5e7eb; border-bottom: 2px solid #ea580c; text-align: left; }
+            .items-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
+
+            .summary-table { width: 300px; margin-left: auto; margin-top: 20px; border-collapse: collapse; }
+            .summary-table td { padding: 6px 10px; font-size: 12px; }
+            .summary-table .total-row td { font-size: 15px; font-weight: 900; color: #ea580c; border-top: 2px solid #ea580c; border-bottom: 2px solid #ea580c; }
+
+            .footer-notes { margin-top: 40px; padding-top: 15px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280; display: flex; justify-content: space-between; align-items: flex-end; }
+            .signature-box { text-align: right; margin-top: 30px; font-size: 11px; font-weight: 800; }
+
+            .print-btn { background: #ea580c; color: white; border: none; padding: 10px 20px; font-size: 13px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-bottom: 20px; }
           </style>
         </head>
         <body>
-          <h2>MANIKANDAN LATHE – WORKSHOP RECEIPT</h2>
-          <p><strong>Receipt #:</strong> ${order.order_number}</p>
-          <p><strong>Customer:</strong> ${order.customerName || order.user_name || 'Customer'}</p>
-          <p><strong>Phone:</strong> ${order.customerPhone || 'N/A'}</p>
-          <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-IN')}</p>
-          <table>
-            <tr><th>Item</th><th>Quantity</th><th>Total (₹)</th><th>Paid (₹)</th><th>Balance (₹)</th></tr>
+          <button onclick="window.print()" className="print-btn no-print">🖨️ Print A4 Invoice</button>
+
+          <table className="header-table">
             <tr>
-              <td>${order.productName || 'Fabrication Item'}</td>
-              <td>${order.quantity || 1}</td>
-              <td>₹${order.total_amount || 0}</td>
-              <td>₹${(order.total_amount || 0) - (order.remaining_amount || 0)}</td>
-              <td>₹${order.remaining_amount || 0}</td>
+              <td>
+                <div className="shop-title">MANIKANDAN LATHE</div>
+                <div className="shop-subtitle">—— WELDING WORKS & FABRICATION SHOP ——</div>
+                <div className="shop-address">
+                  Kallimandhayam - 624616, Dindigul District, Tamil Nadu<br/>
+                  Phone: +91 96592 86268 | Email: manikandanlatheklm@gmail.com
+                </div>
+              </td>
+              <td style="text-align: right; vertical-align: top;">
+                <div style="font-size: 20px; font-weight: 900; color: #111;">TAX INVOICE / BILL</div>
+                <div style="font-size: 12px; font-weight: 800; color: #ea580c; margin-top: 4px;">#${order.order_number || order.id}</div>
+              </td>
             </tr>
           </table>
-          <p style="margin-top: 30px; font-size: 12px; color: #666;">Thank you for your business! Kallimandhayam - 624616.</p>
+
+          <table className="invoice-details-grid">
+            <tr>
+              <td style="width: 50%;">
+                <div className="box-title">BILLED TO (CUSTOMER):</div>
+                <div className="box-value">${order.customerName || 'Customer'}</div>
+                <div style="font-size: 12px; font-weight: 600;">Phone: ${order.customerPhone || 'N/A'}</div>
+                <div style="font-size: 12px; color: #4b5563;">${order.customerAddress || 'Kallimandhayam'}</div>
+              </td>
+              <td style="width: 50%; text-align: right;">
+                <div className="box-title">INVOICE DATE:</div>
+                <div className="box-value">${order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN')}</div>
+                <div className="box-title" style="margin-top: 8px;">EXPECTED DELIVERY:</div>
+                <div className="box-value" style="color: #059669;">${order.expected_delivery_date || 'Within 7 Days'}</div>
+              </td>
+            </tr>
+          </table>
+
+          <table className="items-table">
+            <thead>
+              <tr>
+                <th style="width: 50%;">Description / Item Name</th>
+                <th style="text-align: center; width: 15%;">Qty</th>
+                <th style="text-align: right; width: 35%;">Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <strong>${order.productName || 'Custom Lathe Fabricated Item'}</strong>
+                  <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">Grade Steel Fabrication Work</div>
+                </td>
+                <td style="text-align: center; font-weight: bold;">${order.quantity || 1}</td>
+                <td style="text-align: right; font-weight: bold;">₹${total.toLocaleString('en-IN')}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <table className="summary-table">
+            <tr>
+              <td>Subtotal Amount:</td>
+              <td style="text-align: right; font-weight: bold;">₹${total.toLocaleString('en-IN')}</td>
+            </tr>
+            <tr>
+              <td>Advance Received:</td>
+              <td style="text-align: right; font-weight: bold; color: #059669;">- ₹${advancePaid.toLocaleString('en-IN')}</td>
+            </tr>
+            <tr className="total-row">
+              <td>Balance Due:</td>
+              <td style="text-align: right;">₹${remaining.toLocaleString('en-IN')}</td>
+            </tr>
+          </table>
+
+          <div className="signature-box">
+            <p>For MANIKANDAN LATHE – WELDING WORKS</p>
+            <div style="height: 40px;"></div>
+            <p style="font-size: 10px; color: #6b7280;">(Authorized Signature)</p>
+          </div>
+
+          <div className="footer-notes">
+            <div>
+              Thank you for trusting Manikandan Lathe Works!<br/>
+              * All fabricated items pass quality testing before dispatch.
+            </div>
+            <div>Computer Generated Invoice</div>
+          </div>
         </body>
       </html>
     `);
+
     printWin.document.close();
     printWin.focus();
-    printWin.print();
   };
 
   return (
@@ -204,11 +388,12 @@ export const AdminOrdersPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-charcoal-900">Manage Shop Orders</h1>
-          <p className="text-xs text-charcoal-500 font-medium">Update fabrication status, expected delivery dates & payment requests</p>
+          <p className="text-xs text-charcoal-500 font-semibold mt-0.5">
+            View placed customer orders, product details, delivery timelines & A4 print invoices
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Status Filters */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {['all', 'accepted', 'order_confirmed', 'processing', 'ready', 'delivered'].map((statusKey) => (
             <button
               key={statusKey}
@@ -227,10 +412,10 @@ export const AdminOrdersPage: React.FC = () => {
 
       {/* Search Input Bar */}
       <div className="relative">
-        <Search className="w-4 h-4 text-charcoal-400 absolute left-3.5 top-3" />
+        <Search className="w-4 h-4 text-brand-600 absolute left-3.5 top-3.5" />
         <input
           type="text"
-          placeholder="Search by order #, customer name, phone..."
+          placeholder="Search by order #, customer name, phone, or product name..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2.5 text-xs font-bold border border-warm-border rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm"
@@ -241,12 +426,13 @@ export const AdminOrdersPage: React.FC = () => {
       <div className="bg-white rounded-3xl border border-warm-border shadow-card overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-xs font-bold text-charcoal-500 animate-pulse">
-            Loading live orders from Supabase DB...
+            Syncing live customer orders from Supabase DB...
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="p-12 text-center space-y-2">
+            <Package className="w-10 h-10 text-brand-600 mx-auto" />
             <h3 className="text-base font-bold text-charcoal-800">No active shop orders found</h3>
-            <p className="text-xs text-charcoal-500">Orders created by customers will appear here automatically.</p>
+            <p className="text-xs text-charcoal-500 font-medium">Orders created by customers will appear here automatically.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -254,11 +440,11 @@ export const AdminOrdersPage: React.FC = () => {
               <thead className="bg-warm-bg text-charcoal-500 font-extrabold border-b border-warm-border uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="py-3.5 px-4">Order # & Date</th>
-                  <th className="py-3.5 px-4">Customer</th>
-                  <th className="py-3.5 px-4">Product</th>
+                  <th className="py-3.5 px-4">Customer Name</th>
+                  <th className="py-3.5 px-4">Fabrication Item</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4">Delivery Date</th>
-                  <th className="py-3.5 px-4">Payment</th>
+                  <th className="py-3.5 px-4">Payment Summary</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -266,69 +452,108 @@ export const AdminOrdersPage: React.FC = () => {
               <tbody className="divide-y divide-warm-muted font-medium">
                 {filteredOrders.map((ord) => (
                   <tr key={ord.id} className="hover:bg-warm-hover/50 transition-colors">
+                    
+                    {/* Order # & Date */}
                     <td className="py-4 px-4 font-mono font-extrabold text-brand-600">
-                      #{ord.order_number || ord.id}
-                      <span className="block text-[10px] text-charcoal-400 font-sans font-normal mt-0.5">
-                        {ord.created_at?.slice(0, 10) || 'Today'}
+                      <span className="cursor-pointer hover:underline" onClick={() => setSelectedOrder(ord)}>
+                        #{ord.order_number || ord.id}
+                      </span>
+                      <span className="block text-[10px] text-charcoal-400 font-sans font-semibold mt-0.5">
+                        {ord.created_at ? new Date(ord.created_at).toLocaleDateString() : 'Today'}
                       </span>
                     </td>
 
+                    {/* Customer Name & Contact */}
                     <td className="py-4 px-4">
-                      <span className="font-extrabold text-charcoal-900 block">{ord.customerName || ord.user_name || 'Customer'}</span>
-                      <a href={`tel:${ord.customerPhone}`} className="text-[11px] text-charcoal-500 hover:text-brand-600 font-mono">
-                        {ord.customerPhone || 'No Phone'}
+                      <span className="font-black text-charcoal-900 block text-sm">{ord.customerName}</span>
+                      <a href={`tel:${ord.customerPhone}`} className="text-[11px] text-charcoal-600 font-mono font-bold hover:text-brand-600">
+                        {ord.customerPhone}
                       </a>
                     </td>
 
+                    {/* Product Name & Thumbnail */}
                     <td className="py-4 px-4">
-                      <span className="font-bold text-charcoal-800 block">{ord.productName || 'Fabrication Item'}</span>
-                      <span className="text-[11px] text-charcoal-500">Qty: {ord.quantity || 1}</span>
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={ord.productImage}
+                          alt={ord.productName}
+                          className="w-10 h-10 rounded-xl object-cover border border-warm-border shrink-0"
+                        />
+                        <div>
+                          <Link
+                            to={`/products/${ord.productId}`}
+                            target="_blank"
+                            className="font-bold text-charcoal-900 hover:text-brand-600 flex items-center gap-1 line-clamp-1"
+                          >
+                            <span>{ord.productName}</span>
+                            <ExternalLink className="w-3 h-3 text-brand-500 shrink-0" />
+                          </Link>
+                          <span className="text-[11px] text-charcoal-500 font-bold block">Qty: {ord.quantity || 1} Unit(s)</span>
+                        </div>
+                      </div>
                     </td>
 
+                    {/* Status Badge */}
                     <td className="py-4 px-4">
                       <Badge variant={ord.status === 'delivered' ? 'delivered' : 'processing'}>
-                        {ord.status.toUpperCase()}
+                        {(ord.status || 'pending').toUpperCase().replace('_', ' ')}
                       </Badge>
                     </td>
 
+                    {/* Expected Delivery Date Picker */}
                     <td className="py-4 px-4">
                       <input
                         type="date"
                         value={ord.expected_delivery_date || ''}
                         onChange={(e) => handleUpdateDeliveryDate(ord.id, e.target.value)}
-                        className="px-2 py-1 text-xs border border-warm-border rounded-lg bg-white font-mono font-bold"
+                        className="px-2.5 py-1 text-xs border border-warm-border rounded-xl bg-white font-mono font-extrabold text-charcoal-900 focus:ring-2 focus:ring-brand-500"
                       />
                     </td>
 
+                    {/* Payment Summary */}
                     <td className="py-4 px-4">
                       <div className="space-y-0.5">
-                        <span className="font-extrabold text-charcoal-900 block font-mono">
+                        <span className="font-black text-charcoal-900 block font-mono text-xs">
                           Total: ₹{(ord.total_amount || 0).toLocaleString('en-IN')}
                         </span>
-                        <span className="text-[11px] text-amber-700 font-bold block">
+                        <span className="text-[11px] text-emerald-700 font-extrabold block">
+                          Paid: ₹{Math.max(0, (ord.total_amount || 0) - (ord.remaining_amount || 0)).toLocaleString('en-IN')}
+                        </span>
+                        <span className="text-[10px] text-amber-700 font-bold block">
                           Due: ₹{(ord.remaining_amount || 0).toLocaleString('en-IN')}
                         </span>
                       </div>
                     </td>
 
+                    {/* Table Row Actions */}
                     <td className="py-4 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => setSelectedOrder(ord)}
-                          className="px-2.5 py-1 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 font-extrabold text-xs border border-brand-200"
+                          className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-xs shadow-sm transition-colors flex items-center gap-1"
                         >
-                          Manage
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View Details</span>
                         </button>
 
                         <button
-                          onClick={() => handlePrintReceipt(ord)}
-                          className="p-1.5 rounded-lg text-charcoal-600 hover:bg-warm-hover border border-warm-border"
-                          title="Print Receipt"
+                          onClick={() => handlePrintA4Invoice(ord)}
+                          className="p-1.5 rounded-xl text-charcoal-700 hover:bg-warm-hover border border-warm-border transition-colors"
+                          title="Print A4 Invoice"
                         >
-                          <Printer className="w-4 h-4" />
+                          <Printer className="w-4 h-4 text-brand-600" />
+                        </button>
+
+                        <button
+                          onClick={() => setOrderToDelete(ord)}
+                          className="p-1.5 rounded-xl text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
+                          title="Delete Order"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
+
                   </tr>
                 ))}
               </tbody>
@@ -337,16 +562,82 @@ export const AdminOrdersPage: React.FC = () => {
         )}
       </div>
 
-      {/* MANAGE ORDER MODAL */}
+      {/* FULL ORDER DETAIL & MANAGEMENT MODAL */}
       {selectedOrder && (
         <Modal
           isOpen={Boolean(selectedOrder)}
           onClose={() => setSelectedOrder(null)}
-          title={`Manage Order #${selectedOrder.order_number}`}
-          maxWidth="md"
+          title={`Order Details - #${selectedOrder.order_number || selectedOrder.id}`}
+          maxWidth="lg"
         >
           <div className="space-y-5 py-2">
             
+            {/* Top Product Preview Banner */}
+            <div className="flex items-center gap-4 bg-warm-bg p-4 rounded-2xl border border-warm-border">
+              <img
+                src={selectedOrder.productImage}
+                alt={selectedOrder.productName}
+                className="w-16 h-16 rounded-xl object-cover border border-warm-border shrink-0 shadow-sm"
+              />
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-extrabold text-brand-600 uppercase tracking-wider block">
+                  FABRICATED PRODUCT ITEM
+                </span>
+                <Link
+                  to={`/products/${selectedOrder.productId}`}
+                  target="_blank"
+                  className="text-base font-black text-charcoal-900 hover:text-brand-600 flex items-center gap-1.5 line-clamp-1"
+                >
+                  <span>{selectedOrder.productName}</span>
+                  <ExternalLink className="w-4 h-4 text-brand-600 shrink-0" />
+                </Link>
+                <p className="text-xs text-charcoal-500 font-bold mt-0.5">Quantity: {selectedOrder.quantity || 1} Unit(s)</p>
+              </div>
+            </div>
+
+            {/* Customer Contact Card */}
+            <div className="bg-white p-4 rounded-2xl border border-warm-border grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-charcoal-500 uppercase block">Customer Details</span>
+                <div className="flex items-center gap-2 font-black text-charcoal-900 text-sm">
+                  <User className="w-4 h-4 text-brand-600 shrink-0" />
+                  <span>{selectedOrder.customerName}</span>
+                </div>
+                <div className="flex items-center gap-2 font-bold text-charcoal-700">
+                  <Phone className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                  <a href={`tel:${selectedOrder.customerPhone}`} className="hover:text-brand-600 font-mono">
+                    {selectedOrder.customerPhone}
+                  </a>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-charcoal-500 uppercase block">Delivery Location</span>
+                <div className="flex items-start gap-2 font-bold text-charcoal-900">
+                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{selectedOrder.customerAddress}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Price Breakdown */}
+            <div className="p-4 rounded-2xl bg-warm-bg border border-warm-border grid grid-cols-3 gap-3 text-center">
+              <div>
+                <span className="text-[10px] font-extrabold text-charcoal-500 uppercase block">Total Price</span>
+                <span className="text-sm font-black text-charcoal-900 font-mono">₹{(selectedOrder.total_amount || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-charcoal-500 uppercase block">Paid Advance</span>
+                <span className="text-sm font-black text-emerald-700 font-mono">
+                  ₹{Math.max(0, (selectedOrder.total_amount || 0) - (selectedOrder.remaining_amount || 0)).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold text-charcoal-500 uppercase block">Balance Due</span>
+                <span className="text-sm font-black text-amber-700 font-mono">₹{(selectedOrder.remaining_amount || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
             {/* Status Change Selector */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-charcoal-700">Update Order Status</label>
@@ -358,7 +649,7 @@ export const AdminOrdersPage: React.FC = () => {
                     className={`py-2 px-3 rounded-xl text-xs font-extrabold border transition-all ${
                       selectedOrder.status === st
                         ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
-                        : 'bg-warm-bg text-charcoal-700 border-warm-border hover:bg-white'
+                        : 'bg-white text-charcoal-700 border-warm-border hover:bg-warm-hover'
                     }`}
                   >
                     {st.replace('_', ' ').toUpperCase()}
@@ -367,41 +658,81 @@ export const AdminOrdersPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Payment Request Trigger */}
-            <div className="p-4 rounded-2xl bg-warm-bg border border-warm-border space-y-3">
-              <span className="text-xs font-extrabold text-brand-600 uppercase block">Send Payment Request to Customer</span>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={paymentReqAmount}
-                  onChange={(e) => setPaymentReqAmount(parseFloat(e.target.value) || 0)}
-                  className="flex-1 px-3 py-2 text-xs font-extrabold border border-warm-border rounded-xl bg-white"
-                  placeholder="Request Amount (₹)"
-                />
-                <Button onClick={() => handleCreatePaymentRequest(selectedOrder)} variant="primary" size="sm" icon={<CreditCard className="w-4 h-4" />}>
-                  Send Request
-                </Button>
-              </div>
-            </div>
-
-            {/* Cash Payment Recorder */}
-            <div className="pt-2 flex justify-between gap-2 border-t border-warm-border">
+            {/* Action Bar */}
+            <div className="pt-2 flex items-center gap-2 border-t border-warm-border flex-wrap">
               <Button
-                onClick={() => {
-                  setShowCashModal(true);
-                }}
+                onClick={() => handlePrintA4Invoice(selectedOrder)}
+                variant="secondary"
+                size="sm"
+                icon={<Printer className="w-4 h-4 text-brand-600" />}
+              >
+                Print A4 Invoice
+              </Button>
+
+              <Button
+                onClick={() => setShowCashModal(true)}
                 variant="secondary"
                 size="sm"
                 icon={<DollarSign className="w-4 h-4 text-emerald-600" />}
               >
-                Record Workshop Cash Payment
+                Record Cash Payment
               </Button>
 
-              <Button onClick={() => setSelectedOrder(null)} variant="secondary" size="sm">
-                Close
-              </Button>
+              <button
+                onClick={() => {
+                  setOrderToDelete(selectedOrder);
+                }}
+                className="ml-auto px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-extrabold border border-red-200 transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Order</span>
+              </button>
             </div>
 
+          </div>
+        </Modal>
+      )}
+
+      {/* DELETE ORDER CONFIRMATION MODAL */}
+      {orderToDelete && (
+        <Modal
+          isOpen={Boolean(orderToDelete)}
+          onClose={() => setOrderToDelete(null)}
+          title="Confirm Delete Order"
+          maxWidth="sm"
+        >
+          <div className="space-y-4 py-2 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto border border-red-200">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-charcoal-900">
+                Delete Order #{orderToDelete.order_number || orderToDelete.id}?
+              </h3>
+              <p className="text-xs text-charcoal-500 font-medium">
+                Are you sure you want to permanently delete this order for {orderToDelete.customerName}?
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                onClick={() => handleDeleteOrder(orderToDelete.id)}
+                variant="primary"
+                className="bg-red-600 hover:bg-red-700 flex-1"
+                icon={<Trash2 className="w-4 h-4" />}
+              >
+                Delete Order
+              </Button>
+
+              <Button
+                onClick={() => setOrderToDelete(null)}
+                variant="secondary"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </Modal>
       )}
