@@ -309,11 +309,11 @@ export const InvoicePage: React.FC = () => {
 
       {/* 2. MAIN SCROLLABLE A4 DOCUMENT VIEWER CONTAINER */}
       <div 
-        className="flex-1 py-6 px-4 bg-slate-800/90 flex justify-center items-start overflow-auto min-h-[70vh]"
+        className="invoice-viewer-scroll-container flex-1 py-6 px-4 bg-slate-800/90 flex justify-center items-start overflow-auto min-h-[70vh]"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         <div 
-          className="shadow-2xl rounded-sm bg-white shrink-0 mx-auto transition-transform origin-top"
+          className="invoice-paper-wrapper shadow-2xl rounded-sm bg-white shrink-0 mx-auto transition-transform origin-top"
           style={{ 
             width: '210mm',
             minWidth: '210mm',
@@ -397,6 +397,11 @@ export const InvoicePage: React.FC = () => {
           }
           .no-print {
             display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
           }
           .invoice-page-wrapper {
             padding: 0 !important;
@@ -406,21 +411,46 @@ export const InvoicePage: React.FC = () => {
             height: 297mm !important;
             max-height: 297mm !important;
             overflow: hidden !important;
+            display: block !important;
+          }
+          .invoice-viewer-scroll-container {
+            padding: 0 !important;
+            margin: 0 !important;
+            background: #ffffff !important;
+            min-height: 0 !important;
+            height: 297mm !important;
+            max-height: 297mm !important;
+            overflow: hidden !important;
+            display: block !important;
+          }
+          .invoice-paper-wrapper {
+            padding: 0 !important;
+            margin: 0 !important;
+            background: #ffffff !important;
+            min-height: 0 !important;
+            height: 297mm !important;
+            max-height: 297mm !important;
+            transform: none !important;
+            box-shadow: none !important;
+            overflow: hidden !important;
+            display: block !important;
           }
           #standalone-invoice-paper {
             width: 210mm !important;
             height: 297mm !important;
             min-height: 297mm !important;
             max-height: 297mm !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
             padding: 12mm 14mm !important;
             box-sizing: border-box !important;
             box-shadow: none !important;
             transform: none !important;
+            page-break-before: avoid !important;
             page-break-after: avoid !important;
-            break-after: avoid-page !important;
             page-break-inside: avoid !important;
-            break-inside: avoid !important;
+            break-before: avoid-page !important;
+            break-after: avoid-page !important;
+            break-inside: avoid-page !important;
             overflow: hidden !important;
             position: relative !important;
           }
