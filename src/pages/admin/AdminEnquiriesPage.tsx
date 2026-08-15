@@ -27,14 +27,39 @@ export const AdminEnquiriesPage: React.FC = () => {
     fetchLiveEnquiries();
   }, []);
 
+  const getNormalizedStatus = (statusStr: string | null | undefined): string => {
+    const s = String(statusStr || '').trim().toUpperCase();
+    if (s === 'NEW') return 'PENDING';
+    return s || 'PENDING';
+  };
+
+  const getProductName = (enq: any): string => {
+    if (enq.productName) return enq.productName;
+    if (enq.product_name) return enq.product_name;
+    if (enq.product_id) {
+      const found = INITIAL_PRODUCTS.find((p) => p.id === enq.product_id);
+      if (found) return found.name_en;
+    }
+    return 'Fabrication Item';
+  };
+
   const fetchLiveEnquiries = async () => {
     setLoading(true);
     try {
       const { data } = await supabase.from('enquiries').select('*').order('created_at', { ascending: false });
+      const local: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+      
       if (data && data.length > 0) {
-        setEnquiries(data);
+        const localMap = new Map(local.map((l: any) => [l.id, l]));
+        const merged = data.map((d: any) => {
+          const loc = localMap.get(d.id);
+          if (loc && loc.status && loc.status !== d.status) {
+            return { ...d, status: loc.status };
+          }
+          return d;
+        });
+        setEnquiries(merged);
       } else {
-        const local = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
         setEnquiries(local);
       }
     } catch (e) {
@@ -47,20 +72,36 @@ export const AdminEnquiriesPage: React.FC = () => {
   };
 
   const filteredEnquiries = enquiries.filter((enq) => {
-    if (filter !== 'all' && enq.status !== filter) return false;
+    const normStatus = getNormalizedStatus(enq.status);
+    
+    if (filter === 'pending') {
+      if (normStatus !== 'PENDING') return false;
+    } else if (filter === 'accepted') {
+      if (normStatus !== 'ACCEPTED') return false;
+    } else if (filter === 'rejected') {
+      if (normStatus !== 'REJECTED') return false;
+    } else if (filter === 'converted') {
+      if (normStatus !== 'CONVERTED') return false;
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
+      const pName = getProductName(enq).toLowerCase();
       return (
-        (enq.enquiry_number || enq.number || '').toLowerCase().includes(q) ||
-        (enq.customerName || enq.delivery_location || '').toLowerCase().includes(q) ||
-        (enq.customerPhone || '').includes(q)
+        (enq.enquiry_number || enq.number || enq.id || '').toLowerCase().includes(q) ||
+        (enq.customerName || enq.customer_name || '').toLowerCase().includes(q) ||
+        (enq.delivery_location || enq.location || '').toLowerCase().includes(q) ||
+        pName.includes(q)
       );
     }
     return true;
   });
 
   const handleUpdateStatus = async (id: string, status: string) => {
-    setEnquiries(enquiries.map((e) => (e.id === id ? { ...e, status } : e)));
+    const updated = enquiries.map((e) => (e.id === id ? { ...e, status } : e));
+    setEnquiries(updated);
+    localStorage.setItem('ml_enquiries', JSON.stringify(updated));
+
     try {
       await supabase.from('enquiries').update({ status }).eq('id', id);
     } catch (e) {
@@ -186,108 +227,123 @@ export const AdminEnquiriesPage: React.FC = () => {
             <p className="text-xs text-charcoal-500">Submitted product enquiries will appear here automatically.</p>
           </div>
         ) : (
-          filteredEnquiries.map((enq) => (
-            <div
-              key={enq.id}
-              className="bg-white rounded-3xl p-5 border border-warm-border shadow-card space-y-4 flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-warm-muted pb-3">
-                  <div>
-                    <span className="text-[11px] font-mono font-extrabold text-brand-600 block">
-                      #{enq.enquiry_number || enq.number}
-                    </span>
-                    <h3 className="text-sm font-extrabold text-charcoal-900 mt-0.5">
-                      {enq.productName || 'Fabrication Item'}
-                    </h3>
+          filteredEnquiries.map((enq) => {
+            const normStatus = getNormalizedStatus(enq.status);
+            const isAccepted = normStatus === 'ACCEPTED';
+            const isConverted = normStatus === 'CONVERTED';
+            const isPending = normStatus === 'PENDING';
+            const isRejected = normStatus === 'REJECTED';
+            const productName = getProductName(enq);
+            const enquiryNo = enq.enquiry_number || enq.number || enq.id;
+
+            return (
+              <div
+                key={enq.id}
+                className="bg-white rounded-3xl p-5 border border-warm-border shadow-card space-y-4 flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-warm-muted pb-3">
+                    <div>
+                      <span className="text-[11px] font-mono font-extrabold text-brand-600 block">
+                        #{enquiryNo}
+                      </span>
+                      <h3 className="text-sm font-extrabold text-charcoal-900 mt-0.5">
+                        {productName}
+                      </h3>
+                    </div>
+
+                    <Badge variant={isAccepted ? 'accepted' : isConverted ? 'confirmed' : isRejected ? 'rejected' : 'pending'}>
+                      {normStatus}
+                    </Badge>
                   </div>
 
-                  <Badge variant={enq.status === 'accepted' ? 'accepted' : enq.status === 'converted' ? 'confirmed' : 'pending'}>
-                    {enq.status.toUpperCase()}
-                  </Badge>
-                </div>
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-2 gap-2 text-xs text-charcoal-700">
+                    <div>
+                      <span className="text-charcoal-400 block text-[10px] uppercase font-bold">Quantity</span>
+                      <span className="font-extrabold">{enq.quantity || 1} Unit(s)</span>
+                    </div>
 
-                {/* Details Grid */}
-                <div className="grid grid-cols-2 gap-2 text-xs text-charcoal-700">
-                  <div>
-                    <span className="text-charcoal-400 block text-[10px] uppercase font-bold">Quantity</span>
-                    <span className="font-extrabold">{enq.quantity || 1} Unit(s)</span>
+                    <div>
+                      <span className="text-charcoal-400 block text-[10px] uppercase font-bold">Location</span>
+                      <span className="font-bold">{enq.delivery_location || enq.location || 'Kallimandhayam'}</span>
+                    </div>
                   </div>
 
-                  <div>
-                    <span className="text-charcoal-400 block text-[10px] uppercase font-bold">Location</span>
-                    <span className="font-bold">{enq.delivery_location || enq.location || 'Kallimandhayam'}</span>
-                  </div>
-                </div>
-
-                {enq.custom_notes && (
-                  <div className="p-3 rounded-xl bg-warm-bg text-xs font-medium text-charcoal-700 border border-warm-border">
-                    <span className="font-bold block text-[10px] text-charcoal-500 uppercase mb-0.5">Customer Notes:</span>
-                    {enq.custom_notes}
-                  </div>
-                )}
-
-              </div>
-
-              {/* Action Buttons Bar */}
-              <div className="pt-3 border-t border-warm-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-                <div className="flex items-center justify-between sm:justify-start gap-2">
-                  <Badge variant={enq.status === 'accepted' ? 'accepted' : enq.status === 'converted' ? 'confirmed' : enq.status === 'rejected' ? 'rejected' : 'pending'}>
-                    STATUS: {(enq.status || 'PENDING').toUpperCase()}
-                  </Badge>
-
-                  {enq.status === 'pending' && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleUpdateStatus(enq.id, 'accepted')}
-                        className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200"
-                        title="Accept Enquiry"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => handleUpdateStatus(enq.id, 'rejected')}
-                        className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
-                        title="Reject Enquiry"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
+                  {enq.custom_notes && (
+                    <div className="p-3 rounded-xl bg-warm-bg text-xs font-medium text-charcoal-700 border border-warm-border">
+                      <span className="font-bold block text-[10px] text-charcoal-500 uppercase mb-0.5">Customer Notes:</span>
+                      {enq.custom_notes}
                     </div>
                   )}
+
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <Link
-                    to={`/admin/enquiries/${enq.id}`}
-                    className="inline-flex items-center justify-center gap-1 bg-warm-bg hover:bg-brand-50 text-brand-700 font-extrabold py-2 px-3.5 rounded-xl text-xs border border-brand-200 transition-colors"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>View Details</span>
-                  </Link>
+                {/* Action Buttons Bar */}
+                <div className="pt-3 border-t border-warm-border flex flex-col space-y-2.5">
+                  
+                  {/* Status Bar Badge */}
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant={isAccepted ? 'accepted' : isConverted ? 'confirmed' : isRejected ? 'rejected' : 'pending'}>
+                      STATUS: {normStatus}
+                    </Badge>
 
-                  {enq.status !== 'converted' ? (
-                    <Button
-                      onClick={() => setSelectedEnquiry(enq)}
-                      variant="primary"
-                      size="sm"
-                      icon={<ArrowRight className="w-3.5 h-3.5" />}
+                    {isPending && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleUpdateStatus(enq.id, 'accepted')}
+                          className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                          title="Accept Enquiry"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => handleUpdateStatus(enq.id, 'rejected')}
+                          className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors"
+                          title="Reject Enquiry"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons Stack */}
+                  <div className="flex flex-col gap-2 pt-1">
+                    <Link
+                      to={`/admin/enquiries/${enq.id}`}
+                      className="w-full inline-flex items-center justify-center gap-1 bg-warm-bg hover:bg-brand-50 text-brand-700 font-extrabold py-2.5 px-3.5 rounded-2xl text-xs border border-brand-200 transition-colors shadow-sm"
                     >
-                      Quote & Convert
-                    </Button>
-                  ) : (
-                    <span className="bg-emerald-100 text-emerald-900 font-extrabold px-3.5 py-2 rounded-xl text-xs flex items-center justify-center gap-1 border border-emerald-300">
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Converted to Order</span>
-                    </span>
-                  )}
-                </div>
-              </div>
+                      <Eye className="w-4 h-4 text-brand-600" />
+                      <span>View Details</span>
+                    </Link>
 
-            </div>
-          ))
+                    {!isConverted ? (
+                      <Button
+                        onClick={() => setSelectedEnquiry(enq)}
+                        variant="primary"
+                        size="sm"
+                        className="w-full justify-center py-2.5 rounded-2xl font-black text-xs shadow-md"
+                        icon={<ArrowRight className="w-4 h-4" />}
+                      >
+                        Quote & Convert
+                      </Button>
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-900 font-extrabold px-3.5 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 border border-emerald-300">
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        <span>Converted to Order</span>
+                      </span>
+                    )}
+                  </div>
+
+                </div>
+
+              </div>
+            );
+          })
         )}
       </div>
 
