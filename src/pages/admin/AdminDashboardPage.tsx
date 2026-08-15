@@ -54,6 +54,53 @@ export const AdminDashboardPage: React.FC = () => {
         </p>
       </div>
 
+      {/* Top High-Priority Notification Action Cards */}
+      {(enquiries.filter(e => e.status === 'pending').length > 0 || orders.filter(o => o.status !== 'delivered').length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {enquiries.filter(e => e.status === 'pending').length > 0 && (
+            <div className="bg-gradient-to-r from-amber-500 to-brand-600 text-white p-5 rounded-3xl shadow-lg flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="bg-white/20 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Action Required</span>
+                </div>
+                <h4 className="text-sm font-black">
+                  {enquiries.filter(e => e.status === 'pending').length} New Customer Enquiries Waiting
+                </h4>
+                <p className="text-xs text-amber-100 font-medium">Review specifications & send custom price quotes</p>
+              </div>
+
+              <Link
+                to="/admin/enquiries"
+                className="bg-white text-brand-700 hover:bg-amber-50 font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-md transition-all shrink-0 whitespace-nowrap"
+              >
+                Review Enquiries →
+              </Link>
+            </div>
+          )}
+
+          {orders.filter(o => o.status !== 'delivered').length > 0 && (
+            <div className="bg-gradient-to-r from-charcoal-800 to-charcoal-900 text-white p-5 rounded-3xl border border-charcoal-700 shadow-lg flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="bg-brand-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Active Orders</span>
+                </div>
+                <h4 className="text-sm font-black">
+                  {orders.filter(o => o.status !== 'delivered').length} Orders in Production
+                </h4>
+                <p className="text-xs text-gray-300 font-medium">Track delivery timelines & advance payments</p>
+              </div>
+
+              <Link
+                to="/admin/orders"
+                className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-md transition-all shrink-0 whitespace-nowrap"
+              >
+                Manage Orders →
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 7 Summary Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5">
         {summaryCards.map((card, idx) => {

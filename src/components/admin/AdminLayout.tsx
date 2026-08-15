@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -20,12 +20,33 @@ import {
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 export const AdminLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pendingEnquiriesCount, setPendingEnquiriesCount] = useState<number>(0);
+  const [activeOrdersCount, setActiveOrdersCount] = useState<number>(0);
+
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    fetchCounts();
+  }, [location.pathname]);
+
+  const fetchCounts = async () => {
+    try {
+      const { data: enqData } = await supabase.from('enquiries').select('*').eq('status', 'pending');
+      if (enqData) setPendingEnquiriesCount(enqData.length);
+
+      const { data: ordData } = await supabase.from('orders').select('*').neq('status', 'delivered');
+      if (ordData) setActiveOrdersCount(ordData.length);
+    } catch (e) {
+      const localEnq = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+      setPendingEnquiriesCount(localEnq.filter((e: any) => e.status === 'pending').length);
+    }
+  };
 
   // Protect Admin Portal: redirect non-admin users to /admin/login
   if (!isAdmin) {
@@ -34,8 +55,8 @@ export const AdminLayout: React.FC = () => {
 
   const adminNavItems = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
-    { to: '/admin/enquiries', label: 'Enquiries', icon: MessageSquare, badge: null },
-    { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, badge: null },
+    { to: '/admin/enquiries', label: 'Enquiries', icon: MessageSquare, badge: pendingEnquiriesCount > 0 ? String(pendingEnquiriesCount) : null },
+    { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, badge: activeOrdersCount > 0 ? String(activeOrdersCount) : null },
     { to: '/admin/customers', label: 'Customers', icon: Users, badge: null },
     { to: '/admin/products', label: 'Products', icon: Package, badge: null },
     { to: '/admin/categories', label: 'Categories', icon: FolderTree, badge: null },

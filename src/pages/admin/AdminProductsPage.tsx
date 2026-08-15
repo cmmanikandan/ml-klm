@@ -93,17 +93,6 @@ export const AdminProductsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {products.length > 0 && (
-            <button
-              onClick={handlePurgeAllDemoProducts}
-              className="inline-flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3.5 py-2.5 rounded-2xl text-xs font-extrabold transition-all"
-              title="Clear old sample demo products"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Clear Demo Products</span>
-            </button>
-          )}
-
           <Link
             to="/admin/import"
             className="inline-flex items-center gap-1.5 bg-white hover:bg-warm-hover text-charcoal-800 border border-warm-border px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-sm"

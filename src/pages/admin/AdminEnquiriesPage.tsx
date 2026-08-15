@@ -98,19 +98,22 @@ export const AdminEnquiriesPage: React.FC = () => {
   };
 
   const handleOpenWhatsAppQuote = (enq: any) => {
+    const rawPhone = (enq.customerPhone || enq.phone || enq.customer_phone || '').replace(/[^0-9]/g, '');
+    const targetCustomerPhone = rawPhone ? (rawPhone.startsWith('91') ? rawPhone : `91${rawPhone}`) : DEFAULT_SHOP_INFO.whatsapp;
+
     const text = encodeURIComponent(
       `*MANIKANDAN LATHE WORKS - OFFICIAL QUOTE*\n` +
       `--------------------------------------\n` +
-      `📌 *Enquiry ID:* ${enq.enquiry_number || enq.number}\n` +
-      `👤 *Customer:* ${enq.customerName || 'Customer'}\n` +
-      `🛠️ *Item:* ${enq.productName || 'Fabrication Item'}\n` +
+      `📌 *Enquiry ID:* ${enq.enquiry_number || enq.number || enq.id}\n` +
+      `👤 *Customer Name:* ${enq.customerName || enq.customer_name || 'Customer'}\n` +
+      `🛠️ *Fabrication Item:* ${enq.productName || enq.product_name || 'Custom Lathe Item'}\n` +
       `💰 *Quoted Price:* ₹${quotePrice.toLocaleString('en-IN')}\n` +
       `💳 *Advance Amount Required:* ₹${advanceRequired.toLocaleString('en-IN')}\n` +
-      `⏱️ *Estimated Delivery:* ${estimatedDays} Days\n` +
+      `⏱️ *Estimated Fabrication:* ${estimatedDays} Days\n` +
       `--------------------------------------\n` +
-      `Please confirm to start fabrication.`
+      `Please reply to confirm your quote and start fabrication!`
     );
-    window.open(`https://wa.me/${enq.customerPhone || DEFAULT_SHOP_INFO.whatsapp}?text=${text}`, '_blank');
+    window.open(`https://wa.me/${targetCustomerPhone}?text=${text}`, '_blank');
   };
 
   return (
