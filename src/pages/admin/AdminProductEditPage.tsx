@@ -27,8 +27,11 @@ export const AdminProductEditPage: React.FC = () => {
   const [categoryId, setCategoryId] = useState('');
   const [categorySlug, setCategorySlug] = useState('gates');
   const [categoryName, setCategoryName] = useState('Gates');
-  const [materials, setMaterials] = useState('Heavy Duty Steel, Iron Section Pipe, Anti-Rust Primer');
-  const [availableSizes, setAvailableSizes] = useState('Standard Size (3.5ft x 1.8ft), High-back');
+  const [materials, setMaterials] = useState('');
+  const [availableSizes, setAvailableSizes] = useState('');
+  const [gauge, setGauge] = useState('');
+  const [finish, setFinish] = useState('');
+  const [warranty, setWarranty] = useState('');
   const [adminPrice, setAdminPrice] = useState<number>(2800);
   const [pricingType, setPricingType] = useState<'fixed' | 'weight' | 'sqft'>('weight');
   const [pricePerKg, setPricePerKg] = useState<number>(160);
@@ -93,6 +96,15 @@ export const AdminProductEditPage: React.FC = () => {
       setCategoryName(existing.category_name || 'General');
       setMaterials(existing.materials || '');
       setAvailableSizes(existing.available_sizes || '');
+      if (existing.specifications) {
+        setGauge(existing.specifications['Gauge'] || existing.specifications['gauge'] || '');
+        setFinish(existing.specifications['Finish'] || existing.specifications['finish'] || '');
+        setWarranty(existing.specifications['Warranty'] || existing.specifications['warranty'] || '');
+      } else {
+        setGauge('');
+        setFinish('');
+        setWarranty('');
+      }
       setAdminPrice(existing.admin_price || 0);
       setPricingType(existing.pricing_type || 'weight');
       setPricePerKg(existing.price_per_kg || 160);
@@ -152,6 +164,11 @@ export const AdminProductEditPage: React.FC = () => {
     const targetCategoryId = selectedCat?.id || '11111111-1111-1111-1111-111111111111';
     const targetCategoryName = selectedCat?.name_en || 'Steel Chairs';
 
+    const specObj: Record<string, string> = {};
+    if (gauge.trim()) specObj['Gauge'] = gauge.trim();
+    if (finish.trim()) specObj['Finish'] = finish.trim();
+    if (warranty.trim()) specObj['Warranty'] = warranty.trim();
+
     const productPayload: Product = {
       id: productId,
       category_id: targetCategoryId,
@@ -162,11 +179,7 @@ export const AdminProductEditPage: React.FC = () => {
       description_ta: descTa.trim() || descEn.trim(),
       materials: materials.trim(),
       available_sizes: availableSizes.trim(),
-      specifications: {
-        'Gauge': '16 Gauge SS',
-        'Finish': 'Mirror Polish',
-        'Warranty': '5 Years Structural Warranty'
-      },
+      specifications: specObj,
       is_best_selling: isBestSelling,
       is_new: isNew,
       is_active: true,
@@ -421,25 +434,66 @@ export const AdminProductEditPage: React.FC = () => {
         </div>
 
         {/* Specs & Sizes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-charcoal-700 mb-1">Materials Used</label>
-            <input
-              type="text"
-              value={materials}
-              onChange={(e) => setMaterials(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </div>
+        <div className="space-y-3 pt-2">
+          <label className="block text-xs font-extrabold text-charcoal-900 uppercase tracking-wider">
+            Technical Specifications (Shown on Product Detail Page)
+          </label>
 
-          <div>
-            <label className="block text-xs font-bold text-charcoal-700 mb-1">Available Sizes / Options</label>
-            <input
-              type="text"
-              value={availableSizes}
-              onChange={(e) => setAvailableSizes(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-charcoal-700 mb-1">Material Grade / Type</label>
+              <input
+                type="text"
+                value={materials}
+                onChange={(e) => setMaterials(e.target.value)}
+                placeholder="e.g. Mild Steel / Iron Pipe"
+                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-charcoal-700 mb-1">Available Sizes / Dimensions</label>
+              <input
+                type="text"
+                value={availableSizes}
+                onChange={(e) => setAvailableSizes(e.target.value)}
+                placeholder="e.g. 12ft x 6ft, Standard Size"
+                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-charcoal-700 mb-1">Metal Gauge / Thickness</label>
+              <input
+                type="text"
+                value={gauge}
+                onChange={(e) => setGauge(e.target.value)}
+                placeholder="e.g. 14 Gauge Pipe, 2mm Sheet"
+                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-charcoal-700 mb-1">Surface Finish</label>
+              <input
+                type="text"
+                value={finish}
+                onChange={(e) => setFinish(e.target.value)}
+                placeholder="e.g. Anti-Rust Primer Coat"
+                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-charcoal-700 mb-1">Warranty Period</label>
+              <input
+                type="text"
+                value={warranty}
+                onChange={(e) => setWarranty(e.target.value)}
+                placeholder="e.g. 5 Years Structural Warranty"
+                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
           </div>
         </div>
 

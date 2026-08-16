@@ -267,10 +267,12 @@ export const ProductDetailPage: React.FC = () => {
                 </div>
               )}
               {product.specifications && Object.entries(product.specifications).map(([key, val]) => (
-                <div key={key} className="py-2.5 flex justify-between">
-                  <span className="font-bold text-charcoal-500 capitalize">{key.replace('_', ' ')}</span>
-                  <span className="font-extrabold text-charcoal-900">{String(val)}</span>
-                </div>
+                val && String(val).trim() ? (
+                  <div key={key} className="py-2.5 flex justify-between">
+                    <span className="font-bold text-charcoal-500 capitalize">{key.replace('_', ' ')}</span>
+                    <span className="font-extrabold text-charcoal-900">{String(val)}</span>
+                  </div>
+                ) : null
               ))}
             </div>
           </div>
