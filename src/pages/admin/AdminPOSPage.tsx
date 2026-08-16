@@ -126,7 +126,18 @@ export const AdminPOSPage: React.FC = () => {
       setProducts(activeProds);
 
       const { data: profiles } = await supabase.from('profiles').select('*').order('full_name');
-      if (profiles) setCustomers(profiles);
+      const localContacts: Profile[] = JSON.parse(localStorage.getItem('ml_customer_contacts') || '[]');
+
+      let combinedCust = [...(profiles || []), ...localContacts];
+      const seenCust = new Set();
+      combinedCust = combinedCust.filter((c) => {
+        const key = c.id || c.phone || c.full_name;
+        if (!key || seenCust.has(key)) return false;
+        seenCust.add(key);
+        return true;
+      });
+
+      setCustomers(combinedCust);
 
       loadPOSHistory();
     } catch (e) {
