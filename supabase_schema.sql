@@ -292,6 +292,10 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS is_payment_requested BOOLEAN 
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_request_amount NUMERIC(10, 2) DEFAULT 0.00;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS specifications TEXT DEFAULT '';
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS admin_notes TEXT DEFAULT '';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS unit_price NUMERIC(10, 2) DEFAULT 0.00;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10, 2) DEFAULT 0.00;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS discount_notes TEXT DEFAULT '';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS extra_charges_amount NUMERIC(10, 2) DEFAULT 0.00;
 
 -- ====================================================================
 -- 9. PAYMENTS TABLE

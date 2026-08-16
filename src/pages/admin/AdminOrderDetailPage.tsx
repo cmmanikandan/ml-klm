@@ -76,6 +76,8 @@ export const AdminOrderDetailPage: React.FC = () => {
   const [calcAdvanceReq, setCalcAdvanceReq] = useState<number>(0);
 
   // Fixed Pricing & Discount States
+  const [isEditingFixedPrice, setIsEditingFixedPrice] = useState<boolean>(false);
+  const [fixedQuantity, setFixedQuantity] = useState<number>(1);
   const [fixedUnitPrice, setFixedUnitPrice] = useState<number>(40000);
   const [fixedDiscount, setFixedDiscount] = useState<number>(0);
   const [fixedDiscountNotes, setFixedDiscountNotes] = useState<string>('');
@@ -231,8 +233,10 @@ export const AdminOrderDetailPage: React.FC = () => {
         setPricingMode(isWeightType ? 'weight' : 'fixed');
 
         const orderTotalAmount = Number(hydrated.total_amount) || 0;
-        const baseUnit = orderTotalAmount > 0 ? Math.round(orderTotalAmount / qty) : defaultUnitPrice;
-        setFixedUnitPrice(baseUnit);
+        const computedBaseUnit = orderTotalAmount > 0 ? Math.round(orderTotalAmount / qty) : defaultUnitPrice;
+        const savedUnitPrice = Number(hydrated.unit_price) > 0 ? Number(hydrated.unit_price) : computedBaseUnit;
+        setFixedQuantity(Number(hydrated.quantity) || 1);
+        setFixedUnitPrice(savedUnitPrice);
         setFixedDiscount(Number(hydrated.discount_amount) || 0);
         setFixedDiscountNotes(hydrated.discount_notes || '');
         setFixedExtraCharges(Number(hydrated.extra_charges_amount) || 0);
@@ -823,6 +827,116 @@ export const AdminOrderDetailPage: React.FC = () => {
     setCalcExtraCharges(calcExtraCharges.filter(c => c.id !== chargeId));
   };
 
+  // ── PRICING MODE SWITCHER ─────────────────────────────────────────
+  const handleSwitchPricingMode = async (mode: 'fixed' | 'weight') => {
+    setPricingMode(mode);
+    if (!order) return;
+
+    const updated = { ...order, pricing_type: mode };
+    setOrder(updated);
+
+    // Persist mode to local storage & Supabase
+    const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocal = localOrders.map((l: any) => (l.id === order.id || l.order_number === order.order_number) ? updated : l);
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
+
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order.id);
+      if (isUuid) {
+        await supabase.from('orders').update({ pricing_type: mode }).eq('id', order.id);
+      }
+      if (order.order_number) {
+        await supabase.from('orders').update({ pricing_type: mode }).eq('order_number', order.order_number);
+      }
+    } catch (e) {
+      console.warn('Mode switch update error:', e);
+    }
+  };
+
+  // ── SAVE FIXED PRICE CALCULATION ──────────────────────────────────
+  const handleSaveFixedPricing = async () => {
+    if (!order) return;
+    const qty = Number(fixedQuantity) || Number(order.quantity) || 1;
+    const unitPrice = Number(fixedUnitPrice) || 0;
+    const discount = Number(fixedDiscount) || 0;
+    const extraCharges = Number(fixedExtraCharges) || 0;
+    const advanceReq = Number(fixedAdvanceReq) || 0;
+
+    const subtotal = unitPrice * qty;
+    const grandTotal = Math.max(0, subtotal - discount + extraCharges);
+
+    // Calculate total already paid in history
+    const totalPaid = paymentsHistory
+      .filter((p) => p.status === 'completed' || p.status === 'paid')
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+    const remaining = Math.max(0, grandTotal - totalPaid);
+    const payReqAmount = advanceReq > totalPaid ? advanceReq - totalPaid : (remaining > 0 ? remaining : 0);
+
+    const updatePayload: any = {
+      quantity: qty,
+      unit_price: unitPrice,
+      discount_amount: discount,
+      discount_notes: fixedDiscountNotes || '',
+      extra_charges_amount: extraCharges,
+      total_amount: grandTotal,
+      advance_amount: advanceReq,
+      remaining_amount: remaining,
+      payment_request_amount: payReqAmount > 0 ? payReqAmount : remaining,
+      is_payment_requested: payReqAmount > 0,
+      pricing_type: 'fixed'
+    };
+
+    const updatedOrder = {
+      ...order,
+      ...updatePayload
+    };
+
+    setOrder(updatedOrder);
+
+    // Save to LocalStorage
+    const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocal = localOrders.map((l: any) => (l.id === order.id || l.order_number === order.order_number) ? updatedOrder : l);
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
+
+    // Save to Supabase DB (both by UUID and order_number)
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order.id);
+      if (isUuid) {
+        await supabase.from('orders').update(updatePayload).eq('id', order.id);
+      }
+      if (order.order_number) {
+        await supabase.from('orders').update(updatePayload).eq('order_number', order.order_number);
+      }
+
+      if (order.user_id && order.user_id !== 'guest_user') {
+        await supabase.from('notifications').insert({
+          id: crypto.randomUUID(),
+          user_id: order.user_id,
+          title_en: 'Order Price Updated!',
+          title_ta: 'ஆர்டர் விலை புதுப்பிக்கப்பட்டது!',
+          message_en: `Your order #${order.order_number || order.id} price has been updated. Total: ₹${grandTotal.toLocaleString('en-IN')}. Advance: ₹${advanceReq.toLocaleString('en-IN')}.`,
+          message_ta: `உங்கள் ஆர்டர் #${order.order_number || order.id} விலை புதுப்பிக்கப்பட்டது. மொத்த தொகை: ₹${grandTotal.toLocaleString('en-IN')}. முன்பணம்: ₹${advanceReq.toLocaleString('en-IN')}.`,
+          type: 'order_update',
+          link: `/orders/${order.id}`,
+          is_read: false,
+          created_at: new Date().toISOString()
+        });
+      }
+    } catch (e) {
+      console.warn('DB update error for fixed price:', e);
+    }
+
+    setIsEditingFixedPrice(false);
+    setNotifyModal({
+      isOpen: true,
+      title: 'Fixed Pricing Saved',
+      message: `Fixed price configuration saved successfully!\n• Unit Price: ₹${unitPrice.toLocaleString('en-IN')}\n• Quantity: ${qty}\n• Subtotal: ₹${subtotal.toLocaleString('en-IN')}\n• Discount: -₹${discount.toLocaleString('en-IN')}\n• Extra Charges: +₹${extraCharges.toLocaleString('en-IN')}\n• Final Order Total: ₹${grandTotal.toLocaleString('en-IN')}\n• Required Advance: ₹${advanceReq.toLocaleString('en-IN')}\n• Remaining Due: ₹${remaining.toLocaleString('en-IN')}`,
+      type: 'success'
+    });
+  };
+
+  // ── SAVE WEIGHT & PARTS CALCULATION ───────────────────────────────
   const handleSaveWeightCalculation = async () => {
     if (!order) return;
     const totalWeight = calcParts.reduce((sum, p) => sum + (Number(p.weight_kg) || 0), 0);
@@ -832,7 +946,9 @@ export const AdminOrderDetailPage: React.FC = () => {
     const advance = Number(calcAdvanceReq) || 0;
     
     // Calculate total already paid in history
-    const totalPaid = paymentsHistory.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const totalPaid = paymentsHistory
+      .filter((p) => p.status === 'completed' || p.status === 'paid')
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
     const remaining = Math.max(0, grandTotal - totalPaid);
     const payReqAmount = advance > totalPaid ? advance - totalPaid : remaining;
 
@@ -849,8 +965,7 @@ export const AdminOrderDetailPage: React.FC = () => {
       calculated_at: new Date().toISOString()
     };
 
-    const updatedOrder = {
-      ...order,
+    const updatePayload: any = {
       total_amount: grandTotal,
       advance_amount: advance,
       remaining_amount: remaining,
@@ -859,37 +974,44 @@ export const AdminOrderDetailPage: React.FC = () => {
       weight_calculation: calcData,
       pricing_type: 'weight'
     };
+
+    const updatedOrder = {
+      ...order,
+      ...updatePayload
+    };
     setOrder(updatedOrder);
 
-    // Save to LocalStorage & Supabase DB
+    // Save to LocalStorage
     const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-    const updatedLocal = localOrders.map((l: any) => l.id === order.id ? updatedOrder : l);
+    const updatedLocal = localOrders.map((l: any) => (l.id === order.id || l.order_number === order.order_number) ? updatedOrder : l);
     localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
 
+    // Save to Supabase DB (both by UUID and order_number)
     try {
-      await supabase.from('orders').update({
-        total_amount: grandTotal,
-        advance_amount: advance,
-        remaining_amount: remaining,
-        payment_request_amount: payReqAmount > 0 ? payReqAmount : remaining,
-        is_payment_requested: payReqAmount > 0,
-        weight_calculation: calcData
-      }).eq('id', order.id);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order.id);
+      if (isUuid) {
+        await supabase.from('orders').update(updatePayload).eq('id', order.id);
+      }
+      if (order.order_number) {
+        await supabase.from('orders').update(updatePayload).eq('order_number', order.order_number);
+      }
 
-      await supabase.from('notifications').insert({
-        id: crypto.randomUUID(),
-        user_id: order.user_id || 'customer',
-        title_en: 'Order Price & Weight Updated!',
-        title_ta: 'ஆர்டர் விலை நிர்ணயிக்கப்பட்டது!',
-        message_en: `Shop admin calculated total weight (${totalWeight} kg). Total Amount: ₹${grandTotal.toLocaleString('en-IN')}. Click to pay.`,
-        message_ta: `வொர்க்ஷாப் நிர்வாகி உங்கள் ஆர்டர் தொகையை நிர்ணயித்துள்ளார்: ₹${grandTotal.toLocaleString('en-IN')}. ஆன்லைனில் செலுத்தவும்.`,
-        type: 'order_update',
-        link: `/orders/${order.id}`,
-        is_read: false,
-        created_at: new Date().toISOString()
-      });
+      if (order.user_id && order.user_id !== 'guest_user') {
+        await supabase.from('notifications').insert({
+          id: crypto.randomUUID(),
+          user_id: order.user_id,
+          title_en: 'Order Price & Weight Updated!',
+          title_ta: 'ஆர்டர் விலை நிர்ணயிக்கப்பட்டது!',
+          message_en: `Shop admin calculated total weight (${totalWeight} kg). Total Amount: ₹${grandTotal.toLocaleString('en-IN')}. Click to pay.`,
+          message_ta: `வொர்க்ஷாப் நிர்வாகி உங்கள் ஆர்டர் தொகையை நிர்ணயித்துள்ளார்: ₹${grandTotal.toLocaleString('en-IN')}. ஆன்லைனில் செலுத்தவும்.`,
+          type: 'order_update',
+          link: `/orders/${order.id}`,
+          is_read: false,
+          created_at: new Date().toISOString()
+        });
+      }
     } catch (e) {
-      console.warn('DB update fallback for weight calc');
+      console.warn('DB update fallback for weight calc', e);
     }
 
     setIsEditingCalc(false);
@@ -1110,7 +1232,7 @@ export const AdminOrderDetailPage: React.FC = () => {
           {/* PRICING SECTION: FIXED PRICE & DISCOUNT MANAGER OR WEIGHT CALCULATOR */}
           {pricingMode === 'fixed' ? (
             /* ========================================================================= */
-            /* CASE A: CLEAN & SIMPLE FIXED PRODUCT PRICE & DISCOUNT MANAGER            */
+            /* CASE A: CLEAN & COMPREHENSIVE FIXED PRODUCT PRICE & DISCOUNT MANAGER      */
             /* ========================================================================= */
             <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-5">
               
@@ -1126,11 +1248,11 @@ export const AdminOrderDetailPage: React.FC = () => {
                         Order Pricing & Discount
                       </h3>
                       <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
-                        Fixed Price
+                        Fixed Price Mode
                       </span>
                     </div>
                     <p className="text-xs text-charcoal-500 font-medium">
-                      Set base product price, apply discount concessions, and specify required advance
+                      {isEditingFixedPrice ? 'Edit unit price, quantity, discount concessions, and set advance' : 'Base product price, discounts, and payment terms summary'}
                     </p>
                   </div>
                 </div>
@@ -1138,17 +1260,35 @@ export const AdminOrderDetailPage: React.FC = () => {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setPricingMode('weight')}
+                    onClick={() => handleSwitchPricingMode('weight')}
                     className="bg-warm-bg hover:bg-warm-hover text-charcoal-700 text-xs font-extrabold px-3.5 py-2 rounded-xl border border-warm-border transition-colors flex items-center gap-1.5"
                     title="Switch to weight-based itemized calculation"
                   >
                     <span>⚖️ Switch to Weight Mode</span>
                   </button>
+
+                  {!isEditingFixedPrice ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingFixedPrice(true)}
+                      className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-md transition-colors flex items-center gap-1.5"
+                    >
+                      <span>✏️ Edit Price</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingFixedPrice(false)}
+                      className="bg-warm-bg hover:bg-warm-hover text-charcoal-700 text-xs font-bold px-3.5 py-2 rounded-xl border border-warm-border transition-colors"
+                    >
+                      <span>Cancel</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
               {(() => {
-                const qty = order.quantity || 1;
+                const qty = Number(fixedQuantity) || Number(order.quantity) || 1;
                 const subtotal = fixedUnitPrice * qty;
                 const grandTotal = Math.max(0, subtotal - fixedDiscount + fixedExtraCharges);
                 const totalPaid = paymentsHistory
@@ -1156,9 +1296,85 @@ export const AdminOrderDetailPage: React.FC = () => {
                   .reduce((sum, p) => sum + Number(p.amount || 0), 0);
                 const remainingDue = Math.max(0, grandTotal - totalPaid);
 
+                if (!isEditingFixedPrice) {
+                  return (
+                    <div className="space-y-4">
+                      {/* Read-Only Summary Metric Cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="bg-warm-bg p-3 rounded-2xl border border-warm-border">
+                          <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-wider block">Unit Price</span>
+                          <span className="text-sm font-black font-mono text-charcoal-900">₹{fixedUnitPrice.toLocaleString('en-IN')}</span>
+                        </div>
+
+                        <div className="bg-warm-bg p-3 rounded-2xl border border-warm-border">
+                          <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-wider block">Quantity</span>
+                          <span className="text-sm font-black font-mono text-charcoal-900">{qty} Unit(s)</span>
+                        </div>
+
+                        <div className="bg-warm-bg p-3 rounded-2xl border border-warm-border">
+                          <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-wider block">Base Subtotal</span>
+                          <span className="text-sm font-black font-mono text-charcoal-900">₹{subtotal.toLocaleString('en-IN')}</span>
+                        </div>
+
+                        <div className="bg-warm-bg p-3 rounded-2xl border border-warm-border">
+                          <span className="text-[10px] font-black text-rose-500 uppercase tracking-wider block">Discount</span>
+                          <span className="text-sm font-black font-mono text-rose-600">{fixedDiscount > 0 ? `-₹${fixedDiscount.toLocaleString('en-IN')}` : '₹0'}</span>
+                        </div>
+                      </div>
+
+                      {/* Extra Charges or Discount Notes Banner */}
+                      {(fixedExtraCharges > 0 || fixedDiscountNotes) && (
+                        <div className="bg-warm-bg/70 p-3 rounded-2xl border border-warm-border text-xs flex flex-wrap items-center justify-between gap-2">
+                          {fixedExtraCharges > 0 && (
+                            <div>
+                              <span className="text-charcoal-500 font-bold">Extra Charges: </span>
+                              <span className="font-mono font-black text-charcoal-900">+₹{fixedExtraCharges.toLocaleString('en-IN')}</span>
+                            </div>
+                          )}
+                          {fixedDiscountNotes && (
+                            <div>
+                              <span className="text-charcoal-500 font-bold">Discount Reason: </span>
+                              <span className="font-semibold text-charcoal-800 italic">"{fixedDiscountNotes}"</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Grand Total & Advance Summary Bar */}
+                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-2xl border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                          <div>
+                            <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest block">GRAND TOTAL AMOUNT</span>
+                            <span className="text-2xl font-black font-mono text-emerald-900">₹{grandTotal.toLocaleString('en-IN')}</span>
+                          </div>
+
+                          <div className="border-l border-emerald-200 pl-4">
+                            <span className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block">Required Advance</span>
+                            <span className="text-sm font-black font-mono text-charcoal-900">₹{fixedAdvanceReq.toLocaleString('en-IN')}</span>
+                          </div>
+
+                          <div className="border-l border-emerald-200 pl-4">
+                            <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider block">Remaining Due</span>
+                            <span className="text-sm font-black font-mono text-amber-800">₹{remainingDue.toLocaleString('en-IN')}</span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingFixedPrice(true)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 shrink-0"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Edit & Update Price</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div className="space-y-4">
-                    {/* Primary Inputs Row */}
+                    {/* Interactive Input Form */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-warm-bg/70 p-3.5 rounded-2xl border border-warm-border">
                       <div>
                         <label className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block mb-1">
@@ -1179,9 +1395,13 @@ export const AdminOrderDetailPage: React.FC = () => {
                         <label className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block mb-1">
                           Quantity
                         </label>
-                        <div className="py-2 px-3 bg-white rounded-xl border border-warm-border text-sm font-black font-mono text-charcoal-800">
-                          {qty} Unit(s)
-                        </div>
+                        <input
+                          type="number"
+                          min="1"
+                          value={fixedQuantity}
+                          onChange={(e) => setFixedQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full px-3 py-2 text-sm font-black font-mono border border-warm-border rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-brand-500"
+                        />
                       </div>
 
                       <div>
@@ -1217,26 +1437,44 @@ export const AdminOrderDetailPage: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Discount Reason & Advance Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-warm-bg/70 p-3.5 rounded-2xl border border-warm-border">
+                      <div>
+                        <label className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block mb-1">
+                          Discount Notes / Reason (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={fixedDiscountNotes}
+                          onChange={(e) => setFixedDiscountNotes(e.target.value)}
+                          placeholder="e.g. Loyal Farmer Discount / Bulk Order Promo"
+                          className="w-full px-3 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-brand-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block mb-1">
+                          Required Advance Amount (₹)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-charcoal-400 font-bold text-xs">₹</span>
+                          <input
+                            type="number"
+                            value={fixedAdvanceReq || ''}
+                            onChange={(e) => setFixedAdvanceReq(Math.max(0, parseFloat(e.target.value) || 0))}
+                            placeholder="0"
+                            className="w-full pl-6 pr-2 py-2 text-sm font-black font-mono border border-warm-border rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-brand-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Summary Bar & Save Button */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-warm-bg p-3.5 rounded-2xl border border-warm-border">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-warm-bg p-4 rounded-2xl border border-warm-border">
                       <div className="flex flex-wrap items-center gap-4">
                         <div>
-                          <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-wider block">Final Order Total</span>
-                          <span className="text-xl font-black font-mono text-emerald-700">₹{grandTotal.toLocaleString('en-IN')}</span>
-                        </div>
-
-                        <div className="border-l border-warm-border pl-4">
-                          <label className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block mb-0.5">Required Advance (₹)</label>
-                          <div className="relative w-32">
-                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-charcoal-400 font-bold text-xs">₹</span>
-                            <input
-                              type="number"
-                              value={fixedAdvanceReq || ''}
-                              onChange={(e) => setFixedAdvanceReq(Math.max(0, parseFloat(e.target.value) || 0))}
-                              placeholder="0"
-                              className="w-full pl-6 pr-2 py-1 text-xs font-black font-mono border border-warm-border rounded-lg bg-white text-charcoal-900 focus:ring-1 focus:ring-brand-500"
-                            />
-                          </div>
+                          <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-wider block">Calculated Grand Total</span>
+                          <span className="text-2xl font-black font-mono text-emerald-700">₹{grandTotal.toLocaleString('en-IN')}</span>
                         </div>
 
                         <div className="border-l border-warm-border pl-4 hidden md:block">
@@ -1245,14 +1483,24 @@ export const AdminOrderDetailPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={handleSaveFixedPricing}
-                        className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-black px-6 py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 shrink-0"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Save Price</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingFixedPrice(false)}
+                          className="bg-white hover:bg-warm-hover text-charcoal-700 text-xs font-bold px-4 py-2.5 rounded-xl border border-warm-border transition-colors"
+                        >
+                          Cancel
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleSaveFixedPricing}
+                          className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-black px-6 py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 shrink-0"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Save Price & Update Order</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1281,7 +1529,7 @@ export const AdminOrderDetailPage: React.FC = () => {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setPricingMode('fixed')}
+                    onClick={() => handleSwitchPricingMode('fixed')}
                     className="bg-warm-bg hover:bg-warm-hover text-charcoal-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-warm-border transition-colors flex items-center gap-1.5"
                     title="Switch to fixed product pricing"
                   >
