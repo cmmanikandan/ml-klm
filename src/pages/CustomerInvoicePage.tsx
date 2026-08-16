@@ -283,10 +283,34 @@ export const CustomerInvoicePage: React.FC = () => {
       const html2pdf = (window as any).html2pdf;
       const targetInvoiceNo = order?.order_number || order?.id || 'MNK-ORD-1';
 
-      // Temporarily store zoom and reset scale so html2canvas captures full 100% resolution
-      const prevZoom = zoomLevel;
-      setZoomLevel(1.0);
-      await new Promise((r) => setTimeout(r, 150));
+      // 1. Create a dedicated unscaled container at (0, 0) to avoid any viewport/zoom offsets
+      const tempWrapper = document.createElement('div');
+      tempWrapper.style.position = 'fixed';
+      tempWrapper.style.left = '0';
+      tempWrapper.style.top = '0';
+      tempWrapper.style.width = '210mm';
+      tempWrapper.style.height = '297mm';
+      tempWrapper.style.zIndex = '-99999';
+      tempWrapper.style.opacity = '1';
+      tempWrapper.style.pointerEvents = 'none';
+      tempWrapper.style.background = '#ffffff';
+      tempWrapper.style.margin = '0';
+      tempWrapper.style.padding = '0';
+      tempWrapper.style.transform = 'none';
+
+      const clonedInvoice = invoiceElement.cloneNode(true) as HTMLElement;
+      clonedInvoice.id = 'customer-standalone-invoice-paper-clone';
+      clonedInvoice.style.transform = 'none';
+      clonedInvoice.style.margin = '0';
+      clonedInvoice.style.boxShadow = 'none';
+      clonedInvoice.style.width = '210mm';
+      clonedInvoice.style.height = '297mm';
+      clonedInvoice.style.minHeight = '297mm';
+      clonedInvoice.style.maxHeight = '297mm';
+      tempWrapper.appendChild(clonedInvoice);
+      document.body.appendChild(tempWrapper);
+
+      await new Promise((r) => setTimeout(r, 120));
 
       const opt = {
         margin: 0,
@@ -295,11 +319,7 @@ export const CustomerInvoicePage: React.FC = () => {
         html2canvas: { 
           scale: 2, 
           useCORS: true, 
-          logging: false,
-          scrollY: 0,
-          scrollX: 0,
-          windowWidth: 794,
-          windowHeight: 1123
+          logging: false
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
@@ -308,7 +328,7 @@ export const CustomerInvoicePage: React.FC = () => {
       setDownloadProgress(75);
       setDownloadStep('Finalizing A4 document and saving file...');
 
-      const worker = html2pdf().set(opt).from(invoiceElement);
+      const worker = html2pdf().set(opt).from(clonedInvoice);
       
       // Save/download the file
       await worker.save();
@@ -325,9 +345,13 @@ export const CustomerInvoicePage: React.FC = () => {
         console.warn('Blob generation note:', err);
       }
 
+      // Cleanup cloned container
+      if (tempWrapper.parentNode) {
+        tempWrapper.parentNode.removeChild(tempWrapper);
+      }
+
       setDownloadProgress(100);
       setDownloadStep('Download Complete!');
-      setZoomLevel(prevZoom);
       setPdfDownloaded(true);
       setShowSuccessModal(true);
 
