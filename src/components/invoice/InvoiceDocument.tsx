@@ -98,17 +98,24 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
       <div>
         {/* HEADER SECTION: Left Brand & Right Tax Invoice Details */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2.5px solid #ea580c', paddingBottom: '16px', marginBottom: '16px' }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.5px' }}>
-              MANIKANDAN <span style={{ color: '#ea580c' }}>LATHE</span>
-            </h1>
-            <p style={{ margin: '2px 0 0 0', fontSize: '11px', fontWeight: 800, color: '#ea580c', letterSpacing: '1px', textTransform: 'uppercase' }}>
-              WELDING WORKS & FABRICATION SHOP
-            </p>
-            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#475569', lineHeight: '1.4' }}>
-              Kallimandhayam - 624616, Dindigul District, Tamil Nadu<br />
-              <strong>Phone:</strong> +91 96592 86268 | <strong>Email:</strong> manikandanlatheklm@gmail.com
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img
+              src="/logo.png"
+              alt="Manikandan Lathe Logo"
+              style={{ width: '48px', height: '48px', objectFit: 'contain', flexShrink: 0 }}
+            />
+            <div>
+              <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 900, color: '#ea580c', letterSpacing: '-0.5px' }}>
+                MANIKANDAN <span style={{ color: '#0f172a' }}>LATHE</span>
+              </h1>
+              <p style={{ margin: '2px 0 0 0', fontSize: '10px', fontWeight: 800, color: '#ea580c', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                WELDING WORKS & FABRICATION SHOP
+              </p>
+              <p style={{ margin: '3px 0 0 0', fontSize: '11px', color: '#475569', lineHeight: '1.35' }}>
+                Kallimandhayam - 624616, Dindigul District, Tamil Nadu<br />
+                <strong>Phone:</strong> +91 96592 86268 | <strong>Email:</strong> manikandanlatheklm@gmail.com
+              </p>
+            </div>
           </div>
 
           <div style={{ textAlign: 'right' }}>

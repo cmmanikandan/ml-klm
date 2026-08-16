@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Printer, Download, ArrowLeft, CheckCircle2, AlertCircle, ZoomIn, ZoomOut, Sparkles, Home, ShieldCheck } from 'lucide-react';
 import { InvoiceDocument } from '../components/invoice/InvoiceDocument';
+import { Logo } from '../components/common/Logo';
 import { supabase } from '../lib/supabase';
 import { fetchActiveProducts } from '../lib/productsStore';
 
@@ -289,22 +290,11 @@ export const CustomerInvoicePage: React.FC = () => {
           
           {/* Brand Logo & Invoice Title */}
           <div className="flex items-center gap-3">
-            <Link to="/home" className="flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white flex items-center justify-center font-black text-base shadow-md group-hover:scale-105 transition-transform">
-                ML
-              </div>
-              <div>
-                <h1 className="text-sm sm:text-base font-black text-charcoal-900 tracking-tight leading-tight flex items-center gap-1.5">
-                  <span>MANIKANDAN LATHE</span>
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                </h1>
-                <p className="text-[10px] text-brand-600 font-extrabold uppercase tracking-wider">
-                  Welding & Fabrication Works
-                </p>
-              </div>
+            <Link to="/home" className="flex items-center shrink-0">
+              <Logo size="sm" />
             </Link>
 
-            <span className="hidden md:inline-block font-mono text-xs font-black text-charcoal-700 bg-warm-bg px-3 py-1 rounded-full border border-warm-border">
+            <span className="hidden sm:inline-block font-mono text-xs font-black text-charcoal-700 bg-warm-bg px-3 py-1 rounded-full border border-warm-border">
               Tax Invoice #{invoiceNo}
             </span>
           </div>

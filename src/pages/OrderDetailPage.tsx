@@ -375,19 +375,10 @@ export const OrderDetailPage: React.FC = () => {
           </button>
 
           <div className="flex items-center gap-2">
-            <Link
-              to={`/invoice/${order.order_number || order.id}`}
-              className="inline-flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white px-3.5 py-1.5 rounded-full text-xs font-black shadow-sm transition-colors"
-              title="View & Download Official Tax Invoice"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>{isTamil ? 'வரி இன்வாய்ஸ்' : 'Tax Invoice'}</span>
-            </Link>
-
             <button
               onClick={handleShareOrder}
               className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-full text-xs font-black shadow-sm transition-colors"
-              title="Share Order & Invoice"
+              title="Share Order & Tracking"
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>{isTamil ? 'பகிரவும்' : 'Share'}</span>
@@ -696,33 +687,6 @@ export const OrderDetailPage: React.FC = () => {
                 Direct Workshop Counter Pickup Only
               </p>
             </div>
-          </div>
-
-          {/* Official Tax Invoice & PDF Download Card */}
-          <div className="bg-gradient-to-r from-slate-900 to-charcoal-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-brand-400 shrink-0">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-wider text-white">
-                  {isTamil ? 'அதிகாரப்பூர்வ வரி விலைப்பட்டியல்' : 'Official Tax Invoice Document'}
-                </h4>
-                <p className="text-[11px] text-slate-300 font-medium mt-0.5">
-                  {isTamil 
-                    ? `ஆர்டர் #${order.order_number} க்கான அதிகாரப்பூர்வ A4 PDF விலைப்பட்டியலைப் பதிவிறக்கவும்.`
-                    : `View, print, or download your official A4 PDF Tax Invoice for #${order.order_number}.`}
-                </p>
-              </div>
-            </div>
-
-            <Link
-              to={`/invoice/${order.order_number || order.id}`}
-              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs shadow-md transition-all shrink-0"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>{isTamil ? 'இன்வாய்ஸ் பார்க்க / PDF பதிவிறக்க' : 'View & Download PDF'}</span>
-            </Link>
           </div>
 
           {/* Direct Shop Support Contact CTA */}
