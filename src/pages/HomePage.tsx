@@ -125,9 +125,15 @@ export const HomePage: React.FC = () => {
                   <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
                   <span>{getGreeting()} 👋</span>
                 </span>
-                <span className="text-[10px] font-mono font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
-                  KALLIMANDHAYAM
-                </span>
+                {(user?.city_area || user?.address) ? (
+                  <span className="text-[10px] font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                    📍 {user.city_area || user.address}
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                    ⏰ {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-sm">
@@ -177,7 +183,7 @@ export const HomePage: React.FC = () => {
                   </div>
 
                   <h3 className="text-base sm:text-lg font-black text-white group-hover:text-amber-200 transition-colors">
-                    {ord.productName || ord.product_name || (isTamil ? 'உற்பத்திப் பொருள்' : 'Custom Lathe Fabrication Product')}
+                    {ord.productName || (ord as any).product_name || (isTamil ? 'உற்பத்திப் பொருள்' : 'Custom Lathe Fabrication Product')}
                   </h3>
 
                   <p className="text-xs text-amber-100 font-medium leading-relaxed">
