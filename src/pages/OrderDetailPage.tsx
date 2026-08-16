@@ -537,76 +537,104 @@ export const OrderDetailPage: React.FC = () => {
 
           {/* DYNAMIC PAYMENT / NOTIFICATION CARD SECTION */}
           {(() => {
-            const isFullyPaid = order.payment_status === 'paid';
-            // Only show payment UI if admin has set a payment request amount
-            const hasPaymentRequested = order.is_payment_requested && (order.payment_request_amount || 0) > 0;
-            const requestedAmount = order.payment_request_amount || 0;
+            const totalAmt = Number(order.total_amount) || 0;
+            const remainingAmt = order.remaining_amount != null ? Number(order.remaining_amount) : totalAmt;
+            const paidAmt = Math.max(0, totalAmt - remainingAmt);
+            const isFullyPaid = order.payment_status === 'paid' || (totalAmt > 0 && remainingAmt === 0 && paidAmt >= totalAmt);
+            const payAmount = order.payment_request_amount || order.advance_amount || remainingAmt || totalAmt;
+            const hasFixedOrQuotedPrice = totalAmt > 0;
 
             if (isFullyPaid) {
               return (
-                <div className="bg-emerald-50 border-2 border-emerald-300 p-4.5 rounded-2xl flex items-center justify-between shadow-sm">
+                <div className="bg-emerald-50 border-2 border-emerald-300 p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
                   <div className="flex items-center gap-2.5 text-emerald-900 font-black text-xs sm:text-sm">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                     <span>{isTamil ? 'கட்டணம் முழுவதும் செலுத்தப்பட்டது' : 'Payment Completed in Full'}</span>
                   </div>
-                  <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 font-mono">
-                    ₹{(order.total_amount || 0).toLocaleString('en-IN')}
+                  <span className="text-sm font-black text-emerald-700 bg-emerald-100 px-4 py-1.5 rounded-full border border-emerald-300 font-mono">
+                    ₹{totalAmt.toLocaleString('en-IN')}
                   </span>
                 </div>
               );
             }
 
-            if (hasPaymentRequested && requestedAmount > 0) {
+            if (hasFixedOrQuotedPrice) {
               return (
-                <div className="bg-gradient-to-r from-amber-500/15 via-brand-500/15 to-orange-500/15 p-5 rounded-3xl border-2 border-brand-400 shadow-md space-y-4 animate-pulse-subtle">
+                <div className="bg-gradient-to-r from-amber-500/10 via-brand-500/10 to-orange-500/10 p-5 sm:p-6 rounded-3xl border-2 border-brand-300 shadow-md space-y-4">
                   
-                  {/* Highlight Banner */}
-                  <div className="bg-brand-600 text-white p-3 rounded-2xl flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">📢</span>
-                      <div>
-                        <span className="text-xs font-black uppercase tracking-wider block">
-                          {isTamil ? 'கட்டண அறிவிப்பு' : 'Payment Requested by Admin'}
-                        </span>
-                        <span className="text-[11px] font-bold text-amber-100">
-                          {isTamil ? 'ஆர்டர் கட்டணம் நிர்ணயிக்கப்பட்டுள்ளது' : 'Workshop admin has set the payment amount for your order.'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  {/* Price Summary Breakdown Grid */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-brand-200/80 pb-4">
                     <div>
-                      <span className="text-[10px] font-black text-brand-700 uppercase tracking-widest block">PAYMENT DUE</span>
-                      <div className="flex items-center gap-2 text-charcoal-900 font-black text-sm">
-                        <CreditCard className="w-5 h-5 text-brand-600" />
-                        <span>{isTamil ? 'செலுத்த வேண்டிய தொகை' : 'Requested Payment Amount'}</span>
-                      </div>
+                      <span className="text-[10px] font-black text-brand-700 uppercase tracking-widest block">
+                        {isTamil ? 'விலை விவரம்' : 'ORDER PRICE SUMMARY'}
+                      </span>
+                      <h3 className="text-base font-black text-charcoal-900 mt-0.5">
+                        {isTamil ? 'உறுதிசெய்யப்பட்ட மொத்த விலை' : 'Confirmed Total Price'}
+                      </h3>
                     </div>
 
-                    <div className="text-right">
-                      <span className="text-2xl sm:text-3xl font-black text-brand-600 font-mono">
-                        ₹{requestedAmount.toLocaleString('en-IN')}
+                    <div className="text-left sm:text-right">
+                      <span className="text-2xl sm:text-3xl font-black text-brand-600 font-mono block">
+                        ₹{totalAmt.toLocaleString('en-IN')}
                       </span>
-                      {Number(order.total_amount || 0) > 0 && (
-                        <span className="text-[10px] font-bold text-charcoal-500 block">
-                          Total Quoted: ₹{Number(order.total_amount).toLocaleString('en-IN')}
+                      {order.quantity > 1 && (
+                        <span className="text-[11px] font-bold text-charcoal-500 block">
+                          ({order.quantity} Units @ ₹{Math.round(totalAmt / order.quantity).toLocaleString('en-IN')} / unit)
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="pt-1">
-                    <Button
-                      onClick={handlePayNow}
-                      variant="primary"
-                      fullWidth
-                      icon={<CreditCard className="w-4 h-4" />}
-                      className="py-3.5 text-sm font-black rounded-2xl shadow-lg bg-brand-600 hover:bg-brand-700"
-                    >
-                      {isTamil ? 'ஆன்லைன் மூலம் பாதுகாப்பாக செலுத்துக (Razorpay)' : 'Pay Securely via Razorpay (UPI / Card / NetBanking)'}
-                    </Button>
+                  {/* Payment Details Stats */}
+                  <div className="grid grid-cols-3 gap-2 text-center bg-white p-3.5 rounded-2xl border border-warm-border text-xs">
+                    <div>
+                      <span className="text-charcoal-400 block text-[10px] font-extrabold uppercase">Total</span>
+                      <span className="font-mono font-black text-charcoal-900 text-sm">₹{totalAmt.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div>
+                      <span className="text-emerald-600 block text-[10px] font-extrabold uppercase">Paid</span>
+                      <span className="font-mono font-black text-emerald-700 text-sm">₹{paidAmt.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div>
+                      <span className="text-amber-700 block text-[10px] font-extrabold uppercase">Balance Due</span>
+                      <span className="font-mono font-black text-amber-800 text-sm">₹{remainingAmt.toLocaleString('en-IN')}</span>
+                    </div>
                   </div>
+
+                  {/* Payment Action Buttons */}
+                  {remainingAmt > 0 && (
+                    <div className="space-y-2.5 pt-1">
+                      <Button
+                        onClick={handlePayNow}
+                        variant="primary"
+                        fullWidth
+                        icon={<CreditCard className="w-4 h-4" />}
+                        className="py-3.5 text-sm font-black rounded-2xl shadow-lg bg-brand-600 hover:bg-brand-700"
+                      >
+                        {isTamil 
+                          ? `ஆன்லைனில் செலுத்துக (₹${payAmount.toLocaleString('en-IN')})` 
+                          : `Pay Securely via Razorpay (UPI / Card / NetBanking) — ₹${payAmount.toLocaleString('en-IN')}`}
+                      </Button>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setShowQrModal(true)}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 bg-white hover:bg-warm-hover text-charcoal-800 font-extrabold py-2.5 px-3 rounded-xl text-xs border border-warm-border shadow-sm transition-colors"
+                        >
+                          <QrCode className="w-4 h-4 text-brand-600" />
+                          <span>{isTamil ? 'UPI QR ஸ்கேன் செய்' : 'Scan Shop UPI QR'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => setShowInvoicePreviewModal(true)}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 bg-white hover:bg-warm-hover text-charcoal-800 font-extrabold py-2.5 px-3 rounded-xl text-xs border border-warm-border shadow-sm transition-colors"
+                        >
+                          <Printer className="w-4 h-4 text-charcoal-600" />
+                          <span>{isTamil ? 'ரசீது காண்க' : 'View Tax Invoice'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="bg-white/90 p-3 rounded-xl border border-warm-border text-center text-xs font-bold text-charcoal-700">
                     💵 Or pay Cash directly at Workshop Counter (<span className="text-brand-600">Kallimandhayam</span>)
@@ -615,7 +643,7 @@ export const OrderDetailPage: React.FC = () => {
               );
             }
 
-            // PENDING PRICE CALCULATION BY ADMIN (DEFAULT STATE BEFORE ADMIN SETS AMOUNT)
+            // PENDING PRICE CALCULATION BY ADMIN (ONLY WHEN TOTAL AMOUNT IS 0 AND PRICING IS WEIGHT/SQFT)
             return (
               <div className="bg-amber-50/80 p-5 rounded-3xl border-2 border-amber-300 space-y-3">
                 <div className="flex items-center gap-2.5 text-amber-900">
