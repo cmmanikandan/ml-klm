@@ -93,7 +93,6 @@ export const OrderDetailPage: React.FC = () => {
 
   const fetchLiveOrderDetails = async () => {
     setLoading(true);
-    try {
     if (!id) {
       setError('Order not specified');
       setLoading(false);
@@ -143,40 +142,35 @@ export const OrderDetailPage: React.FC = () => {
         return;
       }
 
-        if (ordRecord) {
-          // Hydrate product from Supabase products table
-          let hydratedProduct = undefined;
-          try {
-            const activeProducts = await fetchActiveProducts();
-            hydratedProduct = activeProducts.find(
-              (p) => p.id === ordRecord.product_id || p.name_en?.toLowerCase() === (ordRecord.product_name || '').toLowerCase()
-            );
-          } catch {}
+      // Hydrate product from Supabase products table
+      let hydratedProduct = undefined;
+      try {
+        const activeProducts = await fetchActiveProducts();
+        hydratedProduct = activeProducts.find(
+          (p) => p.id === ordRecord.product_id || p.name_en?.toLowerCase() === (ordRecord.product_name || '').toLowerCase()
+        );
+      } catch {}
 
-          const prodTitle = ordRecord.product_name || hydratedProduct?.name_en || 'Custom Lathe Fabricated Item';
-          const prodImg = ordRecord.product_image || hydratedProduct?.primary_image || (hydratedProduct?.images && hydratedProduct.images[0]) || '';
-          let total = ordRecord.total_amount || 0;
-          if (total === 0 && hydratedProduct?.admin_price) {
-            total = hydratedProduct.admin_price * (ordRecord.quantity || 1);
-          }
-
-          const advance = ordRecord.advance_amount || 0;
-          const remaining = ordRecord.remaining_amount != null && ordRecord.remaining_amount > 0 ? ordRecord.remaining_amount : Math.max(0, total - advance);
-
-          setOrder({
-            ...ordRecord,
-            total_amount: total,
-            remaining_amount: remaining,
-            product_name: prodTitle,
-            productName: prodTitle,
-            product_image: prodImg,
-            productImage: prodImg,
-            product: hydratedProduct
-          } as any);
-        } else {
-          setOrder(null);
-        }
+      const prodTitle = ordRecord.product_name || hydratedProduct?.name_en || 'Custom Lathe Fabricated Item';
+      const prodImg = ordRecord.product_image || hydratedProduct?.primary_image || (hydratedProduct?.images && hydratedProduct.images[0]) || '';
+      let total = ordRecord.total_amount || 0;
+      if (total === 0 && hydratedProduct?.admin_price) {
+        total = hydratedProduct.admin_price * (ordRecord.quantity || 1);
       }
+
+      const advance = ordRecord.advance_amount || 0;
+      const remaining = ordRecord.remaining_amount != null && ordRecord.remaining_amount > 0 ? ordRecord.remaining_amount : Math.max(0, total - advance);
+
+      setOrder({
+        ...ordRecord,
+        total_amount: total,
+        remaining_amount: remaining,
+        product_name: prodTitle,
+        productName: prodTitle,
+        product_image: prodImg,
+        productImage: prodImg,
+        product: hydratedProduct
+      } as any);
     } catch (e) {
       console.warn('Live order fetch fallback', e);
       setOrder(null);
