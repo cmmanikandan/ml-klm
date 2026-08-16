@@ -651,24 +651,6 @@ export const OrderDetailPage: React.FC = () => {
                           ? `ஆன்லைனில் செலுத்துக (₹${payAmount.toLocaleString('en-IN')})` 
                           : `Pay Securely via Razorpay (UPI / Card / NetBanking) — ₹${payAmount.toLocaleString('en-IN')}`}
                       </Button>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setShowQrModal(true)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 bg-white hover:bg-warm-hover text-charcoal-800 font-extrabold py-2.5 px-3 rounded-xl text-xs border border-warm-border shadow-sm transition-colors"
-                        >
-                          <QrCode className="w-4 h-4 text-brand-600" />
-                          <span>{isTamil ? 'UPI QR ஸ்கேன் செய்' : 'Scan Shop UPI QR'}</span>
-                        </button>
-
-                        <button
-                          onClick={() => setShowInvoicePreviewModal(true)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 bg-white hover:bg-warm-hover text-charcoal-800 font-extrabold py-2.5 px-3 rounded-xl text-xs border border-warm-border shadow-sm transition-colors"
-                        >
-                          <Printer className="w-4 h-4 text-charcoal-600" />
-                          <span>{isTamil ? 'ரசீது காண்க' : 'View Tax Invoice'}</span>
-                        </button>
-                      </div>
                     </div>
                   )}
 
