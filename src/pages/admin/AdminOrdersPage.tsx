@@ -356,10 +356,13 @@ export const AdminOrdersPage: React.FC = () => {
 
       await supabase.from('payments').insert({
         order_id: selectedOrder.id,
+        order_number: selectedOrder.order_number || selectedOrder.id,
+        user_id: selectedOrder.user_id || '',
         amount: cashAmount,
         payment_mode: 'cash',
         notes: cashNotes,
-        status: 'completed'
+        status: 'completed',
+        created_at: new Date().toISOString()
       });
     } catch (e) {
       console.warn('Cash payment DB insert fallback');
