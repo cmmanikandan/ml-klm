@@ -289,7 +289,7 @@ export const CustomerInvoicePage: React.FC = () => {
       await new Promise((r) => setTimeout(r, 150));
 
       const opt = {
-        margin: [0, 0, 0, 0],
+        margin: 0,
         filename: `Tax_Invoice_${targetInvoiceNo}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { 
@@ -297,9 +297,12 @@ export const CustomerInvoicePage: React.FC = () => {
           useCORS: true, 
           logging: false,
           scrollY: 0,
-          scrollX: 0
+          scrollX: 0,
+          windowWidth: 794,
+          windowHeight: 1123
         },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
       setDownloadProgress(75);
@@ -314,7 +317,8 @@ export const CustomerInvoicePage: React.FC = () => {
       try {
         const blob = await worker.output('blob');
         if (blob) {
-          const url = URL.createObjectURL(blob);
+          const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+          const url = URL.createObjectURL(pdfBlob);
           setPdfBlobUrl(url);
         }
       } catch (err) {
@@ -580,11 +584,14 @@ export const CustomerInvoicePage: React.FC = () => {
       {/* 2. MAIN A4 DOCUMENT PREVIEW CANVAS (Warm-White Centered Layout) */}
       <main className="flex-1 py-6 sm:py-8 px-4 flex justify-center items-start overflow-auto min-h-[75vh]">
         <div 
-          className="shadow-2xl rounded-sm bg-white shrink-0 mx-auto transition-transform origin-top border border-warm-border"
+          className="shadow-2xl rounded-sm bg-white shrink-0 mx-auto transition-transform origin-top border border-warm-border overflow-hidden"
           style={{ 
             width: '210mm',
             minWidth: '210mm',
             maxWidth: '210mm',
+            height: '297mm',
+            minHeight: '297mm',
+            maxHeight: '297mm',
             transform: `scale(${zoomLevel})`,
             transformOrigin: 'top center'
           }}

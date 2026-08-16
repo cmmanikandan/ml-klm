@@ -81,18 +81,21 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
         width: '210mm',
         minWidth: '210mm',
         maxWidth: '210mm',
+        height: '297mm',
+        maxHeight: '297mm',
         minHeight: '297mm',
-        padding: '12mm 14mm',
+        padding: '10mm 12mm',
         boxSizing: 'border-box',
         backgroundColor: '#ffffff',
         color: '#0f172a',
         fontFamily: "'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif",
-        fontSize: '14px',
-        lineHeight: '1.4',
+        fontSize: '13px',
+        lineHeight: '1.35',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        overflow: 'hidden'
       }}
     >
       <div>
