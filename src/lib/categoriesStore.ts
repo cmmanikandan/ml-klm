@@ -4,54 +4,25 @@ import { Category } from '../types';
 const LOCAL_CATEGORIES_KEY = 'ml_custom_categories';
 const DELETED_CATEGORIES_KEY = 'ml_deleted_categories';
 
-// Fetch all active categories (Supabase DB merged with Local Storage, respecting deleted blacklist)
+// Fetch all active categories directly from Supabase DB (Live 100% sync)
 export const fetchActiveCategories = async (): Promise<Category[]> => {
-  let dbCategories: Category[] = [];
   try {
     const { data, error } = await supabase
       .from('categories')
       .select('*')
+      .eq('is_active', true)
       .order('sort_order', { ascending: true });
 
-    if (data && !error) {
-      dbCategories = data;
+    if (error) {
+      console.warn('Supabase categories fetch error:', error.message);
+      return [];
     }
+
+    return data || [];
   } catch (e) {
-    console.warn('Supabase categories fetch fallback to local store');
+    console.error('Supabase categories fetch exception:', e);
+    return [];
   }
-
-  // Read local custom added categories
-  const localStr = localStorage.getItem(LOCAL_CATEGORIES_KEY);
-  const localCategories: Category[] = localStr ? JSON.parse(localStr) : [];
-
-  // Read deleted category IDs & slugs blacklist
-  const deletedStr = localStorage.getItem(DELETED_CATEGORIES_KEY);
-  const deletedSet = new Set<string>(deletedStr ? JSON.parse(deletedStr) : []);
-
-  const map = new Map<string, Category>();
-
-  // 1. Initial categories (if not deleted by admin)
-  INITIAL_CATEGORIES.forEach((c) => {
-    if (!deletedSet.has(c.id) && !deletedSet.has(c.slug)) {
-      map.set(c.slug, c);
-    }
-  });
-
-  // 2. DB Categories take priority
-  dbCategories.forEach((c) => {
-    if (!deletedSet.has(c.id) && !deletedSet.has(c.slug)) {
-      map.set(c.slug, c);
-    }
-  });
-
-  // 3. Local Custom Categories
-  localCategories.forEach((c) => {
-    if (!deletedSet.has(c.id) && !deletedSet.has(c.slug)) {
-      map.set(c.slug, c);
-    }
-  });
-
-  return Array.from(map.values()).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 };
 
 // Save (Insert / Update) a Category to both Supabase DB and Local Store

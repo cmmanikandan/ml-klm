@@ -62,6 +62,10 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       localStorage.removeItem('ml_enquiries');
       localStorage.removeItem('ml_payments');
       localStorage.removeItem('ml_deleted_ids');
+      localStorage.removeItem('ml_custom_products');
+      localStorage.removeItem('ml_deleted_product_ids');
+      localStorage.removeItem('ml_custom_categories');
+      localStorage.removeItem('ml_deleted_categories');
     } catch (e) {}
 
     const timer = setTimeout(() => {

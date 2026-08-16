@@ -6,9 +6,8 @@ const DELETED_IDS_KEY = 'ml_deleted_product_ids';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Fetch all active products (Supabase DB merged with Local Storage)
+// Fetch all active products directly from Supabase DB (Live 100% sync)
 export const fetchActiveProducts = async (): Promise<Product[]> => {
-  let dbProducts: Product[] = [];
   try {
     const { data, error } = await supabase
       .from('products')
@@ -16,38 +15,21 @@ export const fetchActiveProducts = async (): Promise<Product[]> => {
       .eq('is_active', true)
       .order('created_at', { ascending: false });
 
-    if (data && !error) {
-      dbProducts = data;
+    if (error) {
+      console.warn('Supabase DB product fetch error:', error.message);
+      return [];
     }
-  } catch (e) {
-    console.warn('Supabase DB fetch fallback to local store');
-  }
 
-  // Read local custom added products
-  const localStr = localStorage.getItem(LOCAL_PRODUCTS_KEY);
-  const localProducts: Product[] = localStr ? JSON.parse(localStr) : [];
-
-  // Read deleted product IDs
-  const deletedStr = localStorage.getItem(DELETED_IDS_KEY);
-  const deletedIds: string[] = deletedStr ? JSON.parse(deletedStr) : [];
-
-  // Merge: DB wins over localStorage so edits propagate to all devices
-  const map = new Map<string, Product>();
-  // Load local first (lower priority)
-  localProducts.forEach((p) => map.set(p.id, p));
-  // DB overwrites local (higher priority — source of truth)
-  dbProducts.forEach((p) => {
-    // Hydrate primary_image from images array if missing from older records
-    const hydratedProduct: Product = {
+    // Hydrate primary_image from images array if missing
+    return (data || []).map((p: any) => ({
       ...p,
       primary_image: p.primary_image || (p.images && p.images.length > 0 ? p.images[0] : ''),
       images: p.images && p.images.length > 0 ? p.images : (p.primary_image ? [p.primary_image] : [])
-    };
-    map.set(p.id, hydratedProduct);
-  });
-
-  // Filter out deleted product IDs
-  return Array.from(map.values()).filter((p) => !deletedIds.includes(p.id) && p.is_active !== false);
+    }));
+  } catch (e) {
+    console.error('Supabase DB fetch products exception:', e);
+    return [];
+  }
 };
 
 // Fetch single product by ID
