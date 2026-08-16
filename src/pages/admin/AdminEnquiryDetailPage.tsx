@@ -3,19 +3,15 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Phone, 
-  User, 
   MapPin, 
-  Mail, 
   MessageSquare, 
   CheckCircle2, 
   XCircle, 
-  ArrowRight, 
   ExternalLink, 
   Package, 
-  Sparkles,
-  Calendar,
   Wrench,
-  ShoppingBag
+  ShoppingBag,
+  Check
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
@@ -23,7 +19,6 @@ import { Modal } from '../../components/common/Modal';
 import { NotificationModal } from '../../components/common/NotificationModal';
 import { DEFAULT_SHOP_INFO, INITIAL_PRODUCTS, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
-import { getNextOrderId } from '../../lib/idGenerator';
 import { convertEnquiryToOrderSafely } from '../../lib/orderConversionService';
 
 export const AdminEnquiryDetailPage: React.FC = () => {
@@ -32,6 +27,7 @@ export const AdminEnquiryDetailPage: React.FC = () => {
 
   const [enquiry, setEnquiry] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isConverting, setIsConverting] = useState(false);
 
   // Quote & Conversion Form State
   const [quotePrice, setQuotePrice] = useState<number>(0);
@@ -78,18 +74,25 @@ export const AdminEnquiryDetailPage: React.FC = () => {
       }
 
       if (enqRecord) {
-        const prod = productMap.get(enqRecord.product_id);
+        const prod = productMap.get(enqRecord.product_id) || INITIAL_PRODUCTS.find(p => p.id === enqRecord.product_id || p.name_en.toLowerCase() === (enqRecord.product_name || '').toLowerCase());
         const prof = profileMap.get(enqRecord.user_id);
+
+        const initialPrice = enqRecord.quote_price || (prod?.admin_price ? prod.admin_price * (enqRecord.quantity || 1) : 40000);
+        const initialAdvance = enqRecord.advance_amount || 0;
+
+        setQuotePrice(initialPrice);
+        setAdvanceRequired(initialAdvance);
+        setEstimatedDays(enqRecord.estimated_days || 7);
 
         const hydrated = {
           ...enqRecord,
-          customerName: enqRecord.customerName || enqRecord.customer_name || prof?.full_name || 'Karthik Kumar',
-          customerPhone: enqRecord.customerPhone || enqRecord.customer_phone || prof?.phone || '+91 98421 54321',
+          customerName: enqRecord.customerName || enqRecord.customer_name || prof?.full_name || 'Customer',
+          customerPhone: enqRecord.customerPhone || enqRecord.customer_phone || prof?.phone || '+91 96592 86268',
           customerEmail: enqRecord.customerEmail || prof?.email || 'customer@gmail.com',
-          customerAddress: enqRecord.customerAddress || enqRecord.delivery_location || prof?.address || prof?.city_area || 'Kallimandhayam, Dindigul',
+          customerAddress: enqRecord.customerAddress || enqRecord.delivery_location || prof?.address || prof?.city_area || 'Direct Workshop Counter Pickup (Kallimandhayam)',
           customerLanguage: prof?.language === 'ta' ? 'தமிழ் (Tamil)' : 'English',
           productName: enqRecord.productName || enqRecord.product_name || prod?.name_en || 'Custom Lathe Fabrication Work',
-          productImage: enqRecord.productImage || prod?.primary_image || (prod?.images && prod.images[0]) || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
+          productImage: enqRecord.productImage || prod?.primary_image || (prod?.images && prod.images[0]) || 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&auto=format&fit=crop&q=80',
           productId: enqRecord.product_id || prod?.id || 'demo-prod-1'
         };
         setEnquiry(hydrated);
@@ -101,42 +104,69 @@ export const AdminEnquiryDetailPage: React.FC = () => {
     }
   };
 
-  const handleUpdateStatus = async (status: string) => {
+  const handleAcceptEnquiry = async () => {
+    if (!enquiry || isConverting) return;
+
+    setIsConverting(true);
+    try {
+      const result = await convertEnquiryToOrderSafely({
+        enquiry,
+        quotePrice,
+        advanceRequired,
+        estimatedDays
+      });
+
+      const orderNumber = result.order?.order_number || result.order?.id || 'MNK-ORD-1';
+
+      setEnquiry((prev: any) => ({
+        ...prev,
+        status: 'converted',
+        converted_order_id: orderNumber
+      }));
+
+      setConvertedSuccessOrder({
+        enquiryNumber: enquiry.enquiry_number || enquiry.id,
+        orderNumber: orderNumber,
+        orderId: result.order?.id || orderNumber,
+        quotedPrice: result.order?.total_amount || quotePrice,
+        advanceRequired: result.order?.advance_amount || advanceRequired
+      });
+    } catch (err: any) {
+      console.error('Order conversion error:', err);
+      setNotifyModal({
+        isOpen: true,
+        title: 'Conversion Error',
+        message: err?.message || 'Unable to accept this enquiry right now. Please try again.',
+        type: 'error'
+      });
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  const handleRejectEnquiry = async () => {
     if (!enquiry) return;
     
-    let updatedObj = { ...enquiry, status };
-    if (status === 'accepted') {
-      try {
-        const result = await convertEnquiryToOrderSafely({
-          enquiry,
-          quotePrice: 0,
-          advanceRequired: advanceRequired || enquiry.advance_amount || 0,
-          estimatedDays: estimatedDays || 7
-        });
-        if (result.order) {
-          updatedObj.converted_order_id = result.order.id;
-          updatedObj.status = 'converted';
-          setConvertedSuccessOrder(result.order);
-        }
-      } catch (err) {
-        console.warn('Auto convert on accept fallback', err);
-      }
-    }
-
-    setEnquiry(updatedObj);
+    setEnquiry((prev: any) => ({ ...prev, status: 'rejected' }));
 
     try {
-      await supabase.from('enquiries').update({ 
-        status: updatedObj.status, 
-        converted_order_id: updatedObj.converted_order_id 
-      }).eq('id', enquiry.id);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enquiry.id);
+      if (isUuid) {
+        await supabase.from('enquiries').update({ status: 'rejected' }).eq('id', enquiry.id);
+      }
+      if (enquiry.enquiry_number) {
+        await supabase.from('enquiries').update({ status: 'rejected' }).eq('enquiry_number', enquiry.enquiry_number);
+      }
     } catch (e) {
-      console.warn('Enquiry status DB update fallback');
+      console.warn('Enquiry reject DB fallback');
     }
 
-    const local = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-    const updatedLocal = local.map((l: any) => l.id === enquiry.id ? updatedObj : l);
-    localStorage.setItem('ml_enquiries', JSON.stringify(updatedLocal));
+    setNotifyModal({
+      isOpen: true,
+      title: 'Enquiry Rejected',
+      message: `Enquiry #${enquiry.enquiry_number || enquiry.id} has been marked as rejected.`,
+      type: 'info'
+    });
   };
 
   const handleOpenWhatsAppQuote = () => {
@@ -160,52 +190,6 @@ export const AdminEnquiryDetailPage: React.FC = () => {
     window.open(`https://wa.me/${targetCustomerPhone}?text=${text}`, '_blank');
   };
 
-  const [isConverting, setIsConverting] = useState(false);
-
-  const handleConvertToOrder = async () => {
-    if (!enquiry || isConverting) return;
-
-    setIsConverting(true);
-    try {
-      const result = await convertEnquiryToOrderSafely({
-        enquiry,
-        quotePrice,
-        advanceRequired,
-        estimatedDays
-      });
-
-      setEnquiry({ ...enquiry, status: 'converted', converted_order_id: result.order.id });
-
-      if (!result.isNew) {
-        setNotifyModal({
-          isOpen: true,
-          title: 'Enquiry Already Converted',
-          message: result.message || 'This enquiry was already converted to an order.',
-          type: 'info'
-        });
-        navigate(`/admin/orders/${result.order.id}`);
-      } else {
-        setConvertedSuccessOrder({
-          enquiryNumber: enquiry.enquiry_number || enquiry.id,
-          orderNumber: result.order.order_number,
-          orderId: result.order.id,
-          quotedPrice: quotePrice,
-          advanceRequired: advanceRequired
-        });
-      }
-    } catch (err) {
-      console.warn('Order conversion error:', err);
-      setNotifyModal({
-        isOpen: true,
-        title: 'Conversion Error',
-        message: 'Unable to convert this enquiry. Please try again.',
-        type: 'error'
-      });
-    } finally {
-      setIsConverting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-warm-bg flex items-center justify-center p-4">
@@ -226,6 +210,10 @@ export const AdminEnquiryDetailPage: React.FC = () => {
     );
   }
 
+  const isAccepted = enquiry.status === 'converted' || enquiry.status === 'accepted' || Boolean(enquiry.converted_order_id);
+  const isPending = enquiry.status === 'pending' && !isAccepted;
+  const linkedOrderNumber = enquiry.converted_order_id || 'MNK-ORD-1';
+
   return (
     <div className="space-y-6">
       
@@ -241,8 +229,8 @@ export const AdminEnquiryDetailPage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-black text-charcoal-900">Enquiry #{enquiry.enquiry_number || enquiry.id}</h1>
-              <Badge variant={enquiry.status}>
-                {(enquiry.status || 'pending').toUpperCase()}
+              <Badge variant={isAccepted ? 'accepted' : enquiry.status}>
+                {isAccepted ? 'ACCEPTED' : (enquiry.status || 'pending').toUpperCase()}
               </Badge>
             </div>
             <p className="text-xs text-charcoal-500 font-semibold mt-0.5">
@@ -251,26 +239,36 @@ export const AdminEnquiryDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Accept/Reject Buttons (Only for Pending) */}
-        {enquiry.status === 'pending' && (
+        {/* Action Header Buttons */}
+        {isPending ? (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleUpdateStatus('accepted')}
-              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-4 py-2.5 rounded-2xl text-xs shadow-md transition-colors"
+            <Button
+              onClick={handleAcceptEnquiry}
+              disabled={isConverting}
+              variant="primary"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md"
+              icon={<Check className="w-4 h-4" />}
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Accept Enquiry</span>
-            </button>
+              {isConverting ? 'Accepting...' : 'Accept Enquiry'}
+            </Button>
 
             <button
-              onClick={() => handleUpdateStatus('rejected')}
-              className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-extrabold px-4 py-2.5 rounded-2xl text-xs shadow-md transition-colors"
+              onClick={handleRejectEnquiry}
+              className="inline-flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold px-3.5 py-2.5 rounded-2xl text-xs border border-red-200 transition-colors"
             >
               <XCircle className="w-4 h-4" />
-              <span>Reject Enquiry</span>
+              <span>Reject</span>
             </button>
           </div>
-        )}
+        ) : isAccepted ? (
+          <Link
+            to={`/admin/orders/${linkedOrderNumber}`}
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-5 py-2.5 rounded-2xl text-xs shadow-md transition-colors"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span>View Active Order (#{linkedOrderNumber})</span>
+          </Link>
+        ) : null}
       </div>
 
       {/* Main Grid Content */}
@@ -324,12 +322,23 @@ export const AdminEnquiryDetailPage: React.FC = () => {
           <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-4">
             <h3 className="text-sm font-black text-charcoal-900 uppercase tracking-wider flex items-center gap-2">
               <Wrench className="w-4 h-4 text-brand-600" />
-              <span>Prepare Price Quote & Convert to Order</span>
+              <span>Fabrication Price & Order Confirmation</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <label className="block font-extrabold text-emerald-800 mb-1">Required Advance Amount (₹) *</label>
+                <label className="block text-xs font-extrabold text-charcoal-800 mb-1">Total Quoted Price (₹) *</label>
+                <input
+                  type="number"
+                  value={quotePrice || ''}
+                  onChange={(e) => setQuotePrice(parseFloat(e.target.value) || 0)}
+                  placeholder="Enter total price (e.g. 40000)"
+                  className="w-full px-3.5 py-2.5 text-sm font-extrabold border border-warm-border rounded-xl bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-extrabold text-emerald-800 mb-1">Required Advance Amount (₹)</label>
                 <input
                   type="number"
                   value={advanceRequired || ''}
@@ -339,7 +348,7 @@ export const AdminEnquiryDetailPage: React.FC = () => {
                 />
               </div>
 
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-charcoal-700 mb-1">Estimated Fabrication Time (Days) *</label>
                 <input
                   type="number"
@@ -361,19 +370,19 @@ export const AdminEnquiryDetailPage: React.FC = () => {
                 Send Quote via WhatsApp
               </Button>
 
-              {!(enquiry.status === 'converted' || enquiry.status === 'accepted' || enquiry.status === 'converted_to_order' || Boolean(enquiry.converted_order_id || enquiry.convertedOrderId || enquiry.order_id)) ? (
+              {isPending ? (
                 <Button
-                  onClick={handleConvertToOrder}
+                  onClick={handleAcceptEnquiry}
                   disabled={isConverting}
                   variant="primary"
-                  icon={<CheckCircle2 className="w-4 h-4" />}
-                  className="flex-1"
+                  icon={<Check className="w-4 h-4" />}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black"
                 >
-                  {isConverting ? 'Converting...' : 'Convert to Active Order'}
+                  {isConverting ? 'Accepting...' : 'Accept & Create Order'}
                 </Button>
               ) : (
                 <Link
-                  to={`/admin/orders/${enquiry.converted_order_id || enquiry.convertedOrderId || enquiry.order_id || 'MNK-ORD-6224'}`}
+                  to={`/admin/orders/${linkedOrderNumber}`}
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 px-4 rounded-2xl text-xs text-center flex items-center justify-center gap-1.5 shadow-md transition-colors"
                 >
                   <ShoppingBag className="w-4 h-4" />
@@ -453,7 +462,7 @@ export const AdminEnquiryDetailPage: React.FC = () => {
             setConvertedSuccessOrder(null);
             navigate('/admin/orders');
           }}
-          title="Order Created Successfully 🎉"
+          title="Order Accepted Successfully 🎉"
           maxWidth="sm"
         >
           <div className="text-center space-y-4 py-2">
@@ -463,36 +472,36 @@ export const AdminEnquiryDetailPage: React.FC = () => {
 
             <div>
               <h3 className="text-base font-black text-charcoal-900">
-                Enquiry #{convertedSuccessOrder.enquiryNumber} Converted!
+                Enquiry #{convertedSuccessOrder.enquiryNumber} Accepted!
               </h3>
               <p className="text-xs text-charcoal-500 font-semibold mt-1">
-                Active Order <span className="font-mono font-bold text-brand-600">#{convertedSuccessOrder.orderNumber}</span> created & assigned to shop.
+                Active Order <span className="font-mono font-bold text-brand-600">#{convertedSuccessOrder.orderNumber}</span> created & added to shop production.
               </p>
             </div>
 
             <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border text-left space-y-1.5 text-xs font-semibold">
               <div className="flex justify-between">
+                <span className="text-charcoal-500">Order Number:</span>
+                <span className="font-mono font-bold text-brand-600">#{convertedSuccessOrder.orderNumber}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-charcoal-500">Total Quoted Price:</span>
                 <span className="font-bold text-charcoal-900">₹{convertedSuccessOrder.quotedPrice.toLocaleString('en-IN')}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-charcoal-500">Required Advance:</span>
-                <span className="font-extrabold text-emerald-600">₹{convertedSuccessOrder.advanceRequired.toLocaleString('en-IN')}</span>
-              </div>
               <div className="text-[10px] text-charcoal-400 pt-1">
-                • Payment card sent to customer portal automatically.
+                • Order is live in Admin Orders and Customer Portal.
               </div>
             </div>
 
             <Button
               onClick={() => {
                 setConvertedSuccessOrder(null);
-                navigate('/admin/orders');
+                navigate(`/admin/orders/${convertedSuccessOrder.orderId}`);
               }}
               variant="primary"
               fullWidth
             >
-              Go to Manage Orders
+              Go to Order Details ➔
             </Button>
           </div>
         </Modal>

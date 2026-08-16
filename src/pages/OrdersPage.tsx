@@ -76,58 +76,7 @@ export const OrdersPage: React.FC = () => {
       const cleanPhoneDigits = userPhone.replace(/\D/g, '');
       const last10Digits = cleanPhoneDigits.slice(-10);
 
-      // 3. Fetch all orders from Supabase DB
-      const { data: allDbOrders } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      let combinedOrders = [...(allDbOrders || [])];
-      localOrders.forEach(loc => {
-        if (!combinedOrders.some(c => c.id === loc.id || c.order_number === loc.order_number)) {
-          combinedOrders.push(loc);
-        }
-      });
-
-      // Filter orders belonging to the customer
-      const matchingOrders = combinedOrders.filter((ord: any) => {
-        // If user is admin, show all orders for review
-        if (user?.email?.includes('admin') || user?.id?.includes('admin')) return true;
-
-        if (user?.id && ord.user_id === user.id) return true;
-        if (user?.email && (ord.user_id === user.email || ord.customer_email === user.email)) return true;
-        
-        // Match by phone number digits
-        if (last10Digits && ord.customer_phone) {
-          const orderPhoneDigits = String(ord.customer_phone).replace(/\D/g, '');
-          if (orderPhoneDigits.includes(last10Digits) || last10Digits.includes(orderPhoneDigits)) {
-            return true;
-          }
-        }
-
-        // Match by name
-        const userName = user?.full_name || '';
-        if (userName && ord.customer_name && userName.trim().toLowerCase() === ord.customer_name.trim().toLowerCase()) {
-          return true;
-        }
-
-        // Fallback: If only 1 or 2 test orders in system, display them
-        if (combinedOrders.length <= 5) return true;
-
-        return false;
-      });
-
-      // Hydrate product names and images into orders
-      const hydratedOrders = matchingOrders.map((o: any) => ({
-        ...o,
-        productName: o.product_name || o.productName || getProductName(o.product_id, 'Custom Fabrication Item'),
-        productImage: o.product_image || o.productImage || getProductImage(o.product_id, o.product_name) || '',
-      }));
-
-      setOrders(hydratedOrders);
-
-      // 4. Fetch enquiries from Supabase DB
+      // 3. Fetch enquiries from Supabase DB first
       const { data: allDbEnquiries } = await supabase
         .from('enquiries')
         .select('*')
@@ -154,14 +103,67 @@ export const OrdersPage: React.FC = () => {
         return false;
       });
 
-      // Cross-check enquiries with orders for live status sync
-      const orderMapByEnq = new Map<string, any>();
-      combinedOrders.forEach(o => {
-        if (o.enquiry_id) orderMapByEnq.set(o.enquiry_id, o);
-        if (o.order_number) orderMapByEnq.set(o.order_number, o);
-        if (o.id) orderMapByEnq.set(o.id, o);
+      // 4. Fetch all orders from Supabase DB
+      const { data: allDbOrders } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+      let combinedOrders = [...(allDbOrders || [])];
+      localOrders.forEach(loc => {
+        if (!combinedOrders.some(c => c.id === loc.id || c.order_number === loc.order_number)) {
+          combinedOrders.push(loc);
+        }
       });
 
+      // Filter orders belonging to the customer (including orders converted from customer's enquiries)
+      const matchingOrders = combinedOrders.filter((ord: any) => {
+        // If user is admin, show all orders for review
+        if (user?.email?.includes('admin') || user?.id?.includes('admin')) return true;
+
+        if (user?.id && ord.user_id === user.id) return true;
+        if (user?.email && (ord.user_id === user.email || ord.customer_email === user.email)) return true;
+        
+        // Match by phone number digits
+        if (last10Digits && ord.customer_phone) {
+          const orderPhoneDigits = String(ord.customer_phone).replace(/\D/g, '');
+          if (orderPhoneDigits.includes(last10Digits) || last10Digits.includes(orderPhoneDigits)) {
+            return true;
+          }
+        }
+
+        // Match by name
+        const userName = user?.full_name || '';
+        if (userName && ord.customer_name && userName.trim().toLowerCase() === ord.customer_name.trim().toLowerCase()) {
+          return true;
+        }
+
+        // Match if converted from an enquiry belonging to this customer
+        const isFromUserEnquiry = matchingEnquiries.some((e: any) =>
+          e.id === ord.enquiry_id ||
+          e.enquiry_number === ord.enquiry_id ||
+          e.converted_order_id === ord.id ||
+          e.converted_order_id === ord.order_number
+        );
+        if (isFromUserEnquiry) return true;
+
+        // Fallback: If only 1 or 2 test orders in system, display them
+        if (combinedOrders.length <= 5) return true;
+
+        return false;
+      });
+
+      // Hydrate product names and images into orders
+      const hydratedOrders = matchingOrders.map((o: any) => ({
+        ...o,
+        productName: o.product_name || o.productName || getProductName(o.product_id, 'Custom Fabrication Item'),
+        productImage: o.product_image || o.productImage || getProductImage(o.product_id, o.product_name) || '',
+      }));
+
+      setOrders(hydratedOrders);
+
+      // Hydrate and sync enquiries
       const hydratedEnquiries = matchingEnquiries.map((e: any) => {
         const isDbConverted = e.status === 'converted' || e.status === 'accepted' || e.status === 'converted_to_order';
         const linkedOrder = e.converted_order_id ? combinedOrders.find(o => o.id === e.converted_order_id || o.order_number === e.converted_order_id) : null;
@@ -169,8 +171,8 @@ export const OrdersPage: React.FC = () => {
 
         return {
           ...e,
-          status: isDbConverted ? 'converted' : 'pending',
-          converted_order_id: isDbConverted ? (ordNum || 'MNK-ORD-2') : '',
+          status: isDbConverted ? 'converted' : (e.status || 'pending'),
+          converted_order_id: isDbConverted ? (ordNum || e.converted_order_id || 'MNK-ORD-1') : '',
           productName: e.product_name || e.productName || getProductName(e.product_id, 'Fabrication Enquiry'),
         };
       });
