@@ -318,6 +318,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
 );
 
 ALTER TABLE public.payments ALTER COLUMN user_id TYPE TEXT;
+ALTER TABLE public.payments ALTER COLUMN order_id DROP NOT NULL;
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS order_number TEXT DEFAULT '';
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS payment_mode TEXT DEFAULT '';
 ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS transaction_id TEXT DEFAULT '';
