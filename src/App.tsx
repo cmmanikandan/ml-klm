@@ -40,6 +40,7 @@ import { AdminEnquiryDetailPage } from './pages/admin/AdminEnquiryDetailPage';
 import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
 import { AdminOrderDetailPage } from './pages/admin/AdminOrderDetailPage';
 import { AdminCustomersPage } from './pages/admin/AdminCustomersPage';
+import { AdminContactsPage } from './pages/admin/AdminContactsPage';
 import { AdminProductsPage } from './pages/admin/AdminProductsPage';
 import { AdminProductEditPage } from './pages/admin/AdminProductEditPage';
 import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
@@ -188,6 +189,7 @@ export const App: React.FC = () => {
                     <Route path="orders" element={<AdminOrdersPage />} />
                     <Route path="orders/:id" element={<AdminOrderDetailPage />} />
                     <Route path="customers" element={<AdminCustomersPage />} />
+                    <Route path="contacts" element={<AdminContactsPage />} />
                     <Route path="products" element={<AdminProductsPage />} />
                     <Route path="products/new" element={<AdminProductEditPage />} />
                     <Route path="products/edit/:id" element={<AdminProductEditPage />} />
