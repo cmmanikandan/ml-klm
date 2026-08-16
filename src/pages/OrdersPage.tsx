@@ -111,8 +111,8 @@ export const OrdersPage: React.FC = () => {
         const cName = (e.customer_name || e.customerName || '').trim().toLowerCase();
         const cPhone = String(e.customer_phone || e.phone || '').replace(/\D/g, '').slice(-10);
 
-        // Find linked order in combinedOrders
-        const matchedOrder = combinedOrders.find((o: any) => {
+        // Find linked order in matchingOrders
+        const matchedOrder = matchingOrders.find((o: any) => {
           if (e.converted_order_id && (o.id === e.converted_order_id || o.order_number === e.converted_order_id)) return true;
           if (e.id && (o.enquiry_id === e.id || o.id === e.id)) return true;
           if (e.enquiry_number && (o.enquiry_id === e.enquiry_number || o.order_number === e.enquiry_number)) return true;
@@ -125,7 +125,7 @@ export const OrdersPage: React.FC = () => {
             if (e.user_id && o.user_id && e.user_id === o.user_id) return true;
             if (cPhone && ordPhone && cPhone === ordPhone) return true;
             if (cName && ordCName && cName === ordCName) return true;
-            if (combinedOrders.length === 1 && matchingEnquiries.length === 1) return true;
+            if (matchingOrders.length === 1 && matchingEnquiries.length === 1) return true;
           }
           return false;
         });

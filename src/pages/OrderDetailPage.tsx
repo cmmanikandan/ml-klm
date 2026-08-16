@@ -17,10 +17,11 @@ export const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { language, t } = useLanguage();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const isTamil = language === 'ta';
 
   const [order, setOrder] = useState<Order | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showQrModal, setShowQrModal] = useState(false);
   const [showInvoicePreviewModal, setShowInvoicePreviewModal] = useState(false);
