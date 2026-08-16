@@ -69,6 +69,7 @@ export const AdminOrderDetailPage: React.FC = () => {
   });
 
   // Weight & Price Calculator State
+  const [isEditingCalc, setIsEditingCalc] = useState<boolean>(false);
   const [calcParts, setCalcParts] = useState<{ id: string; name: string; weight_kg: number }[]>([
     { id: 'p1', name: 'Gate Main Frame', weight_kg: 45 },
     { id: 'p2', name: 'Grill Leaf Section', weight_kg: 30 }
@@ -434,6 +435,7 @@ export const AdminOrderDetailPage: React.FC = () => {
       console.warn('DB update fallback for weight calc');
     }
 
+    setIsEditingCalc(false);
     setNotifyModal({
       isOpen: true,
       title: 'Weight Calculation Saved',
@@ -594,7 +596,9 @@ export const AdminOrderDetailPage: React.FC = () => {
 
           {/* WEIGHT & FABRICATION COST CALCULATOR CARD */}
           <div className="bg-white rounded-3xl p-6 border-2 border-brand-500/40 shadow-card space-y-5">
-            <div className="flex items-center justify-between border-b border-warm-muted pb-3">
+            
+            {/* Header with Edit Toggle Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-warm-muted pb-3 gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xl">⚖️</span>
                 <div>
@@ -602,174 +606,268 @@ export const AdminOrderDetailPage: React.FC = () => {
                     Weight & Fabrication Cost Calculator
                   </h3>
                   <p className="text-[11px] text-charcoal-500 font-semibold">
-                    Enter part weights, rate per kg, extra shop expenses & set customer payment request
+                    {isEditingCalc ? 'Edit part weights, rate per kg, extra shop expenses & set advance' : 'Calculated parts & weight cost summary'}
                   </p>
                 </div>
               </div>
 
-              <span className="bg-brand-50 text-brand-700 text-[11px] font-black px-3 py-1 rounded-full border border-brand-200">
-                Rate: ₹{calcRatePerKg}/kg
-              </span>
-            </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="bg-brand-50 text-brand-700 text-[11px] font-black px-3 py-1 rounded-full border border-brand-200">
+                  Rate: ₹{calcRatePerKg}/kg
+                </span>
 
-            {/* Part-by-Part Weight Entry */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-black text-charcoal-800 uppercase tracking-wider">
-                  Product Parts & Individual Weight (KG)
-                </label>
-                <button
-                  type="button"
-                  onClick={handleAddPart}
-                  className="text-[11px] font-black text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1 rounded-xl border border-brand-200 transition-colors flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>Add Part / Section</span>
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                {calcParts.map((part, pIdx) => (
-                  <div key={part.id || pIdx} className="flex items-center gap-2 bg-warm-bg p-2.5 rounded-xl border border-warm-border">
-                    <span className="text-xs font-black text-charcoal-400 w-6 text-center">#{pIdx + 1}</span>
-                    <input
-                      type="text"
-                      value={part.name}
-                      onChange={(e) => handleUpdatePart(part.id, 'name', e.target.value)}
-                      placeholder="e.g. Gate Frame / Top Arch"
-                      className="flex-1 px-3 py-1.5 text-xs font-bold border border-warm-border rounded-lg bg-white"
-                    />
-                    <div className="flex items-center gap-1 w-28">
-                      <input
-                        type="number"
-                        value={part.weight_kg || ''}
-                        onChange={(e) => handleUpdatePart(part.id, 'weight_kg', parseFloat(e.target.value) || 0)}
-                        placeholder="Weight"
-                        className="w-full px-2.5 py-1.5 text-xs font-mono font-extrabold border border-warm-border rounded-lg bg-white text-right"
-                      />
-                      <span className="text-xs font-bold text-charcoal-600">kg</span>
-                    </div>
-                    {calcParts.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePart(part.id)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                {!isEditingCalc ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingCalc(true)}
+                    className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-extrabold px-3.5 py-1.5 rounded-xl shadow-md transition-colors flex items-center gap-1.5"
+                  >
+                    <span>✏️ Edit & Add Parts</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingCalc(false)}
+                    className="bg-warm-bg hover:bg-warm-hover text-charcoal-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-warm-border transition-colors"
+                  >
+                    View Summary
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Rate & Weight Summary Row */}
-            {(() => {
-              const totalWeight = calcParts.reduce((sum, p) => sum + (Number(p.weight_kg) || 0), 0);
-              const weightSubtotal = Math.round(totalWeight * calcRatePerKg);
-              const extraSubtotal = calcExtraCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-              const grandTotal = weightSubtotal + extraSubtotal;
+            {/* CASE 1: SAVED SUMMARY VIEW (!isEditingCalc) */}
+            {!isEditingCalc ? (
+              <div className="space-y-4">
+                {/* Parts Breakdown Table */}
+                <div className="bg-warm-bg p-4 rounded-2xl border border-warm-border space-y-3">
+                  <span className="text-[10px] font-black text-charcoal-500 uppercase tracking-widest block">
+                    ITEMIZED PARTS & WEIGHTS BREAKDOWN
+                  </span>
 
-              return (
-                <div className="bg-amber-50/80 p-4 rounded-2xl border border-amber-200 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-                    <div className="p-2.5 bg-white rounded-xl border border-amber-200">
-                      <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-widest block">TOTAL WEIGHT</span>
-                      <span className="text-base font-black text-charcoal-900 font-mono">{totalWeight} KG</span>
-                    </div>
-
-                    <div className="p-2.5 bg-white rounded-xl border border-amber-200">
-                      <label className="text-[10px] font-black text-brand-600 uppercase tracking-widest block mb-0.5">RATE PER KG (₹)</label>
-                      <input
-                        type="number"
-                        value={calcRatePerKg}
-                        onChange={(e) => setCalcRatePerKg(parseFloat(e.target.value) || 0)}
-                        className="w-full text-center font-mono font-black text-sm text-brand-600 focus:outline-none bg-transparent"
-                      />
-                    </div>
-
-                    <div className="p-2.5 bg-white rounded-xl border border-amber-200">
-                      <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest block">BASE WEIGHT COST</span>
-                      <span className="text-base font-black text-emerald-800 font-mono">₹{weightSubtotal.toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-
-                  {/* Extra Charges Section */}
-                  <div className="space-y-2.5 pt-2 border-t border-amber-200">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-black text-charcoal-800 uppercase tracking-wider">
-                        Extra Shop Charges & Outsourced Items
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handleAddExtraCharge}
-                        className="text-[11px] font-black text-amber-800 hover:text-amber-900 bg-amber-100 px-2.5 py-1 rounded-xl border border-amber-300 flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Add Extra Expense</span>
-                      </button>
-                    </div>
-
-                    {calcExtraCharges.map((extra, eIdx) => (
-                      <div key={extra.id || eIdx} className="flex items-center gap-2 bg-white p-2 rounded-xl border border-amber-200">
-                        <input
-                          type="text"
-                          value={extra.description}
-                          onChange={(e) => handleUpdateExtraCharge(extra.id, 'description', e.target.value)}
-                          placeholder="Item e.g. Purchased brass lock from shop B"
-                          className="flex-1 px-3 py-1 text-xs font-bold border border-warm-border rounded-lg"
-                        />
-                        <div className="flex items-center gap-1 w-28">
-                          <span className="text-xs font-extrabold text-charcoal-600">₹</span>
-                          <input
-                            type="number"
-                            value={extra.amount || ''}
-                            onChange={(e) => handleUpdateExtraCharge(extra.id, 'amount', parseFloat(e.target.value) || 0)}
-                            className="w-full px-2 py-1 text-xs font-mono font-extrabold border border-warm-border rounded-lg text-right"
-                          />
+                  <div className="divide-y divide-warm-muted border-t border-warm-border text-xs">
+                    {calcParts.map((part, pIdx) => (
+                      <div key={part.id || pIdx} className="py-2 flex items-center justify-between font-bold">
+                        <div className="flex items-center gap-2">
+                          <span className="text-charcoal-400 font-mono text-[11px]">#{pIdx + 1}</span>
+                          <span className="text-charcoal-900">{part.name || `Section #${pIdx + 1}`}</span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExtraCharge(extra.id)}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded-lg"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <span className="font-mono font-black text-charcoal-800">{part.weight_kg || 0} KG</span>
                       </div>
                     ))}
                   </div>
+                </div>
 
-                  {/* Grand Total & Advance Configuration */}
-                  <div className="pt-2 border-t border-amber-300 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                    <div>
-                      <label className="text-[10px] font-black text-charcoal-700 uppercase tracking-widest block">REQUIRED ADVANCE AMOUNT (₹)</label>
-                      <input
-                        type="number"
-                        value={calcAdvanceReq}
-                        onChange={(e) => setCalcAdvanceReq(parseFloat(e.target.value) || 0)}
-                        placeholder="5000"
-                        className="w-full px-3 py-1.5 text-sm font-mono font-extrabold border border-warm-border rounded-xl bg-white"
-                      />
-                    </div>
+                {/* Subtotals & Grand Total Summary Bar */}
+                {(() => {
+                  const totalWeight = calcParts.reduce((sum, p) => sum + (Number(p.weight_kg) || 0), 0);
+                  const weightSubtotal = Math.round(totalWeight * calcRatePerKg);
+                  const extraSubtotal = calcExtraCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+                  const grandTotal = weightSubtotal + extraSubtotal;
 
-                    <div className="bg-brand-600 text-white p-3 rounded-xl text-right shadow-sm">
-                      <span className="text-[10px] font-black uppercase tracking-widest block opacity-90">GRAND CALCULATED TOTAL</span>
-                      <span className="text-2xl font-black font-mono">₹{grandTotal.toLocaleString('en-IN')}</span>
+                  return (
+                    <div className="bg-amber-50/80 p-4 rounded-2xl border border-amber-200 space-y-3">
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold">
+                        <div className="bg-white p-2.5 rounded-xl border border-amber-200">
+                          <span className="text-[10px] text-charcoal-400 font-black block">TOTAL WEIGHT</span>
+                          <span className="text-sm font-mono font-black text-charcoal-900">{totalWeight} KG</span>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-amber-200">
+                          <span className="text-[10px] text-brand-600 font-black block">RATE PER KG</span>
+                          <span className="text-sm font-mono font-black text-brand-700">₹{calcRatePerKg}/kg</span>
+                        </div>
+                        <div className="bg-white p-2.5 rounded-xl border border-amber-200">
+                          <span className="text-[10px] text-emerald-700 font-black block">WEIGHT COST</span>
+                          <span className="text-sm font-mono font-black text-emerald-800">₹{weightSubtotal.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+
+                      {calcExtraCharges.length > 0 && (
+                        <div className="space-y-1.5 pt-2 border-t border-amber-200 text-xs">
+                          <span className="text-[10px] font-black text-charcoal-600 uppercase block">Extra Shop Charges:</span>
+                          {calcExtraCharges.map((ex, exIdx) => (
+                            <div key={ex.id || exIdx} className="flex justify-between font-medium">
+                              <span>• {ex.description}</span>
+                              <span className="font-mono font-bold text-charcoal-900">₹{ex.amount.toLocaleString('en-IN')}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="bg-brand-600 text-white p-3.5 rounded-xl flex items-center justify-between shadow-sm pt-2">
+                        <div>
+                          <span className="text-[10px] font-black uppercase tracking-widest block opacity-90">GRAND CALCULATED TOTAL</span>
+                          <span className="text-xs opacity-80">Required Advance: ₹{calcAdvanceReq.toLocaleString('en-IN')}</span>
+                        </div>
+                        <span className="text-2xl font-black font-mono">₹{grandTotal.toLocaleString('en-IN')}</span>
+                      </div>
                     </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              /* CASE 2: INTERACTIVE EDIT MODE (isEditingCalc) */
+              <div className="space-y-5">
+                {/* Part-by-Part Weight Entry */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-charcoal-800 uppercase tracking-wider">
+                      Product Parts & Individual Weight (KG)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddPart}
+                      className="text-[11px] font-black text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1 rounded-xl border border-brand-200 transition-colors flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Part / Section</span>
+                    </button>
                   </div>
 
-                  <Button
-                    type="button"
-                    onClick={handleSaveWeightCalculation}
-                    variant="primary"
-                    fullWidth
-                    icon={<CheckCircle2 className="w-4 h-4" />}
-                  >
-                    Save Calculation & Request Customer Payment
-                  </Button>
+                  <div className="space-y-2">
+                    {calcParts.map((part, pIdx) => (
+                      <div key={part.id || pIdx} className="flex items-center gap-2 bg-warm-bg p-2.5 rounded-xl border border-warm-border">
+                        <span className="text-xs font-black text-charcoal-400 w-6 text-center">#{pIdx + 1}</span>
+                        <input
+                          type="text"
+                          value={part.name}
+                          onChange={(e) => handleUpdatePart(part.id, 'name', e.target.value)}
+                          placeholder="e.g. Gate Frame / Top Arch"
+                          className="flex-1 px-3 py-1.5 text-xs font-bold border border-warm-border rounded-lg bg-white"
+                        />
+                        <div className="flex items-center gap-1 w-28">
+                          <input
+                            type="number"
+                            value={part.weight_kg || ''}
+                            onChange={(e) => handleUpdatePart(part.id, 'weight_kg', parseFloat(e.target.value) || 0)}
+                            placeholder="Weight"
+                            className="w-full px-2.5 py-1.5 text-xs font-mono font-extrabold border border-warm-border rounded-lg bg-white text-right"
+                          />
+                          <span className="text-xs font-bold text-charcoal-600">kg</span>
+                        </div>
+                        {calcParts.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePart(part.id)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              );
-            })()}
+
+                {/* Rate & Weight Summary Row */}
+                {(() => {
+                  const totalWeight = calcParts.reduce((sum, p) => sum + (Number(p.weight_kg) || 0), 0);
+                  const weightSubtotal = Math.round(totalWeight * calcRatePerKg);
+                  const extraSubtotal = calcExtraCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+                  const grandTotal = weightSubtotal + extraSubtotal;
+
+                  return (
+                    <div className="bg-amber-50/80 p-4 rounded-2xl border border-amber-200 space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+                        <div className="p-2.5 bg-white rounded-xl border border-amber-200">
+                          <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-widest block">TOTAL WEIGHT</span>
+                          <span className="text-base font-black text-charcoal-900 font-mono">{totalWeight} KG</span>
+                        </div>
+
+                        <div className="p-2.5 bg-white rounded-xl border border-amber-200">
+                          <label className="text-[10px] font-black text-brand-600 uppercase tracking-widest block mb-0.5">RATE PER KG (₹)</label>
+                          <input
+                            type="number"
+                            value={calcRatePerKg}
+                            onChange={(e) => setCalcRatePerKg(parseFloat(e.target.value) || 0)}
+                            className="w-full text-center font-mono font-black text-sm text-brand-600 focus:outline-none bg-transparent"
+                          />
+                        </div>
+
+                        <div className="p-2.5 bg-white rounded-xl border border-amber-200">
+                          <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest block">BASE WEIGHT COST</span>
+                          <span className="text-base font-black text-emerald-800 font-mono">₹{weightSubtotal.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+
+                      {/* Extra Charges Section */}
+                      <div className="space-y-2.5 pt-2 border-t border-amber-200">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-black text-charcoal-800 uppercase tracking-wider">
+                            Extra Shop Charges & Outsourced Items
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleAddExtraCharge}
+                            className="text-[11px] font-black text-amber-800 hover:text-amber-900 bg-amber-100 px-2.5 py-1 rounded-xl border border-amber-300 flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Add Extra Expense</span>
+                          </button>
+                        </div>
+
+                        {calcExtraCharges.map((extra, eIdx) => (
+                          <div key={extra.id || eIdx} className="flex items-center gap-2 bg-white p-2 rounded-xl border border-amber-200">
+                            <input
+                              type="text"
+                              value={extra.description}
+                              onChange={(e) => handleUpdateExtraCharge(extra.id, 'description', e.target.value)}
+                              placeholder="Item e.g. Purchased brass lock from shop B"
+                              className="flex-1 px-3 py-1 text-xs font-bold border border-warm-border rounded-lg"
+                            />
+                            <div className="flex items-center gap-1 w-28">
+                              <span className="text-xs font-extrabold text-charcoal-600">₹</span>
+                              <input
+                                type="number"
+                                value={extra.amount || ''}
+                                onChange={(e) => handleUpdateExtraCharge(extra.id, 'amount', parseFloat(e.target.value) || 0)}
+                                className="w-full px-2 py-1 text-xs font-mono font-extrabold border border-warm-border rounded-lg text-right"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExtraCharge(extra.id)}
+                              className="p-1 text-red-500 hover:bg-red-50 rounded-lg"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Grand Total & Advance Configuration */}
+                      <div className="pt-2 border-t border-amber-300 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                        <div>
+                          <label className="text-[10px] font-black text-charcoal-700 uppercase tracking-widest block">REQUIRED ADVANCE AMOUNT (₹)</label>
+                          <input
+                            type="number"
+                            value={calcAdvanceReq}
+                            onChange={(e) => setCalcAdvanceReq(parseFloat(e.target.value) || 0)}
+                            placeholder="5000"
+                            className="w-full px-3 py-1.5 text-sm font-mono font-extrabold border border-warm-border rounded-xl bg-white"
+                          />
+                        </div>
+
+                        <div className="bg-brand-600 text-white p-3 rounded-xl text-right shadow-sm">
+                          <span className="text-[10px] font-black uppercase tracking-widest block opacity-90">GRAND CALCULATED TOTAL</span>
+                          <span className="text-2xl font-black font-mono">₹{grandTotal.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        onClick={handleSaveWeightCalculation}
+                        variant="primary"
+                        fullWidth
+                        icon={<CheckCircle2 className="w-4 h-4" />}
+                      >
+                        Save Calculation & Request Customer Payment
+                      </Button>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
 
           {/* VISUAL WORKSHOP FABRICATION PROGRESS TIMELINE */}
