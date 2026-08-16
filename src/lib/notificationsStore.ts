@@ -72,6 +72,7 @@ export const fetchUserNotifications = async (userId?: string): Promise<AppNotifi
         message_en: 'Your trusted partner for custom steel gates, grills, rolling shutters, and lathe works in Kallimandhayam.',
         message_ta: 'கல்லிமந்தயத்தில் தரமான ஸ்டீல் கேட், கிரில் மற்றும் லேத் வேலைகளுக்கு எங்களை தொடர்பு கொள்ளவும்.',
         type: 'welcome',
+        link: '/orders',
         is_read: readIds.includes('sys_notif_1'),
         created_at: new Date().toISOString()
       },
@@ -83,6 +84,7 @@ export const fetchUserNotifications = async (userId?: string): Promise<AppNotifi
         message_en: 'Track your order progress step-by-step from raw steel cutting to lathe turning, welding, and painting.',
         message_ta: 'உங்கள் ஆர்டர் உற்பத்தி நிலையை ஸ்டீல் கட்டிங் முதல் பெயிண்டிங் வரை நேரடியாக கண்காணிக்கலாம்.',
         type: 'feature',
+        link: '/orders',
         is_read: readIds.includes('sys_notif_2'),
         created_at: new Date(Date.now() - 3600000).toISOString()
       }

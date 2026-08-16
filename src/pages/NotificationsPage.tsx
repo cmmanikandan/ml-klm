@@ -43,9 +43,8 @@ export const NotificationsPage: React.FC = () => {
         prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
       );
     }
-    if (notif.link) {
-      navigate(notif.link);
-    }
+    const targetLink = notif.link || '/orders';
+    navigate(targetLink);
   };
 
   const handleMarkAllRead = async () => {
