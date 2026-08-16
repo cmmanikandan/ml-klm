@@ -46,6 +46,7 @@ export const AdminPaymentsPage: React.FC = () => {
       const { data: dbOrders } = await supabase.from('orders').select('*');
       const allOrders = dbOrders || [];
       const orderMap = new Map(allOrders.map((o: any) => [o.id, o]));
+      const orderByNumMap = new Map(allOrders.map((o: any) => [o.order_number, o]));
 
       const { data: profilesData } = await supabase.from('profiles').select('*');
       const profileMap = new Map((profilesData || []).map((prof: any) => [prof.id, prof]));
@@ -55,9 +56,10 @@ export const AdminPaymentsPage: React.FC = () => {
 
       // 1. Add records from payments table
       (dbPayments || []).forEach((p: any) => {
-        const ord: any = orderMap.get(p.order_id) || {};
+        const ord: any = orderMap.get(p.order_id) || orderByNumMap.get(p.order_number) || {};
         const prof: any = profileMap.get(p.user_id || ord?.user_id) || {};
         if (p.order_id) seenOrderIds.add(p.order_id);
+        if (p.order_number) seenOrderIds.add(p.order_number);
 
         const isPaid = p.status === 'completed' || p.status === 'paid';
         const mode = (p.payment_mode || 'Cash Counter').toLowerCase();
@@ -86,7 +88,7 @@ export const AdminPaymentsPage: React.FC = () => {
 
       // 2. Also incorporate active orders with pending/unpaid amounts if not yet recorded in payments
       allOrders.forEach((ord: any) => {
-        if (!seenOrderIds.has(ord.id)) {
+        if (!seenOrderIds.has(ord.id) && !seenOrderIds.has(ord.order_number)) {
           const prof: any = profileMap.get(ord.user_id) || {};
           const isPaid = ord.payment_status === 'paid';
           const isUnpaid = ord.payment_status === 'unpaid' || ord.payment_status === 'pending' || (ord.is_payment_requested && (ord.payment_request_amount || 0) > 0);
