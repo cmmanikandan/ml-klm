@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Phone, MapPin, CheckCircle2, CreditCard, QrCode, Star, Package, Printer } from 'lucide-react';
+import { ArrowLeft, Calendar, Phone, MapPin, CheckCircle2, CreditCard, QrCode, Star, Package, Printer, Share2 } from 'lucide-react';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
@@ -246,6 +246,22 @@ export const OrderDetailPage: React.FC = () => {
       </div>
     );
   }
+
+  const handleShareOrder = () => {
+    if (!order) return;
+    const invoiceUrl = `${window.location.origin}/invoice/${order.order_number || order.id}`;
+    const text = `📦 *Manikandan Lathe Order Details*\n\nOrder Number: #${order.order_number}\nStatus: ${(order.status || '').toUpperCase()}\nTotal Amount: ₹${order.total_amount || 0}\nRemaining Due: ₹${order.remaining_amount || 0}\n\n📄 View Official Tax Invoice: ${invoiceUrl}`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: `Order #${order.order_number} - Manikandan Lathe`,
+        text: text,
+        url: invoiceUrl
+      }).catch(() => {});
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+  };
 
   const currentStepIdx = getStepIdx(order.status);
   const prodTitle = order.product ? (isTamil ? order.product.name_ta : order.product.name_en) : 'Fabrication Item';
