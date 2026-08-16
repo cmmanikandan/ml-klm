@@ -19,13 +19,16 @@ import {
   MessageSquare,
   QrCode,
   Send,
+  Plus,
   Check
 } from 'lucide-react';
+import { FabricationTimeline, FabricationStage } from '../../components/orders/FabricationTimeline';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { NotificationModal } from '../../components/common/NotificationModal';
 import { InvoicePreviewModal } from '../../components/invoice/InvoicePreviewModal';
-import { OrderStatus } from '../../types';
+import { OrderStatus, PaymentStatus } from '../../types';
 import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
 import { getStatusConfig } from '../../lib/statusConfig';
@@ -51,6 +54,28 @@ export const AdminOrderDetailPage: React.FC = () => {
   const [customPayNotes, setCustomPayNotes] = useState<string>('Payment collected at workshop');
   const [showGeneratedQr, setShowGeneratedQr] = useState(false);
   const [showInvoicePreviewModal, setShowInvoicePreviewModal] = useState(false);
+
+  // Custom Card Popup Notification Modal State
+  const [notifyModal, setNotifyModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type?: 'error' | 'warning' | 'success' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning'
+  });
+
+  // Weight & Price Calculator State
+  const [calcParts, setCalcParts] = useState<{ id: string; name: string; weight_kg: number }[]>([
+    { id: 'p1', name: 'Gate Main Frame', weight_kg: 45 },
+    { id: 'p2', name: 'Grill Leaf Section', weight_kg: 30 }
+  ]);
+  const [calcRatePerKg, setCalcRatePerKg] = useState<number>(160);
+  const [calcExtraCharges, setCalcExtraCharges] = useState<{ id: string; description: string; amount: number }[]>([]);
+  const [calcAdvanceReq, setCalcAdvanceReq] = useState<number>(5000);
 
   useEffect(() => {
     if (id) {
@@ -91,6 +116,24 @@ export const AdminOrderDetailPage: React.FC = () => {
         };
         setOrder(hydrated);
         setCustomPayAmount(hydrated.remaining_amount || 0);
+
+        if (hydrated.weight_calculation) {
+          if (hydrated.weight_calculation.parts && hydrated.weight_calculation.parts.length > 0) {
+            setCalcParts(hydrated.weight_calculation.parts);
+          }
+          if (hydrated.weight_calculation.rate_per_kg) {
+            setCalcRatePerKg(hydrated.weight_calculation.rate_per_kg);
+          }
+          if (hydrated.weight_calculation.extra_charges) {
+            setCalcExtraCharges(hydrated.weight_calculation.extra_charges);
+          }
+          if (hydrated.weight_calculation.advance_amount !== undefined) {
+            setCalcAdvanceReq(hydrated.weight_calculation.advance_amount);
+          }
+        } else {
+          if (prod?.price_per_kg) setCalcRatePerKg(prod.price_per_kg);
+          if (hydrated.advance_amount) setCalcAdvanceReq(hydrated.advance_amount);
+        }
 
         // 2. Fetch Payment Transactions History for this Order
         const { data: dbPayments } = await supabase
@@ -157,6 +200,32 @@ export const AdminOrderDetailPage: React.FC = () => {
     localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
   };
 
+  const handleUpdateFabricationStage = async (stage: FabricationStage) => {
+    if (!order) return;
+    let mappedStatus: OrderStatus = order.status;
+    if (stage === 'accepted') mappedStatus = 'accepted';
+    if (stage === 'material_cut' || stage === 'welding') mappedStatus = 'processing';
+    if (stage === 'painting') mappedStatus = 'processing';
+    if (stage === 'ready') mappedStatus = 'ready';
+    if (stage === 'delivered') mappedStatus = 'delivered';
+
+    const updatedOrder = { ...order, fabrication_stage: stage, status: mappedStatus };
+    setOrder(updatedOrder);
+
+    const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocal = local.map((l: any) => l.id === order.id ? updatedOrder : l);
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
+
+    try {
+      await supabase.from('orders').update({
+        fabrication_stage: stage,
+        status: mappedStatus
+      }).eq('id', order.id);
+    } catch (e) {
+      console.warn('Fabrication stage DB update fallback', e);
+    }
+  };
+
   const handleUpdateDeliveryDate = async (date: string) => {
     if (!order) return;
     setOrder({ ...order, expected_delivery_date: date });
@@ -209,7 +278,12 @@ export const AdminOrderDetailPage: React.FC = () => {
       console.warn('Payment request DB update fallback');
     }
 
-    alert(`Payment request of ₹${customPayAmount.toLocaleString('en-IN')} set for customer dashboard!`);
+    setNotifyModal({
+      isOpen: true,
+      title: 'Payment Request Sent',
+      message: `Payment request of ₹${customPayAmount.toLocaleString('en-IN')} set for customer dashboard!`,
+      type: 'success'
+    });
     setShowPaymentModal(false);
   };
 
@@ -224,50 +298,148 @@ export const AdminOrderDetailPage: React.FC = () => {
     const updatedOrder = {
       ...order,
       remaining_amount: updatedRemaining,
-      payment_status: newStatus,
+      advance_amount: (order.advance_amount || 0) + customPayAmount,
+      payment_status: newStatus as PaymentStatus,
       is_payment_requested: false
     };
+
     setOrder(updatedOrder);
 
-    const newPaymentObj = {
-      id: `pay_${Date.now()}`,
-      order_id: order.id,
-      order_number: order.order_number || order.id,
-      amount: customPayAmount,
-      payment_mode: mode,
-      notes: customPayNotes || `Payment collected via ${mode}`,
-      created_at: new Date().toISOString(),
-      status: 'completed'
-    };
-
-    const updatedHistory = [newPaymentObj, ...paymentsHistory];
-    setPaymentsHistory(updatedHistory);
-
-    const localPayments = JSON.parse(localStorage.getItem('ml_payments') || '[]');
-    localStorage.setItem('ml_payments', JSON.stringify([newPaymentObj, ...localPayments]));
-
-    const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-    const updatedLocalOrders = localOrders.map((l: any) => l.id === order.id ? updatedOrder : l);
-    localStorage.setItem('ml_orders', JSON.stringify(updatedLocalOrders));
+    const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocal = localOrders.map((o) => (o.id === order.id ? updatedOrder : o));
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
 
     try {
       await supabase
         .from('orders')
         .update({
           remaining_amount: updatedRemaining,
+          advance_amount: updatedOrder.advance_amount,
           payment_status: newStatus,
           is_payment_requested: false
         })
         .eq('id', order.id);
 
-      await supabase.from('payments').insert(newPaymentObj);
+      await supabase.from('payments').insert({
+        id: `pay_${Date.now()}`,
+        order_id: order.id,
+        amount: customPayAmount,
+        payment_mode: mode,
+        notes: customPayNotes,
+        status: 'completed'
+      });
     } catch (e) {
       console.warn('Payment DB insert fallback');
     }
 
     setShowPaymentModal(false);
     setShowGeneratedQr(false);
-    alert(`₹${customPayAmount.toLocaleString('en-IN')} payment recorded successfully as ${mode}! Remaining due: ₹${updatedRemaining.toLocaleString('en-IN')}`);
+    setNotifyModal({
+      isOpen: true,
+      title: 'Payment Recorded',
+      message: `₹${customPayAmount.toLocaleString('en-IN')} payment recorded successfully as ${mode}! Remaining due: ₹${updatedRemaining.toLocaleString('en-IN')}`,
+      type: 'success'
+    });
+  };
+
+  // Calculation Helper Methods
+  const handleAddPart = () => {
+    setCalcParts([...calcParts, { id: `part_${Date.now()}`, name: `Part ${calcParts.length + 1}`, weight_kg: 10 }]);
+  };
+
+  const handleUpdatePart = (partId: string, field: 'name' | 'weight_kg', val: any) => {
+    setCalcParts(calcParts.map(p => p.id === partId ? { ...p, [field]: val } : p));
+  };
+
+  const handleRemovePart = (partId: string) => {
+    setCalcParts(calcParts.filter(p => p.id !== partId));
+  };
+
+  const handleAddExtraCharge = () => {
+    setCalcExtraCharges([...calcExtraCharges, { id: `extra_${Date.now()}`, description: 'Outsourced Fitting / Extra Lock', amount: 500 }]);
+  };
+
+  const handleUpdateExtraCharge = (chargeId: string, field: 'description' | 'amount', val: any) => {
+    setCalcExtraCharges(calcExtraCharges.map(c => c.id === chargeId ? { ...c, [field]: val } : c));
+  };
+
+  const handleRemoveExtraCharge = (chargeId: string) => {
+    setCalcExtraCharges(calcExtraCharges.filter(c => c.id !== chargeId));
+  };
+
+  const handleSaveWeightCalculation = async () => {
+    if (!order) return;
+    const totalWeight = calcParts.reduce((sum, p) => sum + (Number(p.weight_kg) || 0), 0);
+    const weightCost = Math.round(totalWeight * calcRatePerKg);
+    const extraTotal = calcExtraCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+    const grandTotal = weightCost + extraTotal;
+    const advance = Number(calcAdvanceReq) || 0;
+    
+    // Calculate total already paid in history
+    const totalPaid = paymentsHistory.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const remaining = Math.max(0, grandTotal - totalPaid);
+    const payReqAmount = advance > totalPaid ? advance - totalPaid : remaining;
+
+    const calcData = {
+      parts: calcParts,
+      rate_per_kg: calcRatePerKg,
+      total_weight_kg: totalWeight,
+      weight_subtotal: weightCost,
+      extra_charges: calcExtraCharges,
+      extra_subtotal: extraTotal,
+      grand_total: grandTotal,
+      advance_amount: advance,
+      remaining_balance: remaining,
+      calculated_at: new Date().toISOString()
+    };
+
+    const updatedOrder = {
+      ...order,
+      total_amount: grandTotal,
+      advance_amount: advance,
+      remaining_amount: remaining,
+      payment_request_amount: payReqAmount > 0 ? payReqAmount : remaining,
+      is_payment_requested: payReqAmount > 0,
+      weight_calculation: calcData,
+      pricing_type: 'weight'
+    };
+    setOrder(updatedOrder);
+
+    // Save to LocalStorage & Supabase DB
+    const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocal = localOrders.map((l: any) => l.id === order.id ? updatedOrder : l);
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
+
+    try {
+      await supabase.from('orders').update({
+        total_amount: grandTotal,
+        advance_amount: advance,
+        remaining_amount: remaining,
+        payment_request_amount: payReqAmount > 0 ? payReqAmount : remaining,
+        is_payment_requested: payReqAmount > 0,
+        weight_calculation: calcData
+      }).eq('id', order.id);
+
+      await supabase.from('notifications').insert({
+        user_id: order.user_id || 'customer',
+        title_en: 'Order Price & Weight Updated!',
+        title_ta: 'ஆர்டர் விலை நிர்ணயிக்கப்பட்டது!',
+        message_en: `Shop admin calculated total weight (${totalWeight} kg). Total Amount: ₹${grandTotal.toLocaleString('en-IN')}. Click to pay.`,
+        message_ta: `வொர்க்ஷாப் நிர்வாகி உங்கள் ஆர்டர் தொகையை நிர்ணயித்துள்ளார்: ₹${grandTotal.toLocaleString('en-IN')}. ஆன்லைனில் செலுத்தவும்.`,
+        type: 'order_update',
+        link: `/orders/${order.id}`,
+        is_read: false
+      });
+    } catch (e) {
+      console.warn('DB update fallback for weight calc');
+    }
+
+    setNotifyModal({
+      isOpen: true,
+      title: 'Weight Calculation Saved',
+      message: `Weight calculation saved successfully!\n• Total Weight: ${totalWeight} kg\n• Rate: ₹${calcRatePerKg}/kg\n• Base Weight Cost: ₹${weightCost.toLocaleString('en-IN')}\n• Extra Charges: ₹${extraTotal.toLocaleString('en-IN')}\n• Grand Total: ₹${grandTotal.toLocaleString('en-IN')}\n\nCustomer notified with payment card!`,
+      type: 'success'
+    });
   };
 
   // Standard A4 Paper Format Invoice Generator & Dedicated Page Navigation
@@ -419,6 +591,195 @@ export const AdminOrderDetailPage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* WEIGHT & FABRICATION COST CALCULATOR CARD */}
+          <div className="bg-white rounded-3xl p-6 border-2 border-brand-500/40 shadow-card space-y-5">
+            <div className="flex items-center justify-between border-b border-warm-muted pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">⚖️</span>
+                <div>
+                  <h3 className="text-sm font-black text-charcoal-900 uppercase tracking-wider">
+                    Weight & Fabrication Cost Calculator
+                  </h3>
+                  <p className="text-[11px] text-charcoal-500 font-semibold">
+                    Enter part weights, rate per kg, extra shop expenses & set customer payment request
+                  </p>
+                </div>
+              </div>
+
+              <span className="bg-brand-50 text-brand-700 text-[11px] font-black px-3 py-1 rounded-full border border-brand-200">
+                Rate: ₹{calcRatePerKg}/kg
+              </span>
+            </div>
+
+            {/* Part-by-Part Weight Entry */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-charcoal-800 uppercase tracking-wider">
+                  Product Parts & Individual Weight (KG)
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAddPart}
+                  className="text-[11px] font-black text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1 rounded-xl border border-brand-200 transition-colors flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Add Part / Section</span>
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {calcParts.map((part, pIdx) => (
+                  <div key={part.id || pIdx} className="flex items-center gap-2 bg-warm-bg p-2.5 rounded-xl border border-warm-border">
+                    <span className="text-xs font-black text-charcoal-400 w-6 text-center">#{pIdx + 1}</span>
+                    <input
+                      type="text"
+                      value={part.name}
+                      onChange={(e) => handleUpdatePart(part.id, 'name', e.target.value)}
+                      placeholder="e.g. Gate Frame / Top Arch"
+                      className="flex-1 px-3 py-1.5 text-xs font-bold border border-warm-border rounded-lg bg-white"
+                    />
+                    <div className="flex items-center gap-1 w-28">
+                      <input
+                        type="number"
+                        value={part.weight_kg || ''}
+                        onChange={(e) => handleUpdatePart(part.id, 'weight_kg', parseFloat(e.target.value) || 0)}
+                        placeholder="Weight"
+                        className="w-full px-2.5 py-1.5 text-xs font-mono font-extrabold border border-warm-border rounded-lg bg-white text-right"
+                      />
+                      <span className="text-xs font-bold text-charcoal-600">kg</span>
+                    </div>
+                    {calcParts.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePart(part.id)}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Rate & Weight Summary Row */}
+            {(() => {
+              const totalWeight = calcParts.reduce((sum, p) => sum + (Number(p.weight_kg) || 0), 0);
+              const weightSubtotal = Math.round(totalWeight * calcRatePerKg);
+              const extraSubtotal = calcExtraCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+              const grandTotal = weightSubtotal + extraSubtotal;
+
+              return (
+                <div className="bg-amber-50/80 p-4 rounded-2xl border border-amber-200 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+                    <div className="p-2.5 bg-white rounded-xl border border-amber-200">
+                      <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-widest block">TOTAL WEIGHT</span>
+                      <span className="text-base font-black text-charcoal-900 font-mono">{totalWeight} KG</span>
+                    </div>
+
+                    <div className="p-2.5 bg-white rounded-xl border border-amber-200">
+                      <label className="text-[10px] font-black text-brand-600 uppercase tracking-widest block mb-0.5">RATE PER KG (₹)</label>
+                      <input
+                        type="number"
+                        value={calcRatePerKg}
+                        onChange={(e) => setCalcRatePerKg(parseFloat(e.target.value) || 0)}
+                        className="w-full text-center font-mono font-black text-sm text-brand-600 focus:outline-none bg-transparent"
+                      />
+                    </div>
+
+                    <div className="p-2.5 bg-white rounded-xl border border-amber-200">
+                      <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest block">BASE WEIGHT COST</span>
+                      <span className="text-base font-black text-emerald-800 font-mono">₹{weightSubtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+
+                  {/* Extra Charges Section */}
+                  <div className="space-y-2.5 pt-2 border-t border-amber-200">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-charcoal-800 uppercase tracking-wider">
+                        Extra Shop Charges & Outsourced Items
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleAddExtraCharge}
+                        className="text-[11px] font-black text-amber-800 hover:text-amber-900 bg-amber-100 px-2.5 py-1 rounded-xl border border-amber-300 flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Add Extra Expense</span>
+                      </button>
+                    </div>
+
+                    {calcExtraCharges.map((extra, eIdx) => (
+                      <div key={extra.id || eIdx} className="flex items-center gap-2 bg-white p-2 rounded-xl border border-amber-200">
+                        <input
+                          type="text"
+                          value={extra.description}
+                          onChange={(e) => handleUpdateExtraCharge(extra.id, 'description', e.target.value)}
+                          placeholder="Item e.g. Purchased brass lock from shop B"
+                          className="flex-1 px-3 py-1 text-xs font-bold border border-warm-border rounded-lg"
+                        />
+                        <div className="flex items-center gap-1 w-28">
+                          <span className="text-xs font-extrabold text-charcoal-600">₹</span>
+                          <input
+                            type="number"
+                            value={extra.amount || ''}
+                            onChange={(e) => handleUpdateExtraCharge(extra.id, 'amount', parseFloat(e.target.value) || 0)}
+                            className="w-full px-2 py-1 text-xs font-mono font-extrabold border border-warm-border rounded-lg text-right"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExtraCharge(extra.id)}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Grand Total & Advance Configuration */}
+                  <div className="pt-2 border-t border-amber-300 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                    <div>
+                      <label className="text-[10px] font-black text-charcoal-700 uppercase tracking-widest block">REQUIRED ADVANCE AMOUNT (₹)</label>
+                      <input
+                        type="number"
+                        value={calcAdvanceReq}
+                        onChange={(e) => setCalcAdvanceReq(parseFloat(e.target.value) || 0)}
+                        placeholder="5000"
+                        className="w-full px-3 py-1.5 text-sm font-mono font-extrabold border border-warm-border rounded-xl bg-white"
+                      />
+                    </div>
+
+                    <div className="bg-brand-600 text-white p-3 rounded-xl text-right shadow-sm">
+                      <span className="text-[10px] font-black uppercase tracking-widest block opacity-90">GRAND CALCULATED TOTAL</span>
+                      <span className="text-2xl font-black font-mono">₹{grandTotal.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={handleSaveWeightCalculation}
+                    variant="primary"
+                    fullWidth
+                    icon={<CheckCircle2 className="w-4 h-4" />}
+                  >
+                    Save Calculation & Request Customer Payment
+                  </Button>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* VISUAL WORKSHOP FABRICATION PROGRESS TIMELINE */}
+          <FabricationTimeline 
+            currentStage={order.fabrication_stage} 
+            orderStatus={order.status} 
+            isAdmin={true}
+            onUpdateStage={handleUpdateFabricationStage}
+            updatedAt={order.updated_at}
+          />
 
           {/* Status Updater Card */}
           <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-3">
@@ -850,6 +1211,14 @@ export const AdminOrderDetailPage: React.FC = () => {
         isOpen={showInvoicePreviewModal}
         onClose={() => setShowInvoicePreviewModal(false)}
         order={order}
+      />
+
+      <NotificationModal
+        isOpen={notifyModal.isOpen}
+        onClose={() => setNotifyModal((prev) => ({ ...prev, isOpen: false }))}
+        title={notifyModal.title}
+        message={notifyModal.message}
+        type={notifyModal.type}
       />
 
     </div>

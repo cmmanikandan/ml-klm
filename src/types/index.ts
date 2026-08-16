@@ -31,6 +31,36 @@ export interface ProductSpecification {
   [key: string]: string;
 }
 
+export type PricingType = 'fixed' | 'weight' | 'sqft';
+
+export interface WeightPart {
+  id: string;
+  name: string;
+  weight_kg: number;
+}
+
+export interface ExtraCharge {
+  id: string;
+  description: string;
+  amount: number;
+}
+
+export interface WeightCalculationData {
+  parts: WeightPart[];
+  rate_per_kg: number;
+  total_weight_kg: number;
+  weight_subtotal: number;
+  sqft_area?: number;
+  rate_per_sqft?: number;
+  sqft_subtotal?: number;
+  extra_charges: ExtraCharge[];
+  extra_subtotal: number;
+  grand_total: number;
+  advance_amount: number;
+  remaining_balance: number;
+  calculated_at?: string;
+}
+
 export interface Product {
   id: string;
   category_id?: string;
@@ -50,6 +80,9 @@ export interface Product {
   is_in_stock?: boolean;
   is_active: boolean;
   admin_price?: number; // Strictly admin-only field
+  pricing_type?: PricingType; // 'fixed' | 'weight' | 'sqft'
+  price_per_kg?: number; // e.g. 160
+  price_per_sqft?: number; // e.g. 150
   images?: string[];
   primary_image?: string;
   created_at?: string;
@@ -104,6 +137,11 @@ export interface Order {
   product_id?: string;
   product?: Product;
   user?: Profile;
+  customerName?: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  productName?: string;
+  productImage?: string;
   quantity: number;
   specifications?: string;
   delivery_location?: string;
@@ -116,6 +154,10 @@ export interface Order {
   payment_request_amount: number;
   payment_status: PaymentStatus;
   admin_notes?: string;
+  pricing_type?: PricingType;
+  weight_calculation?: WeightCalculationData;
+  is_pos?: boolean;
+  fabrication_stage?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -173,4 +215,6 @@ export interface ShopInfo {
   experience_years?: string;
   working_hours_en: string;
   working_hours_ta: string;
+  default_rate_per_kg?: number;
+  default_rate_per_sqft?: number;
 }

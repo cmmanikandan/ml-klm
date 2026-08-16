@@ -91,6 +91,9 @@ export const saveProductToStore = async (product: Product): Promise<boolean> => 
     is_in_stock: normalizedProduct.is_in_stock !== false,
     is_active: normalizedProduct.is_active !== false,
     admin_price: normalizedProduct.admin_price || 0,
+    pricing_type: normalizedProduct.pricing_type || 'weight',
+    price_per_kg: normalizedProduct.price_per_kg || 160,
+    price_per_sqft: normalizedProduct.price_per_sqft || 150,
     updated_at: new Date().toISOString()
   };
 

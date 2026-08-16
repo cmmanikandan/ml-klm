@@ -4,6 +4,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { Category } from '../../types';
 import { fetchActiveCategories, saveCategoryToStore, deleteCategoryFromStore } from '../../lib/categoriesStore';
+import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 
 export const AdminCategoriesPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -11,6 +12,7 @@ export const AdminCategoriesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
+  const [deleteTargetCat, setDeleteTargetCat] = useState<Category | null>(null);
 
   const [nameEn, setNameEn] = useState('');
   const [nameTa, setNameTa] = useState('');
@@ -40,7 +42,7 @@ export const AdminCategoriesPage: React.FC = () => {
     setNameEn('');
     setNameTa('');
     setSlug('');
-    setImageUrl('https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600&auto=format&fit=crop&q=80');
+    setImageUrl('');
     setIsModalOpen(true);
   };
 
@@ -53,10 +55,11 @@ export const AdminCategoriesPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDeleteCategory = async (cat: Category) => {
-    if (!window.confirm(`Are you sure you want to delete category "${cat.name_en}"?`)) return;
-    await deleteCategoryFromStore(cat.id, cat.slug);
-    showToast(`Category "${cat.name_en}" deleted successfully!`);
+  const confirmDeleteCategory = async () => {
+    if (!deleteTargetCat) return;
+    await deleteCategoryFromStore(deleteTargetCat.id, deleteTargetCat.slug);
+    showToast(`Category "${deleteTargetCat.name_en}" deleted successfully!`);
+    setDeleteTargetCat(null);
     loadCategories();
   };
 
@@ -152,7 +155,7 @@ export const AdminCategoriesPage: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => handleDeleteCategory(cat)}
+                  onClick={() => setDeleteTargetCat(cat)}
                   className="p-2 text-red-500 hover:text-red-700 rounded-xl hover:bg-red-50"
                   title="Delete Category"
                 >
@@ -247,6 +250,17 @@ export const AdminCategoriesPage: React.FC = () => {
           </Button>
         </form>
       </Modal>
+
+      {/* DELETE CATEGORY CONFIRMATION MODAL */}
+      <ConfirmationModal
+        isOpen={Boolean(deleteTargetCat)}
+        onClose={() => setDeleteTargetCat(null)}
+        onConfirm={confirmDeleteCategory}
+        title={`Delete Category "${deleteTargetCat?.name_en}"?`}
+        message={`Are you sure you want to delete category "${deleteTargetCat?.name_en}" from the shop catalogue?`}
+        confirmText="Delete Category"
+        isDanger={true}
+      />
 
     </div>
   );

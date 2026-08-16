@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Plus, Trash2, Sparkles, Star, Flame, TrendingUp, Wrench, CheckCircle2, Package, Eye } from 'lucide-react';
 import { Button } from '../../components/common/Button';
+import { NotificationModal } from '../../components/common/NotificationModal';
 import { INITIAL_CATEGORIES } from '../../lib/supabase';
 import { fetchProductById, saveProductToStore } from '../../lib/productsStore';
 import { fetchActiveCategories } from '../../lib/categoriesStore';
@@ -29,6 +30,9 @@ export const AdminProductEditPage: React.FC = () => {
   const [materials, setMaterials] = useState('304 Stainless Steel Pipe, Heavy Gauge Sheet');
   const [availableSizes, setAvailableSizes] = useState('Standard Size (3.5ft x 1.8ft), High-back');
   const [adminPrice, setAdminPrice] = useState<number>(2800);
+  const [pricingType, setPricingType] = useState<'fixed' | 'weight' | 'sqft'>('weight');
+  const [pricePerKg, setPricePerKg] = useState<number>(160);
+  const [pricePerSqft, setPricePerSqft] = useState<number>(150);
 
   // Flags & Badges
   const [isBestSelling, setIsBestSelling] = useState<boolean>(false);
@@ -46,6 +50,19 @@ export const AdminProductEditPage: React.FC = () => {
 
   // Success Toast Card Modal State
   const [showSuccessCard, setShowSuccessCard] = useState(false);
+
+  // Custom Notification Modal State
+  const [notifyModal, setNotifyModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type?: 'error' | 'warning' | 'success' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning'
+  });
 
   useEffect(() => {
     loadCategories();
@@ -77,6 +94,9 @@ export const AdminProductEditPage: React.FC = () => {
       setMaterials(existing.materials || '');
       setAvailableSizes(existing.available_sizes || '');
       setAdminPrice(existing.admin_price || 0);
+      setPricingType(existing.pricing_type || 'weight');
+      setPricePerKg(existing.price_per_kg || 160);
+      setPricePerSqft(existing.price_per_sqft || 150);
       setIsBestSelling(existing.is_best_selling || false);
       setIsNew(existing.is_new !== false);
       setIsFeatured(existing.is_featured !== false);
@@ -115,7 +135,12 @@ export const AdminProductEditPage: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameEn.trim()) {
-      alert('Please enter product English name');
+      setNotifyModal({
+        isOpen: true,
+        title: 'Product Name Required',
+        message: 'Please enter product English name before saving.',
+        type: 'warning'
+      });
       return;
     }
     setSaving(true);
@@ -146,6 +171,9 @@ export const AdminProductEditPage: React.FC = () => {
       is_new: isNew,
       is_active: true,
       admin_price: adminPrice,
+      pricing_type: pricingType,
+      price_per_kg: pricePerKg,
+      price_per_sqft: pricePerSqft,
       primary_image: primaryImg,
       images: images,
       created_at: new Date().toISOString()
@@ -266,16 +294,105 @@ export const AdminProductEditPage: React.FC = () => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-brand-600 mb-1">Internal Base Price (₹) [ADMIN ONLY]</label>
-            <input
-              type="number"
-              required
-              value={adminPrice}
-              onChange={(e) => setAdminPrice(parseFloat(e.target.value) || 0)}
-              className="w-full px-3.5 py-2.5 text-sm font-extrabold border-2 border-brand-300 rounded-xl bg-warm-bg focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
+          {pricingType === 'fixed' ? (
+            <div>
+              <label className="block text-xs font-bold text-brand-600 mb-1">Internal Base Price (₹) [ADMIN ONLY]</label>
+              <input
+                type="number"
+                required
+                value={adminPrice}
+                onChange={(e) => setAdminPrice(parseFloat(e.target.value) || 0)}
+                className="w-full px-3.5 py-2.5 text-sm font-extrabold border-2 border-brand-300 rounded-xl bg-warm-bg focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+          ) : (
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-bold text-amber-800 flex items-center justify-center">
+              <span>⚖️ Price calculated dynamically via Rate Per {pricingType === 'weight' ? 'KG (₹/kg)' : 'SqFt (₹/sqft)'}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Pricing Type & Unit Rates Configuration */}
+        <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 space-y-3">
+          <label className="block text-xs font-extrabold text-charcoal-900 uppercase tracking-wider">
+            Pricing Calculation Type for this Product
+          </label>
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              type="button"
+              onClick={() => setPricingType('weight')}
+              className={`p-3 rounded-xl border-2 text-xs font-black transition-all flex flex-col items-center gap-1 ${
+                pricingType === 'weight'
+                  ? 'border-brand-600 bg-brand-50 text-brand-700'
+                  : 'border-warm-border bg-white text-charcoal-600 hover:border-gray-300'
+              }`}
+            >
+              <span>⚖️ Per KG Weight</span>
+              <span className="text-[10px] font-bold text-charcoal-500">e.g. Gates, Heavy Grills</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPricingType('sqft')}
+              className={`p-3 rounded-xl border-2 text-xs font-black transition-all flex flex-col items-center gap-1 ${
+                pricingType === 'sqft'
+                  ? 'border-brand-600 bg-brand-50 text-brand-700'
+                  : 'border-warm-border bg-white text-charcoal-600 hover:border-gray-300'
+              }`}
+            >
+              <span>📐 Per SqFt Area</span>
+              <span className="text-[10px] font-bold text-charcoal-500">e.g. Rolling Shutters, Windows</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPricingType('fixed')}
+              className={`p-3 rounded-xl border-2 text-xs font-black transition-all flex flex-col items-center gap-1 ${
+                pricingType === 'fixed'
+                  ? 'border-brand-600 bg-brand-50 text-brand-700'
+                  : 'border-warm-border bg-white text-charcoal-600 hover:border-gray-300'
+              }`}
+            >
+              <span>🏷️ Fixed Unit Price</span>
+              <span className="text-[10px] font-bold text-charcoal-500">e.g. Standard Chairs, Tables</span>
+            </button>
           </div>
+
+          {pricingType === 'weight' && (
+            <div className="pt-2">
+              <label className="block text-xs font-bold text-charcoal-700 mb-1">Rate Per KG (₹/kg)</label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-extrabold text-charcoal-700">₹</span>
+                <input
+                  type="number"
+                  value={pricePerKg}
+                  onChange={(e) => setPricePerKg(parseFloat(e.target.value) || 0)}
+                  placeholder="160"
+                  className="w-full px-3.5 py-2 text-sm font-extrabold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <span className="text-xs font-bold text-charcoal-500 shrink-0">per kg</span>
+              </div>
+              <p className="text-[11px] text-charcoal-500 font-medium mt-1">Default shop rate is ₹160/kg. You can customize per product.</p>
+            </div>
+          )}
+
+          {pricingType === 'sqft' && (
+            <div className="pt-2">
+              <label className="block text-xs font-bold text-charcoal-700 mb-1">Rate Per Square Feet (₹/sqft)</label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-extrabold text-charcoal-700">₹</span>
+                <input
+                  type="number"
+                  value={pricePerSqft}
+                  onChange={(e) => setPricePerSqft(parseFloat(e.target.value) || 0)}
+                  placeholder="150"
+                  className="w-full px-3.5 py-2 text-sm font-extrabold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <span className="text-xs font-bold text-charcoal-500 shrink-0">per sqft</span>
+              </div>
+              <p className="text-[11px] text-charcoal-500 font-medium mt-1">Default rate per sqft is ₹150. You can customize per product.</p>
+            </div>
+          )}
         </div>
 
         {/* Descriptions */}
@@ -329,10 +446,46 @@ export const AdminProductEditPage: React.FC = () => {
         {/* Product Badges & Flags */}
         <div className="space-y-3 pt-4 border-t border-warm-muted">
           <label className="block text-xs font-extrabold text-charcoal-900 uppercase tracking-wider">
-            Product Display Flags & Badges
+            Product Display Flags & Pricing Badges
           </label>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${pricingType === 'weight' ? 'border-brand-600 bg-brand-50' : 'border-warm-border hover:border-gray-300'}`}>
+              <input
+                type="checkbox"
+                checked={pricingType === 'weight'}
+                onChange={() => setPricingType('weight')}
+                className="w-4 h-4 text-brand-600 rounded"
+              />
+              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
+                <span>⚖️ Weight Based</span>
+              </div>
+            </label>
+
+            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${pricingType === 'sqft' ? 'border-brand-600 bg-brand-50' : 'border-warm-border hover:border-gray-300'}`}>
+              <input
+                type="checkbox"
+                checked={pricingType === 'sqft'}
+                onChange={() => setPricingType('sqft')}
+                className="w-4 h-4 text-brand-600 rounded"
+              />
+              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
+                <span>📐 SqFt Based</span>
+              </div>
+            </label>
+
+            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${pricingType === 'fixed' ? 'border-brand-600 bg-brand-50' : 'border-warm-border hover:border-gray-300'}`}>
+              <input
+                type="checkbox"
+                checked={pricingType === 'fixed'}
+                onChange={() => setPricingType('fixed')}
+                className="w-4 h-4 text-brand-600 rounded"
+              />
+              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
+                <span>🏷️ Fixed Price</span>
+              </div>
+            </label>
+
             <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${isBestSelling ? 'border-amber-500 bg-amber-50' : 'border-warm-border hover:border-gray-300'}`}>
               <input
                 type="checkbox"
@@ -391,9 +544,19 @@ export const AdminProductEditPage: React.FC = () => {
                   const { uploadImageToCloudinary } = await import('../../lib/cloudinary');
                   const uploadedUrl = await uploadImageToCloudinary(file);
                   setImages([...images, uploadedUrl]);
-                  alert('Image uploaded to Cloudinary successfully!');
+                  setNotifyModal({
+                    isOpen: true,
+                    title: 'Image Uploaded',
+                    message: 'Image uploaded to Cloudinary successfully!',
+                    type: 'success'
+                  });
                 } catch (err) {
-                  alert('Cloudinary upload fallback: Please paste web image URL');
+                  setNotifyModal({
+                    isOpen: true,
+                    title: 'Image URL Fallback',
+                    message: 'Cloudinary upload fallback: Please paste web image URL.',
+                    type: 'info'
+                  });
                 }
               }}
               className="text-xs text-charcoal-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-brand-600 file:text-white hover:file:bg-brand-700 cursor-pointer"
@@ -443,6 +606,15 @@ export const AdminProductEditPage: React.FC = () => {
         </div>
 
       </form>
+
+      <NotificationModal
+        isOpen={notifyModal.isOpen}
+        onClose={() => setNotifyModal((prev) => ({ ...prev, isOpen: false }))}
+        title={notifyModal.title}
+        message={notifyModal.message}
+        type={notifyModal.type}
+      />
+
     </div>
   );
 };

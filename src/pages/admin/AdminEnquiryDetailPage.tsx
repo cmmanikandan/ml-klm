@@ -20,6 +20,7 @@ import {
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { NotificationModal } from '../../components/common/NotificationModal';
 import { DEFAULT_SHOP_INFO, INITIAL_PRODUCTS, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
 import { getNextOrderId } from '../../lib/idGenerator';
@@ -39,6 +40,19 @@ export const AdminEnquiryDetailPage: React.FC = () => {
 
   // Conversion Success Modal State
   const [convertedSuccessOrder, setConvertedSuccessOrder] = useState<any | null>(null);
+
+  // Custom Card Popup Notification Modal State
+  const [notifyModal, setNotifyModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type?: 'error' | 'warning' | 'success' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning'
+  });
 
   useEffect(() => {
     if (id) {
@@ -140,7 +154,12 @@ export const AdminEnquiryDetailPage: React.FC = () => {
       setEnquiry({ ...enquiry, status: 'converted', converted_order_id: result.order.id });
 
       if (!result.isNew) {
-        alert(result.message);
+        setNotifyModal({
+          isOpen: true,
+          title: 'Enquiry Already Converted',
+          message: result.message || 'This enquiry was already converted to an order.',
+          type: 'info'
+        });
         navigate(`/admin/orders/${result.order.id}`);
       } else {
         setConvertedSuccessOrder({
@@ -153,7 +172,12 @@ export const AdminEnquiryDetailPage: React.FC = () => {
       }
     } catch (err) {
       console.warn('Order conversion error:', err);
-      alert('Unable to convert this enquiry. Please try again.');
+      setNotifyModal({
+        isOpen: true,
+        title: 'Conversion Error',
+        message: 'Unable to convert this enquiry. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsConverting(false);
     }
@@ -322,7 +346,7 @@ export const AdminEnquiryDetailPage: React.FC = () => {
                 Send Quote via WhatsApp
               </Button>
 
-              {!(enquiry.status === 'converted' || Boolean(enquiry.converted_order_id || enquiry.convertedOrderId || enquiry.order_id)) ? (
+              {!(enquiry.status === 'converted' || enquiry.status === 'accepted' || enquiry.status === 'converted_to_order' || Boolean(enquiry.converted_order_id || enquiry.convertedOrderId || enquiry.order_id)) ? (
                 <Button
                   onClick={handleConvertToOrder}
                   disabled={isConverting}
@@ -338,7 +362,7 @@ export const AdminEnquiryDetailPage: React.FC = () => {
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 px-4 rounded-2xl text-xs text-center flex items-center justify-center gap-1.5 shadow-md transition-colors"
                 >
                   <ShoppingBag className="w-4 h-4" />
-                  <span>View Created Order</span>
+                  <span>Enquiry Accepted / View Order</span>
                 </Link>
               )}
             </div>
@@ -458,6 +482,14 @@ export const AdminEnquiryDetailPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      <NotificationModal
+        isOpen={notifyModal.isOpen}
+        onClose={() => setNotifyModal((prev) => ({ ...prev, isOpen: false }))}
+        title={notifyModal.title}
+        message={notifyModal.message}
+        type={notifyModal.type}
+      />
 
     </div>
   );

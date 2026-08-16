@@ -46,6 +46,7 @@ import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
 import { AdminImportPage } from './pages/admin/AdminImportPage';
 import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
+import { AdminPOSPage } from './pages/admin/AdminPOSPage';
 
 // Layout wrapper to handle Navbar/MobileNav/PublicHeader visibility
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -194,6 +195,7 @@ export const App: React.FC = () => {
                     <Route path="import" element={<AdminImportPage />} />
                     <Route path="payments" element={<AdminPaymentsPage />} />
                     <Route path="settings" element={<AdminSettingsPage />} />
+                    <Route path="pos" element={<AdminPOSPage />} />
                   </Route>
 
                   {/* Fallback */}

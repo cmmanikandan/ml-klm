@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ShieldAlert,
   Sparkles,
+  Calculator,
   LogOut,
   Globe
 } from 'lucide-react';
@@ -49,46 +50,29 @@ export const AdminLayout: React.FC = () => {
 
   const fetchCounts = async () => {
     try {
-      // 1. Pending / Active Enquiries Count (Deduplicated, excl. converted)
+      // 1. Pending Enquiries Count (Strictly status === 'pending')
       const { data: enqData } = await supabase.from('enquiries').select('id, enquiry_number, status');
       const localEnq: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-      const rawEnquiries = [...(enqData || []), ...localEnq];
+      const rawEnquiries = (enqData && enqData.length > 0) ? enqData : localEnq;
 
-      const seenEnq = new Set();
-      const uniqueEnquiries = rawEnquiries.filter((e: any) => {
-        const key = e.id || e.enquiry_number || e.number;
-        if (!key || seenEnq.has(key)) return false;
-        seenEnq.add(key);
-        return true;
+      const pendingEnquiries = rawEnquiries.filter((e: any) => {
+        const st = (e.status || 'pending').toLowerCase();
+        return st === 'pending';
       });
 
-      // Active enquiries: status is NOT converted
-      const activeEnquiries = uniqueEnquiries.filter((e: any) => {
-        const status = (e.status || '').toLowerCase();
-        return status !== 'converted';
-      });
+      setPendingEnquiriesCount(pendingEnquiries.length);
 
-      setPendingEnquiriesCount(activeEnquiries.length);
-
-      // 2. Not Delivered Orders Count (Deduplicated, excl. delivered)
+      // 2. Active Orders Count (excl. delivered and cancelled)
       const { data: dbOrders } = await supabase.from('orders').select('id, order_number, status');
       const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      const rawOrders = [...(dbOrders || []), ...localOrders];
+      const rawOrders = (dbOrders && dbOrders.length > 0) ? dbOrders : localOrders;
 
-      const seenOrd = new Set();
-      const uniqueOrders = rawOrders.filter((o: any) => {
-        const key = o.id || o.order_number;
-        if (!key || seenOrd.has(key)) return false;
-        seenOrd.add(key);
-        return true;
+      const activeOrders = rawOrders.filter((o: any) => {
+        const st = (o.status || '').toLowerCase();
+        return st !== 'delivered' && st !== 'cancelled';
       });
 
-      const notDeliveredOrders = uniqueOrders.filter((o: any) => {
-        const status = (o.status || '').toLowerCase();
-        return status !== 'delivered';
-      });
-
-      setActiveOrdersCount(notDeliveredOrders.length);
+      setActiveOrdersCount(activeOrders.length);
     } catch (e) {
       console.warn('Sidebar count fetch fallback', e);
     }
@@ -101,6 +85,7 @@ export const AdminLayout: React.FC = () => {
 
   const adminNavItems = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
+    { to: '/admin/pos', label: 'POS Counter', icon: Calculator, badge: 'POS' },
     { to: '/admin/enquiries', label: 'Enquiries', icon: MessageSquare, badge: pendingEnquiriesCount > 0 ? String(pendingEnquiriesCount) : null },
     { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, badge: activeOrdersCount > 0 ? String(activeOrdersCount) : null },
     { to: '/admin/customers', label: 'Customers', icon: Users, badge: null },

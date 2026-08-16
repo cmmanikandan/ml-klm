@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Save, Store, Phone, MapPin, QrCode, Edit3, CheckCircle2, X } from 'lucide-react';
 import { Button } from '../../components/common/Button';
-import { DEFAULT_SHOP_INFO } from '../../lib/supabase';
+import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 
 export const AdminSettingsPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -15,31 +15,77 @@ export const AdminSettingsPage: React.FC = () => {
   const [gstin, setGstin] = useState('33ABCDE1234F1Z5');
   const [ownerSignature, setOwnerSignature] = useState('C. MANIKANDAN (Proprietor)');
   const [mapUrl, setMapUrl] = useState('https://maps.google.com/?q=Kallimandhayam');
+  const [defaultRatePerKg, setDefaultRatePerKg] = useState<number>(160);
+  const [defaultRatePerSqft, setDefaultRatePerSqft] = useState<number>(150);
   const [loading, setLoading] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      // 1. Try fetching from Supabase DB admin_settings table
+      const { data } = await supabase.from('admin_settings').select('value').eq('key', 'shop_info').maybeSingle();
+      const local = JSON.parse(localStorage.getItem('ml_shop_settings') || '{}');
+      const val = data?.value || local;
+
+      if (val && Object.keys(val).length > 0) {
+        if (val.name) setShopName(val.name);
+        if (val.sub_name) setSubName(val.sub_name);
+        if (val.phone) setPhone(val.phone);
+        if (val.whatsapp) setWhatsapp(val.whatsapp);
+        if (val.address) setAddress(val.address);
+        if (val.upi_id) setUpiId(val.upi_id);
+        if (val.operatingHours || val.working_hours_en) setOperatingHours(val.operatingHours || val.working_hours_en);
+        if (val.gstin) setGstin(val.gstin);
+        if (val.ownerSignature || val.owner_signature) setOwnerSignature(val.ownerSignature || val.owner_signature);
+        if (val.mapUrl || val.google_maps_url) setMapUrl(val.mapUrl || val.google_maps_url);
+        if (val.default_rate_per_kg) setDefaultRatePerKg(Number(val.default_rate_per_kg));
+        if (val.default_rate_per_sqft) setDefaultRatePerSqft(Number(val.default_rate_per_sqft));
+      }
+    } catch (err) {
+      console.warn('Failed to load shop settings from Supabase DB', err);
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      const updatedInfo = {
-        name: shopName,
-        sub_name: subName,
-        phone,
-        whatsapp,
-        address,
-        upi_id: upiId,
-        operatingHours,
-        gstin,
-        ownerSignature,
-        mapUrl
-      };
-      localStorage.setItem('ml_shop_settings', JSON.stringify(updatedInfo));
-      setLoading(false);
-      setIsEditing(false);
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
-    }, 400);
+
+    const updatedInfo = {
+      name: shopName,
+      sub_name: subName,
+      phone,
+      whatsapp,
+      address,
+      upi_id: upiId,
+      operatingHours,
+      gstin,
+      ownerSignature,
+      mapUrl,
+      default_rate_per_kg: defaultRatePerKg,
+      default_rate_per_sqft: defaultRatePerSqft,
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      // Save to Supabase DB admin_settings table
+      await supabase.from('admin_settings').upsert({
+        key: 'shop_info',
+        value: updatedInfo
+      });
+    } catch (err) {
+      console.warn('Supabase DB settings upsert error:', err);
+    }
+
+    // Backup to localStorage
+    localStorage.setItem('ml_shop_settings', JSON.stringify(updatedInfo));
+    setLoading(false);
+    setIsEditing(false);
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
   };
 
   return (
@@ -226,6 +272,32 @@ export const AdminSettingsPage: React.FC = () => {
                   onChange={(e) => setOwnerSignature(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
                 />
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-3">
+              <span className="text-xs font-extrabold text-amber-900 uppercase tracking-wider block">
+                Shop Default Pricing Rates (Fallback for Custom Fabrication)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-charcoal-700 mb-1">Default Rate Per KG (₹/kg)</label>
+                  <input
+                    type="number"
+                    value={defaultRatePerKg}
+                    onChange={(e) => setDefaultRatePerKg(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2.5 text-sm font-black border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-charcoal-700 mb-1">Default Rate Per SqFt (₹/sqft)</label>
+                  <input
+                    type="number"
+                    value={defaultRatePerSqft}
+                    onChange={(e) => setDefaultRatePerSqft(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2.5 text-sm font-black border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
               </div>
             </div>
 

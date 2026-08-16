@@ -4,6 +4,7 @@ import { Phone, MessageSquare, CheckCircle2, XCircle, ArrowRight, Search, Eye, C
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { NotificationModal } from '../../components/common/NotificationModal';
 import { INITIAL_PRODUCTS, DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { getNextOrderId } from '../../lib/idGenerator';
 import { getStatusConfig } from '../../lib/statusConfig';
@@ -24,6 +25,19 @@ export const AdminEnquiriesPage: React.FC = () => {
 
   // Conversion Success Modal Card
   const [convertedSuccessOrder, setConvertedSuccessOrder] = useState<any | null>(null);
+
+  // Custom Card Popup Notification Modal State
+  const [notifyModal, setNotifyModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type?: 'error' | 'warning' | 'success' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning'
+  });
 
   useEffect(() => {
     fetchLiveEnquiries();
@@ -140,7 +154,12 @@ export const AdminEnquiriesPage: React.FC = () => {
       );
 
       if (!result.isNew) {
-        alert(result.message);
+        setNotifyModal({
+          isOpen: true,
+          title: 'Enquiry Already Converted',
+          message: result.message || 'This enquiry was already converted to an order.',
+          type: 'info'
+        });
         navigate(`/admin/orders/${result.order.id}`);
       } else {
         setConvertedSuccessOrder({
@@ -153,7 +172,12 @@ export const AdminEnquiriesPage: React.FC = () => {
       }
     } catch (err) {
       console.warn('Order conversion error:', err);
-      alert('Unable to convert this enquiry. Please try again.');
+      setNotifyModal({
+        isOpen: true,
+        title: 'Conversion Error',
+        message: 'Unable to convert this enquiry. Please try again.',
+        type: 'error'
+      });
     } finally {
       setIsConverting(false);
       setConvertingId(null);
@@ -238,12 +262,12 @@ export const AdminEnquiriesPage: React.FC = () => {
           filteredEnquiries.map((enq) => {
             const normStatus = getNormalizedStatus(enq.status);
             const isAccepted = normStatus === 'ACCEPTED';
-            const isConverted = normStatus === 'CONVERTED' || Boolean(enq.converted_order_id || enq.convertedOrderId || enq.order_id);
+            const isConverted = normStatus === 'CONVERTED' || normStatus === 'CONVERTED_TO_ORDER' || Boolean(enq.converted_order_id || enq.convertedOrderId || enq.order_id);
             const linkedOrderId = enq.converted_order_id || enq.convertedOrderId || enq.order_id;
             const isPending = normStatus === 'PENDING';
             const isRejected = normStatus === 'REJECTED';
-            const isOrderStage = ['ORDER_CONFIRMED', 'PROCESSING', 'READY', 'DELIVERED', 'CONVERTED'].includes(normStatus) || isConverted;
-            const showQuoteAndConvert = isAccepted && !isConverted;
+            const isOrderStage = ['ORDER_CONFIRMED', 'PROCESSING', 'READY', 'DELIVERED', 'CONVERTED', 'ACCEPTED'].includes(normStatus) || isConverted;
+            const showQuoteAndConvert = isPending && !isConverted;
             const productName = getProductName(enq);
             const enquiryNo = enq.enquiry_number || enq.number || enq.id;
 
@@ -476,6 +500,14 @@ export const AdminEnquiriesPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      <NotificationModal
+        isOpen={notifyModal.isOpen}
+        onClose={() => setNotifyModal((prev) => ({ ...prev, isOpen: false }))}
+        title={notifyModal.title}
+        message={notifyModal.message}
+        type={notifyModal.type}
+      />
 
     </div>
   );

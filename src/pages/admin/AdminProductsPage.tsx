@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Edit, Trash2, Eye, EyeOff, Search, Upload, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Product } from '../../types';
 import { fetchActiveProducts, deleteProductFromStore, clearAllDemoProductsFromStore, saveProductToStore } from '../../lib/productsStore';
+import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 
 export const AdminProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -11,6 +12,7 @@ export const AdminProductsPage: React.FC = () => {
 
   // Delete Confirmation Modal State
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [showPurgeConfirmModal, setShowPurgeConfirmModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Success Toast Card State
@@ -42,7 +44,7 @@ export const AdminProductsPage: React.FC = () => {
     showToast(`Product visibility updated to ${newStatus ? 'Active' : 'Disabled'}`);
   };
 
-  const confirmDeleteProduct = async () => {
+  const handleDeleteProduct = async () => {
     if (!deleteTargetId) return;
     setIsDeleting(true);
 
@@ -57,7 +59,6 @@ export const AdminProductsPage: React.FC = () => {
 
   // Clear all sample demo products completely
   const handlePurgeAllDemoProducts = async () => {
-    if (!window.confirm('Are you sure you want to clear all sample demo products from shop catalogue?')) return;
     setLoading(true);
     await clearAllDemoProductsFromStore();
     await loadProducts();
@@ -256,7 +257,7 @@ export const AdminProductsPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={confirmDeleteProduct}
+                onClick={handleDeleteProduct}
                 disabled={isDeleting}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white font-extrabold py-3 px-4 rounded-2xl text-xs shadow-lg shadow-red-600/30 transition-all flex items-center justify-center gap-1.5"
               >
@@ -273,6 +274,17 @@ export const AdminProductsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* PURGE DEMO PRODUCTS CONFIRMATION MODAL */}
+      <ConfirmationModal
+        isOpen={showPurgeConfirmModal}
+        onClose={() => setShowPurgeConfirmModal(false)}
+        onConfirm={handlePurgeAllDemoProducts}
+        title="Clear All Sample Demo Products?"
+        message="Are you sure you want to clear all sample demo products from your shop catalogue? This will reset the catalogue to your custom active products."
+        confirmText="Clear Demo Products"
+        isDanger={true}
+      />
 
     </div>
   );

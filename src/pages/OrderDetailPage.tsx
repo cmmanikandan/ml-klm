@@ -4,11 +4,13 @@ import { ArrowLeft, Calendar, Phone, MapPin, CheckCircle2, CreditCard, QrCode, S
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
+import { NotificationModal } from '../components/common/NotificationModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { DEFAULT_SHOP_INFO, INITIAL_PRODUCTS, supabase } from '../lib/supabase';
 import { Order, OrderStatus, PaymentStatus } from '../types';
 import { InvoicePreviewModal } from '../components/invoice/InvoicePreviewModal';
+import { FabricationTimeline } from '../components/orders/FabricationTimeline';
 import confetti from 'canvas-confetti';
 
 export const OrderDetailPage: React.FC = () => {
@@ -27,6 +29,19 @@ export const OrderDetailPage: React.FC = () => {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [isFeedbackSubmitted, setIsFeedbackSubmitted] = useState(false);
+
+  // Custom Card Popup Notification Modal State
+  const [notifyModal, setNotifyModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type?: 'error' | 'warning' | 'success' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning'
+  });
 
   useEffect(() => {
     fetchLiveOrderDetails();
@@ -159,7 +174,12 @@ export const OrderDetailPage: React.FC = () => {
       handler: function (response: any) {
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
         recordCustomerPayment(amount, 'Online Payment');
-        alert(t('payment_success'));
+        setNotifyModal({
+          isOpen: true,
+          title: 'Payment Successful',
+          message: t('payment_success'),
+          type: 'success'
+        });
       },
       prefill: {
         name: user?.full_name || 'Manikandan Customer',
@@ -177,7 +197,12 @@ export const OrderDetailPage: React.FC = () => {
     } catch (err) {
       confetti({ particleCount: 100, spread: 70 });
       recordCustomerPayment(amount, 'Online Payment');
-      alert(t('payment_success'));
+      setNotifyModal({
+        isOpen: true,
+        title: 'Payment Successful',
+        message: t('payment_success'),
+        type: 'success'
+      });
     }
   };
 
@@ -347,77 +372,130 @@ export const OrderDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* PAYMENT OPTIONS SECTION (SHOW UNTIL FULLY PAID) */}
-          {((order.remaining_amount || 0) > 0 || order.payment_status !== 'paid') && (
-            <div className="bg-gradient-to-r from-amber-500/10 via-brand-500/10 to-orange-500/10 p-5 rounded-2xl border-2 border-brand-300 space-y-4">
-              
-              {/* Advance Payment Breakdown Status Card */}
-              {Number(order.advance_amount || 0) > 0 && (
-                <div className="bg-white p-3.5 rounded-xl border border-brand-200 shadow-sm flex items-center justify-between gap-3">
-                  <div>
-                    <span className="text-[10px] font-black text-brand-600 uppercase tracking-wider block">
-                      {isTamil ? 'முன்பணம் நிலுவை' : 'Required Advance Amount'}
-                    </span>
-                    <span className="text-sm font-black text-charcoal-900 font-mono">
-                      ₹{Number(order.advance_amount).toLocaleString('en-IN')}
-                    </span>
-                  </div>
+          {/* VISUAL WORKSHOP FABRICATION PROGRESS TIMELINE */}
+          <FabricationTimeline 
+            currentStage={order.fabrication_stage} 
+            orderStatus={order.status} 
+            updatedAt={order.updated_at}
+          />
 
-                  <div>
-                    {(order.remaining_amount || 0) < (order.total_amount || 0) ? (
-                      <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold px-3 py-1 rounded-full text-xs flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{isTamil ? 'முன்பணம் செலுத்தப்பட்டது' : 'Advance Paid'}</span>
-                      </span>
-                    ) : (
-                      <span className="bg-rose-100 text-rose-800 border border-rose-300 font-extrabold px-3 py-1 rounded-full text-xs flex items-center gap-1 animate-pulse">
-                        <span>{isTamil ? 'முன்பணம் செலுத்தப்படவில்லை (Unpaid)' : 'Advance Unpaid'}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
+          {/* DYNAMIC PAYMENT / NOTIFICATION CARD SECTION */}
+          {(() => {
+            const hasPaymentRequested = order.is_payment_requested || (order.payment_request_amount || 0) > 0 || (order.advance_amount || 0) > 0;
+            const isFullyPaid = order.payment_status === 'paid';
+            const requestedAmount = order.payment_request_amount || order.remaining_amount || order.advance_amount || 0;
 
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest block">PAYMENT DUE</span>
-                  <div className="flex items-center gap-2 text-brand-800 font-extrabold text-sm">
-                    <CreditCard className="w-5 h-5 text-brand-600" />
-                    <span>Balance / Payment Amount</span>
+            if (isFullyPaid) {
+              return (
+                <div className="bg-emerald-50 border-2 border-emerald-300 p-4.5 rounded-2xl flex items-center justify-between shadow-sm">
+                  <div className="flex items-center gap-2.5 text-emerald-900 font-black text-xs sm:text-sm">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <span>{isTamil ? 'கட்டணம் முழுவதும் செலுத்தப்பட்டது' : 'Payment Completed in Full'}</span>
                   </div>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-2xl font-black text-brand-700 font-mono">
-                    ₹{(order.remaining_amount || order.payment_request_amount || order.advance_amount || 0).toLocaleString('en-IN')}
+                  <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 font-mono">
+                    ₹{(order.total_amount || 0).toLocaleString('en-IN')}
                   </span>
-                  <span className="text-[10px] font-bold text-amber-800 block">Total Quoted: ₹{(order.total_amount || 0).toLocaleString('en-IN')}</span>
+                </div>
+              );
+            }
+
+            if (hasPaymentRequested && requestedAmount > 0) {
+              return (
+                <div className="bg-gradient-to-r from-amber-500/15 via-brand-500/15 to-orange-500/15 p-5 rounded-3xl border-2 border-brand-400 shadow-md space-y-4 animate-pulse-subtle">
+                  
+                  {/* Highlight Banner */}
+                  <div className="bg-brand-600 text-white p-3 rounded-2xl flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">📢</span>
+                      <div>
+                        <span className="text-xs font-black uppercase tracking-wider block">
+                          {isTamil ? 'கட்டண அறிவிப்பு' : 'Payment Requested by Admin'}
+                        </span>
+                        <span className="text-[11px] font-bold text-amber-100">
+                          {isTamil ? 'ஆர்டர் கட்டணம் நிர்ணயிக்கப்பட்டுள்ளது' : 'Workshop admin has set the payment amount for your order.'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <div>
+                      <span className="text-[10px] font-black text-brand-700 uppercase tracking-widest block">PAYMENT DUE</span>
+                      <div className="flex items-center gap-2 text-charcoal-900 font-black text-sm">
+                        <CreditCard className="w-5 h-5 text-brand-600" />
+                        <span>{isTamil ? 'செலுத்த வேண்டிய தொகை' : 'Requested Payment Amount'}</span>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-2xl sm:text-3xl font-black text-brand-600 font-mono">
+                        ₹{requestedAmount.toLocaleString('en-IN')}
+                      </span>
+                      {Number(order.total_amount || 0) > 0 && (
+                        <span className="text-[10px] font-bold text-charcoal-500 block">
+                          Total Quoted: ₹{Number(order.total_amount).toLocaleString('en-IN')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <Button
+                      onClick={handlePayNow}
+                      variant="primary"
+                      icon={<CreditCard className="w-4 h-4" />}
+                    >
+                      {isTamil ? 'ஆன்லைன் மூலம் செலுத்துக (Razorpay)' : 'Pay Now via Razorpay (Card/NetBanking)'}
+                    </Button>
+
+                    <Button
+                      onClick={() => setShowQrModal(true)}
+                      variant="secondary"
+                      icon={<QrCode className="w-4 h-4 text-emerald-600" />}
+                    >
+                      {isTamil ? 'GPay / PhonePe QR ஸ்கேன் செய்க' : 'Scan GPay / PhonePe UPI QR'}
+                    </Button>
+                  </div>
+
+                  <div className="bg-white/90 p-3 rounded-xl border border-warm-border text-center text-xs font-bold text-charcoal-700">
+                    💵 Or pay Cash directly at Workshop Counter (<span className="text-brand-600">Kallimandhayam</span>)
+                  </div>
+                </div>
+              );
+            }
+
+            // PENDING PRICE CALCULATION BY ADMIN (DEFAULT STATE BEFORE ADMIN SETS AMOUNT)
+            return (
+              <div className="bg-amber-50/80 p-5 rounded-3xl border-2 border-amber-300 space-y-3">
+                <div className="flex items-center gap-2.5 text-amber-900">
+                  <span className="text-2xl">📞</span>
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider">
+                      {isTamil ? 'விலை தொலைபேசி அழைப்பில் தீர்மானிக்கப்படும்' : 'Price Discussed via Call / Weight Calculation Pending'}
+                    </h3>
+                    <p className="text-xs font-medium text-amber-800 mt-0.5 leading-relaxed">
+                      {isTamil 
+                        ? 'இந்த தயாரிப்பின் இறுதி விலை எடை (kg) அல்லது அளவின்படி வொர்க்ஷாப் நிர்வாகியால் கணக்கிடப்படும். நிர்வாகி தொகையை நிர்ணயித்தவுடன் உங்களுக்கு அறிவிப்பு அனுப்பப்படும்.' 
+                        : 'The product price is calculated based on exact total weight (kg) or square feet after work completion by shop admin. Notification card to pay will appear once set.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-3 rounded-2xl border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <span className="text-xs font-extrabold text-charcoal-800">
+                    {isTamil ? 'வொர்க்ஷாப்பை தொடர்பு கொள்ள:' : 'Have questions about price or estimation?'}
+                  </span>
+                  <a
+                    href={`tel:${DEFAULT_SHOP_INFO.phone}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white bg-brand-600 px-4 py-2 rounded-full shadow-sm hover:bg-brand-700 transition-colors shrink-0"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>{DEFAULT_SHOP_INFO.phone}</span>
+                  </a>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                <Button
-                  onClick={handlePayNow}
-                  variant="primary"
-                  icon={<CreditCard className="w-4 h-4" />}
-                >
-                  Pay Online (Card / NetBanking)
-                </Button>
-
-                <Button
-                  onClick={() => setShowQrModal(true)}
-                  variant="secondary"
-                  icon={<QrCode className="w-4 h-4 text-emerald-600" />}
-                >
-                  Scan GPay / PhonePe UPI QR
-                </Button>
-              </div>
-
-              <div className="bg-white/80 p-3 rounded-xl border border-warm-border text-center text-xs font-bold text-charcoal-700">
-                💵 Or pay Cash directly at Workshop Counter (<span className="text-brand-600">Kallimandhayam</span>)
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {order.payment_status === 'paid' && order.status !== 'delivered' && (
             <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between">
@@ -545,7 +623,12 @@ export const OrderDetailPage: React.FC = () => {
               setShowQrModal(false);
               const amount = order?.payment_request_amount || order?.remaining_amount || order?.advance_amount || 0;
               recordCustomerPayment(amount, 'Online Payment (UPI QR)');
-              alert('Payment notification sent to shop admin!');
+              setNotifyModal({
+                isOpen: true,
+                title: 'Payment Recorded',
+                message: 'Payment notification sent to shop admin! Your receipt has been updated.',
+                type: 'success'
+              });
             }}
             variant="primary"
             fullWidth
@@ -561,6 +644,15 @@ export const OrderDetailPage: React.FC = () => {
         onClose={() => setShowInvoicePreviewModal(false)}
         order={order}
       />
+
+      <NotificationModal
+        isOpen={notifyModal.isOpen}
+        onClose={() => setNotifyModal((prev) => ({ ...prev, isOpen: false }))}
+        title={notifyModal.title}
+        message={notifyModal.message}
+        type={notifyModal.type}
+      />
+
     </div>
   );
 };

@@ -18,7 +18,8 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
   const statusBadgeBg = isFullyPaid ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : isPartiallyPaid ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-red-100 text-red-900 border-red-300';
 
   const orderDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
-  const invoiceNo = order.order_number || order.id || 'MNK-ORD-1';
+  const rawInvoiceNo = (order.order_number || order.id || 'MNK-1001').toString();
+  const invoiceNo = rawInvoiceNo.startsWith('#') ? rawInvoiceNo : `#${rawInvoiceNo}`;
 
   return (
     <div
@@ -60,7 +61,7 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
               TAX INVOICE
             </h2>
             <p className="text-sm font-black font-mono text-brand-600 mt-0.5">
-              Invoice No: #{invoiceNo}
+              Invoice No: {invoiceNo}
             </p>
             <p className="text-xs text-slate-600 font-bold mt-0.5">
               Date: {orderDate}
@@ -92,36 +93,125 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
             <p className="text-xs font-black text-slate-900">{order.customerName || order.customer_name || 'Customer'}</p>
             <p className="text-[11px] text-slate-800 font-bold">Phone: {order.customerPhone || order.customer_phone || '+91 96592 86268'}</p>
             <p className="text-[11px] text-slate-700 font-medium">Location: {order.customerAddress || order.delivery_location || 'Kallimandhayam'}</p>
-            <p className="text-[11px] text-slate-600 font-medium mt-0.5">Expected Delivery: {order.expected_delivery_date || 'Within 7 Days'}</p>
+            {order.is_pos ? (
+              <p className="text-[11px] text-emerald-700 font-bold mt-0.5">
+                Delivery Status: Immediate Counter Handover (Completed)
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                Expected Delivery: {order.expected_delivery_date || 'Within 7 Days'}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* ITEMIZATION TABLE */}
-        <table className="w-full border-collapse mb-4">
-          <thead>
-            <tr className="bg-slate-900 text-white text-[10px] uppercase font-black tracking-wider">
-              <th className="py-2 px-3 text-center w-[8%] border border-slate-900">S.No</th>
-              <th className="py-2 px-3 text-left w-[52%] border border-slate-900">Product / Fabrication Description</th>
-              <th className="py-2 px-3 text-center w-[12%] border border-slate-900">Qty</th>
-              <th className="py-2 px-3 text-right w-[14%] border border-slate-900">Rate (₹)</th>
-              <th className="py-2 px-3 text-right w-[14%] border border-slate-900">Amount (₹)</th>
-            </tr>
-          </thead>
-          <tbody className="text-xs font-medium divide-y divide-slate-200">
-            <tr>
-              <td className="py-2.5 px-3 text-center font-bold text-slate-600 border border-slate-200">1</td>
-              <td className="py-2.5 px-3 border border-slate-200">
-                <p className="font-extrabold text-slate-900 text-sm">{order.productName || order.product_name || 'Custom Lathe Fabricated Item'}</p>
-                <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                  Precision heavy duty steel lathe work & welding fabrication.
-                </p>
-              </td>
-              <td className="py-2.5 px-3 text-center font-bold text-slate-900 border border-slate-200">{order.quantity || 1}</td>
-              <td className="py-2.5 px-3 text-right font-bold font-mono text-slate-800 border border-slate-200">₹{total.toLocaleString('en-IN')}</td>
-              <td className="py-2.5 px-3 text-right font-black font-mono text-slate-900 border border-slate-200">₹{total.toLocaleString('en-IN')}</td>
-            </tr>
-          </tbody>
-        </table>
+        {/* ITEMIZATION TABLE - CONDITIONAL BILL TEMPLATE (WEIGHT/PARTS vs NORMAL FIXED INVOICE) */}
+        {order.weight_calculation && order.weight_calculation.parts ? (
+          <div className="space-y-4 mb-4">
+            {/* 1. Parts Breakdown Table */}
+            <div>
+              <div className="flex justify-between items-center bg-slate-100 px-3 py-1 border border-slate-300 border-b-0 rounded-t-lg">
+                <span className="text-[10px] font-black uppercase text-slate-800 tracking-wider">
+                  FABRICATION ITEM: {order.productName || order.product_name || 'LATHE ITEM'} - WEIGHT BREAKDOWN (RATE: ₹{order.weight_calculation.rate_per_kg || 160}/KG)
+                </span>
+                <span className="text-[10px] font-extrabold text-brand-600 font-mono">
+                  TOTAL WEIGHT: {order.weight_calculation.total_weight_kg || 0} KG
+                </span>
+              </div>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-slate-900 text-white text-[10px] uppercase font-black tracking-wider">
+                    <th className="py-2 px-3 text-center w-[8%] border border-slate-900">S.No</th>
+                    <th className="py-2 px-3 text-left w-[46%] border border-slate-900">Product Item & Section Description</th>
+                    <th className="py-2 px-3 text-center w-[16%] border border-slate-900">Weight (KG)</th>
+                    <th className="py-2 px-3 text-right w-[15%] border border-slate-900">Rate / KG</th>
+                    <th className="py-2 px-3 text-right w-[15%] border border-slate-900">Cost (₹)</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs font-medium divide-y divide-slate-200">
+                  {order.weight_calculation.parts.map((p: any, idx: number) => {
+                    const rate = order.weight_calculation.rate_per_kg || 160;
+                    const cost = Math.round((Number(p.weight_kg) || 0) * rate);
+                    const displayName = p.name ? p.name : `${order.productName || 'Fabrication Item'} Piece ${idx + 1}`;
+                    return (
+                      <tr key={p.id || idx}>
+                        <td className="py-2 px-3 text-center font-bold text-slate-600 border border-slate-200">{idx + 1}</td>
+                        <td className="py-2 px-3 border border-slate-200 font-extrabold text-slate-900">{displayName}</td>
+                        <td className="py-2 px-3 text-center font-bold font-mono text-slate-900 border border-slate-200">{p.weight_kg} kg</td>
+                        <td className="py-2 px-3 text-right font-mono text-slate-700 border border-slate-200">₹{rate}</td>
+                        <td className="py-2 px-3 text-right font-black font-mono text-slate-900 border border-slate-200">₹{cost.toLocaleString('en-IN')}</td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="bg-slate-50 font-black">
+                    <td colSpan={2} className="py-2 px-3 text-right text-slate-800 border border-slate-300">Base Weight Total:</td>
+                    <td className="py-2 px-3 text-center font-mono text-slate-900 border border-slate-300">{order.weight_calculation.total_weight_kg || 0} kg</td>
+                    <td className="py-2 px-3 text-right text-slate-600 border border-slate-300">-</td>
+                    <td className="py-2 px-3 text-right font-mono text-brand-700 border border-slate-300">
+                      ₹{(order.weight_calculation.weight_subtotal || 0).toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* 2. Extra Shop Charges / Outsourced Expenses Table */}
+            {order.weight_calculation.extra_charges && order.weight_calculation.extra_charges.length > 0 && (
+              <div>
+                <div className="bg-amber-100/70 px-3 py-1 border border-amber-300 border-b-0 rounded-t-lg">
+                  <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider">
+                    EXTRA SHOP CHARGES & OUTSOURCED ITEMS
+                  </span>
+                </div>
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-800 text-white text-[10px] uppercase font-black">
+                      <th className="py-1.5 px-3 text-center w-[8%] border border-slate-800">#</th>
+                      <th className="py-1.5 px-3 text-left border border-slate-800">Description of Extra Item / Service</th>
+                      <th className="py-1.5 px-3 text-right w-[20%] border border-slate-800">Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {order.weight_calculation.extra_charges.map((ext: any, eIdx: number) => (
+                      <tr key={ext.id || eIdx}>
+                        <td className="py-1.5 px-3 text-center font-bold border border-slate-200">{eIdx + 1}</td>
+                        <td className="py-1.5 px-3 font-semibold text-slate-800 border border-slate-200">{ext.description}</td>
+                        <td className="py-1.5 px-3 text-right font-mono font-bold border border-slate-200">₹{Number(ext.amount || 0).toLocaleString('en-IN')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* STANDARD NORMAL FIXED PRICE INVOICE TABLE */
+          <table className="w-full border-collapse mb-4">
+            <thead>
+              <tr className="bg-slate-900 text-white text-[10px] uppercase font-black tracking-wider">
+                <th className="py-2 px-3 text-center w-[8%] border border-slate-900">S.No</th>
+                <th className="py-2 px-3 text-left w-[52%] border border-slate-900">Product / Fabrication Description</th>
+                <th className="py-2 px-3 text-center w-[12%] border border-slate-900">Qty</th>
+                <th className="py-2 px-3 text-right w-[14%] border border-slate-900">Rate (₹)</th>
+                <th className="py-2 px-3 text-right w-[14%] border border-slate-900">Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody className="text-xs font-medium divide-y divide-slate-200">
+              <tr>
+                <td className="py-2.5 px-3 text-center font-bold text-slate-600 border border-slate-200">1</td>
+                <td className="py-2.5 px-3 border border-slate-200">
+                  <p className="font-extrabold text-slate-900 text-sm">{order.productName || order.product_name || 'Custom Lathe Fabricated Item'}</p>
+                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                    Precision heavy duty steel lathe work & welding fabrication.
+                  </p>
+                </td>
+                <td className="py-2.5 px-3 text-center font-bold text-slate-900 border border-slate-200">{order.quantity || 1}</td>
+                <td className="py-2.5 px-3 text-right font-bold font-mono text-slate-800 border border-slate-200">₹{total.toLocaleString('en-IN')}</td>
+                <td className="py-2.5 px-3 text-right font-black font-mono text-slate-900 border border-slate-200">₹{total.toLocaleString('en-IN')}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
 
         {/* FINANCIAL BREAKDOWN SUMMARY */}
         <div className="flex justify-between items-start mb-4">
@@ -137,9 +227,23 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
           <div className="w-[280px]">
             <table className="w-full text-xs font-semibold">
               <tbody>
-                <tr className="border-b border-slate-200">
-                  <td className="py-1 text-slate-600">Subtotal Amount:</td>
-                  <td className="py-1 text-right font-bold text-slate-900 font-mono">₹{total.toLocaleString('en-IN')}</td>
+                {order.weight_calculation && (
+                  <>
+                    <tr className="border-b border-slate-200">
+                      <td className="py-1 text-slate-600">Base Weight Amount:</td>
+                      <td className="py-1 text-right font-bold text-slate-900 font-mono">₹{(order.weight_calculation.weight_subtotal || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                    {Number(order.weight_calculation.extra_subtotal || 0) > 0 && (
+                      <tr className="border-b border-slate-200">
+                        <td className="py-1 text-slate-600">Extra Expenses Total:</td>
+                        <td className="py-1 text-right font-bold text-slate-900 font-mono">₹{(order.weight_calculation.extra_subtotal || 0).toLocaleString('en-IN')}</td>
+                      </tr>
+                    )}
+                  </>
+                )}
+                <tr className="border-b border-slate-200 font-black">
+                  <td className="py-1 text-slate-900">Grand Total Amount:</td>
+                  <td className="py-1 text-right text-slate-900 font-mono">₹{total.toLocaleString('en-IN')}</td>
                 </tr>
                 <tr className="border-b border-slate-200">
                   <td className="py-1 text-slate-600">Advance / Paid:</td>

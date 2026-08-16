@@ -22,6 +22,7 @@ import {
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { NotificationModal } from '../../components/common/NotificationModal';
 import { OrderStatus } from '../../types';
 import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
@@ -55,6 +56,19 @@ export const AdminOrdersPage: React.FC = () => {
   const [cashAmount, setCashAmount] = useState<number>(2000);
   const [cashNotes, setCashNotes] = useState<string>('Cash received at workshop counter');
   const [showCashModal, setShowCashModal] = useState(false);
+
+  // Custom Notification Modal State
+  const [notifyModal, setNotifyModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type?: 'error' | 'warning' | 'success' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'warning'
+  });
 
   useEffect(() => {
     fetchLiveOrders();
@@ -193,7 +207,12 @@ export const AdminOrdersPage: React.FC = () => {
       console.warn('Payment request DB update fallback');
     }
 
-    alert(`Payment request of ₹${paymentReqAmount} sent to customer!`);
+    setNotifyModal({
+      isOpen: true,
+      title: 'Payment Request Sent',
+      message: `Payment request of ₹${paymentReqAmount.toLocaleString('en-IN')} sent to customer dashboard!`,
+      type: 'success'
+    });
     setSelectedOrder(null);
   };
 
@@ -235,7 +254,12 @@ export const AdminOrdersPage: React.FC = () => {
       console.warn('Cash payment DB insert fallback');
     }
 
-    alert(`Cash payment of ₹${cashAmount} recorded successfully!`);
+    setNotifyModal({
+      isOpen: true,
+      title: 'Cash Payment Recorded',
+      message: `Cash payment of ₹${cashAmount.toLocaleString('en-IN')} recorded successfully!`,
+      type: 'success'
+    });
     setShowCashModal(false);
     setSelectedOrder(null);
   };
@@ -652,6 +676,14 @@ export const AdminOrdersPage: React.FC = () => {
         isOpen={Boolean(previewInvoiceOrder)}
         onClose={() => setPreviewInvoiceOrder(null)}
         order={previewInvoiceOrder}
+      />
+
+      <NotificationModal
+        isOpen={notifyModal.isOpen}
+        onClose={() => setNotifyModal((prev) => ({ ...prev, isOpen: false }))}
+        title={notifyModal.title}
+        message={notifyModal.message}
+        type={notifyModal.type}
       />
 
     </div>

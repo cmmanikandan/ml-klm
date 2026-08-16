@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { DollarSign, CreditCard, Clock, ShoppingBag, MessageSquare, Package, FolderTree, ArrowUpRight } from 'lucide-react';
+import { 
+  DollarSign, 
+  CreditCard, 
+  Clock, 
+  ShoppingBag, 
+  MessageSquare, 
+  Package, 
+  FolderTree, 
+  ArrowUpRight,
+  Printer,
+  Eye,
+  Calculator,
+  CheckCircle2,
+  Receipt
+} from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
@@ -19,14 +33,20 @@ export const AdminDashboardPage: React.FC = () => {
   const fetchDashboardMetrics = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Orders from Supabase DB or LocalStorage
-      const { data: ordData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-      if (ordData && ordData.length > 0) {
-        setOrders(ordData);
-      } else {
-        const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-        setOrders(localOrders);
-      }
+      // 1. Fetch Orders from Supabase DB & LocalStorage
+      const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+
+      let combinedOrders = [...(dbOrders || []), ...localOrders];
+      const seen = new Set();
+      combinedOrders = combinedOrders.filter((o: any) => {
+        const key = o.id || o.order_number;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      setOrders(combinedOrders);
 
       // 2. Fetch Enquiries from Supabase DB or LocalStorage
       const { data: enqData } = await supabase.from('enquiries').select('*').order('created_at', { ascending: false });
@@ -37,13 +57,13 @@ export const AdminDashboardPage: React.FC = () => {
         setEnquiries(localEnq);
       }
 
-      // 3. Fetch Active Products from Product Store (DB + Local Storage)
+      // 3. Fetch Active Products from Product Store
       const activeProducts = await fetchActiveProducts();
       if (activeProducts && activeProducts.length > 0) {
         setProductsCount(activeProducts.length);
       }
 
-      // 4. Fetch Active Categories from Supabase DB or Local Storage
+      // 4. Fetch Active Categories
       const { data: catData } = await supabase.from('categories').select('*');
       const localCat = JSON.parse(localStorage.getItem('ml_categories') || '[]');
       if (catData && catData.length > 0) {
@@ -60,34 +80,94 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  // Live metrics calculations
+  // Live Metrics & P&L Calculations
+  const onlineOrders = orders.filter((o) => !o.is_pos);
+  const posOrders = orders.filter((o) => o.is_pos);
+
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+  const posRevenue = posOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
   const paidAmount = orders.reduce((sum, o) => sum + ((o.total_amount || 0) - (o.remaining_amount || 0)), 0);
   const unpaidAmount = orders.reduce((sum, o) => sum + (o.remaining_amount || 0), 0);
 
+  // Workshop Profit & Loss Calculations (Raw Steel Cost @ ₹70/kg + Labor & Expenses @ 15%)
+  const totalWeightSold = orders.reduce((sum, o) => sum + (o.weight_calculation?.total_weight_kg || 0), 0);
+  const rawSteelMaterialCost = Math.round(totalWeightSold * 70) || Math.round(totalRevenue * 0.45);
+  const laborAndWeldingExpenses = Math.round(totalRevenue * 0.15);
+  const netWorkshopProfit = Math.max(0, totalRevenue - rawSteelMaterialCost - laborAndWeldingExpenses);
+
   const summaryCards = [
     { title: 'Total Revenue', value: `₹${totalRevenue.toLocaleString('en-IN')}`, icon: DollarSign, color: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+    { title: 'POS Counter Revenue', value: `₹${posRevenue.toLocaleString('en-IN')}`, icon: Receipt, color: 'bg-amber-50 text-amber-600 border-amber-200' },
     { title: 'Paid Amount', value: `₹${paidAmount.toLocaleString('en-IN')}`, icon: CreditCard, color: 'bg-green-50 text-green-600 border-green-200' },
-    { title: 'Unpaid Amount', value: `₹${unpaidAmount.toLocaleString('en-IN')}`, icon: Clock, color: 'bg-amber-50 text-amber-600 border-amber-200' },
-    { title: 'Total Orders', value: orders.length, icon: ShoppingBag, color: 'bg-brand-50 text-brand-600 border-brand-200' },
-    { title: 'Total Enquiries', value: enquiries.length, icon: MessageSquare, color: 'bg-blue-50 text-blue-600 border-blue-200' },
-    { title: 'Total Products', value: productsCount, icon: Package, color: 'bg-purple-50 text-purple-600 border-purple-200' },
-    { title: 'Total Categories', value: categoriesCount, icon: FolderTree, color: 'bg-indigo-50 text-indigo-600 border-indigo-200' },
+    { title: 'Unpaid Due Amount', value: `₹${unpaidAmount.toLocaleString('en-IN')}`, icon: Clock, color: 'bg-rose-50 text-rose-600 border-rose-200' },
+    { title: 'POS Sales Count', value: posOrders.length, icon: Calculator, color: 'bg-brand-50 text-brand-600 border-brand-200' },
+    { title: 'Online Orders', value: onlineOrders.length, icon: ShoppingBag, color: 'bg-blue-50 text-blue-600 border-blue-200' },
+    { title: 'Customer Enquiries', value: enquiries.length, icon: MessageSquare, color: 'bg-indigo-50 text-indigo-600 border-indigo-200' },
+    { title: 'Shop Products', value: productsCount, icon: Package, color: 'bg-purple-50 text-purple-600 border-purple-200' }
   ];
 
   return (
     <div className="space-y-6">
       
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-black text-charcoal-900">Shop Overview & Analytics</h1>
-        <p className="text-xs text-charcoal-500 font-semibold mt-0.5">
-          Live database metrics and real customer order analytics
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-charcoal-900">Shop Overview & Analytics</h1>
+          <p className="text-xs text-charcoal-500 font-semibold mt-0.5">
+            Live metrics, online order tracking, and POS counter sales management
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Link
+            to="/admin/pos"
+            className="bg-brand-600 hover:bg-brand-700 text-white font-black px-4 py-2.5 rounded-2xl text-xs shadow-md transition-all flex items-center gap-2"
+          >
+            <Calculator className="w-4 h-4" />
+            <span>Open POS Counter</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* WORKSHOP PROFIT & LOSS (P&L) FINANCIAL CARD */}
+      <div className="bg-gradient-to-br from-charcoal-900 via-charcoal-800 to-brand-950 text-white p-6 rounded-3xl border border-charcoal-700 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-charcoal-700 pb-3">
+          <div className="flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-emerald-400" />
+            <h3 className="text-base font-black tracking-wide">Workshop Profit & Loss (P&L) Financial Ledger</h3>
+          </div>
+          <span className="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-800">
+            Real-time Gross Profit Margin: {totalRevenue > 0 ? `${Math.round((netWorkshopProfit / totalRevenue) * 100)}%` : '0%'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-bold">
+          <div className="bg-charcoal-800/80 p-3.5 rounded-2xl border border-charcoal-700">
+            <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">Total Sales Revenue</span>
+            <span className="text-xl font-black font-mono text-white">₹{totalRevenue.toLocaleString('en-IN')}</span>
+          </div>
+
+          <div className="bg-charcoal-800/80 p-3.5 rounded-2xl border border-charcoal-700">
+            <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest block">Raw Steel Material Cost</span>
+            <span className="text-xl font-black font-mono text-amber-300">₹{rawSteelMaterialCost.toLocaleString('en-IN')}</span>
+            <span className="text-[9px] text-charcoal-400 block mt-0.5">Est. ₹70/kg MS Steel</span>
+          </div>
+
+          <div className="bg-charcoal-800/80 p-3.5 rounded-2xl border border-charcoal-700">
+            <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest block">Labor & Welding Expenses</span>
+            <span className="text-xl font-black font-mono text-blue-300">₹{laborAndWeldingExpenses.toLocaleString('en-IN')}</span>
+            <span className="text-[9px] text-charcoal-400 block mt-0.5">Lathe & welding work</span>
+          </div>
+
+          <div className="bg-emerald-950/90 p-3.5 rounded-2xl border border-emerald-600">
+            <span className="text-[10px] font-black text-emerald-300 uppercase tracking-widest block">Net Workshop Profit (P&L)</span>
+            <span className="text-2xl font-black font-mono text-emerald-400">+ ₹{netWorkshopProfit.toLocaleString('en-IN')}</span>
+          </div>
+        </div>
       </div>
 
       {/* Top High-Priority Notification Action Cards */}
-      {(enquiries.filter(e => e.status === 'pending').length > 0 || orders.filter(o => o.status === 'pending').length > 0) && (
+      {(enquiries.filter(e => e.status === 'pending').length > 0 || onlineOrders.filter(o => o.status === 'pending').length > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {enquiries.filter(e => e.status === 'pending').length > 0 && (
             <div className="bg-gradient-to-r from-amber-500 to-brand-600 text-white p-5 rounded-3xl shadow-lg flex items-center justify-between gap-4">
@@ -110,14 +190,14 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           )}
 
-          {orders.filter(o => o.status === 'pending').length > 0 && (
+          {onlineOrders.filter(o => o.status === 'pending').length > 0 && (
             <div className="bg-gradient-to-r from-charcoal-800 to-charcoal-900 text-white p-5 rounded-3xl border border-charcoal-700 shadow-lg flex items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="bg-brand-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">New Order Received</span>
                 </div>
                 <h4 className="text-sm font-black">
-                  {orders.filter(o => o.status === 'pending').length} New Orders Awaiting Acceptance
+                  {onlineOrders.filter(o => o.status === 'pending').length} New Orders Awaiting Acceptance
                 </h4>
                 <p className="text-xs text-gray-300 font-medium">Accept order & confirm fabrication schedule</p>
               </div>
@@ -133,8 +213,8 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* 7 Summary Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5">
+      {/* Summary Cards Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         {summaryCards.map((card, idx) => {
           const Icon = card.icon;
           return (
@@ -156,23 +236,109 @@ export const AdminDashboardPage: React.FC = () => {
         })}
       </div>
 
-      {/* Recent Orders List Table */}
-      <div className="bg-white rounded-3xl border border-warm-border p-6 shadow-card space-y-4">
+      {/* RECENT 5 POS COUNTER SALES TABLE */}
+      <div className="bg-white rounded-3xl border-2 border-brand-500/30 p-6 shadow-card space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-extrabold text-charcoal-900">Recent Customer Orders</h3>
-          <Link to="/admin/orders" className="text-xs font-extrabold text-brand-600 hover:text-brand-700 flex items-center gap-1">
-            <span>View All Orders</span>
+          <div className="flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-brand-600" />
+            <div>
+              <h3 className="text-base font-black text-charcoal-900">Recent 5 POS Counter Sales</h3>
+              <p className="text-[11px] font-bold text-charcoal-500">Instant shop walk-in sales & printed bills</p>
+            </div>
+          </div>
+
+          <Link to="/admin/pos" className="text-xs font-extrabold text-brand-600 hover:text-brand-700 flex items-center gap-1">
+            <span>Go to POS Counter</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
         {loading ? (
           <div className="p-8 text-center text-xs font-bold text-charcoal-500 animate-pulse">
-            Loading analytics from Supabase DB...
+            Loading POS counter sales...
           </div>
-        ) : orders.length === 0 ? (
+        ) : posOrders.length === 0 ? (
+          <div className="p-8 text-center text-xs font-bold text-charcoal-400 space-y-2">
+            <Calculator className="w-8 h-8 mx-auto text-warm-border" />
+            <p>No POS sales recorded yet. Click "Open POS Counter" to complete walk-in sales.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-amber-50/70 text-amber-900 font-extrabold border-b border-amber-200 uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="py-3 px-4">Order #</th>
+                  <th className="py-3 px-4">Date & Time</th>
+                  <th className="py-3 px-4">Customer Name & Phone</th>
+                  <th className="py-3 px-4">Product Item</th>
+                  <th className="py-3 px-4">Total (₹)</th>
+                  <th className="py-3 px-4">Payment</th>
+                  <th className="py-3 px-4 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-warm-muted font-medium">
+                {posOrders.slice(0, 5).map((ord) => (
+                  <tr key={ord.id} className="hover:bg-warm-hover/50 transition-colors">
+                    <td className="py-3 px-4 font-mono font-black text-brand-600">
+                      {ord.order_number}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-charcoal-600 text-[11px]">
+                      {ord.created_at ? new Date(ord.created_at).toLocaleString('en-IN') : 'Recent'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="font-extrabold text-charcoal-900 block">{ord.customerName || 'Walk-in Customer'}</span>
+                      <span className="text-[10px] font-mono text-charcoal-500">{ord.customerPhone || '-'}</span>
+                    </td>
+                    <td className="py-3 px-4 font-bold text-charcoal-800">
+                      {ord.productName || 'Lathe Fabrication Item'}
+                    </td>
+                    <td className="py-3 px-4 font-black font-mono text-charcoal-900">
+                      ₹{(ord.total_amount || 0).toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2.5 py-0.5 rounded-full">
+                        {ord.payment_status?.toUpperCase() || 'PAID'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <Link
+                        to={`/invoice/${ord.order_number || ord.id}`}
+                        target="_blank"
+                        className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors inline-flex items-center gap-1"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>View Invoice</span>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* RECENT ONLINE CUSTOMER ORDERS LIST TABLE */}
+      <div className="bg-white rounded-3xl border border-warm-border p-6 shadow-card space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-extrabold text-charcoal-900">Recent Online Customer Orders</h3>
+            <p className="text-[11px] font-bold text-charcoal-500">Website orders & custom fabrication requests</p>
+          </div>
+
+          <Link to="/admin/orders" className="text-xs font-extrabold text-brand-600 hover:text-brand-700 flex items-center gap-1">
+            <span>View All Orders ({onlineOrders.length})</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center text-xs font-bold text-charcoal-500 animate-pulse">
+            Loading online orders from database...
+          </div>
+        ) : onlineOrders.length === 0 ? (
           <div className="p-8 text-center text-xs font-bold text-charcoal-500">
-            No active orders recorded in database yet.
+            No active online customer orders recorded in database yet.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -180,13 +346,15 @@ export const AdminDashboardPage: React.FC = () => {
               <thead className="bg-warm-bg text-charcoal-500 font-extrabold border-b border-warm-border uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="py-3 px-4">Order #</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Product</th>
+                  <th className="py-3 px-4">Customer Name</th>
+                  <th className="py-3 px-4">Product Name</th>
+                  <th className="py-3 px-4">Total (₹)</th>
                   <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-warm-muted font-medium">
-                {orders.slice(0, 5).map((ord) => (
+                {onlineOrders.slice(0, 5).map((ord) => (
                   <tr key={ord.id} className="hover:bg-warm-hover/50 transition-colors">
                     <td className="py-3 px-4 font-mono font-extrabold text-brand-600">
                       #{ord.order_number || ord.id}
@@ -194,13 +362,25 @@ export const AdminDashboardPage: React.FC = () => {
                     <td className="py-3 px-4 font-bold text-charcoal-900">
                       {ord.customerName || ord.user_name || 'Customer'}
                     </td>
-                    <td className="py-3 px-4 text-charcoal-700">
+                    <td className="py-3 px-4 text-charcoal-700 font-bold">
                       {ord.productName || 'Fabrication Item'}
+                    </td>
+                    <td className="py-3 px-4 font-black font-mono text-charcoal-900">
+                      ₹{(ord.total_amount || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="py-3 px-4">
                       <Badge variant={ord.status}>
                         {(ord.status || 'PENDING').toUpperCase().replace('_', ' ')}
                       </Badge>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <Link
+                        to={`/admin/orders/${ord.id}`}
+                        className="bg-warm-bg hover:bg-brand-100 text-brand-700 font-extrabold px-3 py-1.5 rounded-xl text-[11px] border border-brand-200 transition-colors inline-flex items-center gap-1"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-brand-600" />
+                        <span>View Detail</span>
+                      </Link>
                     </td>
                   </tr>
                 ))}

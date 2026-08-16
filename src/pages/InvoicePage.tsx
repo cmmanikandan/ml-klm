@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Printer, Download, ArrowLeft, ExternalLink, CheckCircle2, AlertCircle, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { Printer, Download, ArrowLeft, ExternalLink, CheckCircle2, AlertCircle, ZoomIn, ZoomOut, Maximize2, Receipt, FileText } from 'lucide-react';
 import { InvoiceDocument } from '../components/invoice/InvoiceDocument';
+import { ThermalReceiptDocument } from '../components/invoice/ThermalReceiptDocument';
 import { INITIAL_PRODUCTS, supabase } from '../lib/supabase';
 import { fetchActiveProducts } from '../lib/productsStore';
 
@@ -15,6 +16,7 @@ export const InvoicePage: React.FC = () => {
   const [pdfDownloaded, setPdfDownloaded] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1.0);
+  const [receiptFormat, setReceiptFormat] = useState<'a4' | 'thermal'>('a4');
 
   useEffect(() => {
     // Calculate best initial scale for mobile
@@ -168,114 +170,98 @@ export const InvoicePage: React.FC = () => {
       const activeProds = await fetchActiveProducts();
       const prod = activeProds.find((p) => p.id === record.product_id) || INITIAL_PRODUCTS[0];
 
-      setOrder({
+      const finalOrderObj = {
         ...record,
         customerName: customerName || record.customerName || record.customer_name || 'Manikandan Prabhu',
         customerPhone: customerPhone || record.customerPhone || record.customer_phone || '+91 9629286268',
         customerAddress: customerAddress || record.customerAddress || record.delivery_location || 'K. Keeranur road, Kallimandhayam, Dindigul',
         productName: record.productName || record.product_name || prod.name_en || 'Steel Shoe Rack Work',
         productImage: record.productImage || prod.primary_image
-      });
+      };
+
+      setOrder(finalOrderObj);
+      if (finalOrderObj.is_pos) {
+        setReceiptFormat('thermal');
+      }
     } catch (e) {
       console.warn('Invoice page fetch fallback', e);
-      // Emergency order fallback so document is NEVER blank
-      setOrder({
-        id: cleanId,
-        order_number: cleanId.startsWith('MNK') ? cleanId : `MNK-ORD-${cleanId}`,
-        customerName: 'Manikandan Prabhu',
-        customerPhone: '+91 9629286268',
-        customerAddress: 'K. Keeranur road, Kallimandhayam, Dindigul',
-        productName: 'Steel Shoe Rack Work',
-        quantity: 1,
-        total_amount: 15000,
-        remaining_amount: 10000,
-        created_at: new Date().toISOString()
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const invoiceNo = order?.order_number || order?.id || 'MNK-ORD-6224';
+  const handlePrint = () => {
+    window.print();
+  };
 
   const handleBack = () => {
-    if (window.history.length > 2) {
+    if (window.history.length > 1) {
       navigate(-1);
     } else {
       navigate('/admin/orders');
     }
   };
 
-  // Standalone Print Handler
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // Open in New Tab Handler
   const handleOpenNewTab = () => {
-    window.open(`/invoice/${invoiceNo}`, '_blank');
+    window.open(window.location.href, '_blank');
   };
 
-  // Ensure html2pdf script is dynamically available
-  const loadHtml2PdfScript = (): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      if ((window as any).html2pdf) {
-        resolve();
-        return;
-      }
-      const existingScript = document.getElementById('html2pdf-cdn-script');
-      if (existingScript) {
-        existingScript.addEventListener('load', () => resolve());
-        return;
-      }
-      const script = document.createElement('script');
-      script.id = 'html2pdf-cdn-script';
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load html2pdf script'));
-      document.head.appendChild(script);
-    });
-  };
-
-  // Standalone Download PDF Handler
   const handleDownloadPdf = async () => {
-    if (isPdfGenerating) return;
     setIsPdfGenerating(true);
-    setPdfDownloaded(false);
     setPdfError(null);
 
-    try {
-      await loadHtml2PdfScript();
+    const invoiceElement = document.getElementById(
+      receiptFormat === 'thermal' ? 'thermal-receipt-paper' : 'standalone-invoice-paper'
+    );
+    
+    if (!invoiceElement) {
+      setPdfError('Invoice document element not found');
+      setIsPdfGenerating(false);
+      return;
+    }
 
-      const el = document.getElementById('standalone-invoice-paper');
-      if (!el) {
-        throw new Error('Invoice element missing');
+    try {
+      if (!(window as any).html2pdf) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Failed to load PDF engine'));
+          document.body.appendChild(script);
+        });
       }
 
-      const filename = `Manikandan-Lathe-Invoice-${invoiceNo}.pdf`;
+      const html2pdf = (window as any).html2pdf;
+      const targetInvoiceNo = order?.order_number || order?.id || 'MNK-ORD-1';
 
-      const opt = {
-        margin: [0, 0, 0, 0],
-        filename: filename,
+      const opt = receiptFormat === 'thermal' ? {
+        margin: 0,
+        filename: `Invoice_${targetInvoiceNo}_Thermal.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 794, windowHeight: 1123 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css'] }
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: [80, 200], orientation: 'portrait' }
+      } : {
+        margin: 0,
+        filename: `Tax_Invoice_${targetInvoiceNo}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
-      const html2pdf = (window as any).html2pdf;
-      await html2pdf().set(opt).from(el).save();
-
-      setIsPdfGenerating(false);
+      await html2pdf().set(opt).from(invoiceElement).save();
       setPdfDownloaded(true);
-      setTimeout(() => setPdfDownloaded(false), 4000);
-    } catch (err) {
-      console.warn('PDF generation fallback:', err);
+      setTimeout(() => setPdfDownloaded(false), 5000);
+    } catch (e: any) {
+      console.error('PDF Generation Error', e);
+      setPdfError('Downloading PDF file. Use "Print Invoice" if download blocks.');
+      setTimeout(() => setPdfError(null), 6000);
+    } finally {
       setIsPdfGenerating(false);
-      setPdfError('Unable to generate PDF. Please try again.');
-      setTimeout(() => setPdfError(null), 4000);
     }
   };
+
+  const rawInvoiceNo = (order?.order_number || order?.id || id || 'MNK-1001').toString();
+  const invoiceNo = rawInvoiceNo.startsWith('#') ? rawInvoiceNo.slice(1) : rawInvoiceNo;
 
   if (loading) {
     return (
@@ -309,21 +295,42 @@ export const InvoicePage: React.FC = () => {
               </span>
             </h1>
             <p className="text-[11px] text-slate-400 font-medium">
-              Official Printable A4 Tax Document
+              Printable Tax Document & 3" Thermal Receipt
             </p>
           </div>
         </div>
 
-        {/* Compact Zoom Controls Bar */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleFitA4}
-            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-brand-400 hover:text-white rounded-xl text-xs font-bold border border-slate-700 transition-colors flex items-center gap-1 shadow-sm"
-            title="Fit A4 to Screen"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-            <span>Fit A4</span>
-          </button>
+        {/* Paper Format Switcher & Compact Zoom Controls */}
+        <div className="flex items-center gap-3 flex-wrap">
+          
+          {/* Format Switcher */}
+          <div className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700 shadow-sm text-xs font-black">
+            <button
+              type="button"
+              onClick={() => setReceiptFormat('a4')}
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                receiptFormat === 'a4'
+                  ? 'bg-brand-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>A4 Tax Invoice</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setReceiptFormat('thermal')}
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                receiptFormat === 'thermal'
+                  ? 'bg-brand-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Receipt className="w-3.5 h-3.5" />
+              <span>3" Thermal POS</span>
+            </button>
+          </div>
 
           <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700 shadow-sm">
             <button
@@ -353,7 +360,7 @@ export const InvoicePage: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. MAIN SCROLLABLE A4 DOCUMENT VIEWER CONTAINER */}
+      {/* 2. MAIN SCROLLABLE DOCUMENT VIEWER CONTAINER */}
       <div 
         className="invoice-viewer-scroll-container flex-1 py-6 px-4 bg-slate-800/90 flex justify-center items-start overflow-auto min-h-[70vh]"
         style={{ WebkitOverflowScrolling: 'touch' }}
@@ -361,14 +368,18 @@ export const InvoicePage: React.FC = () => {
         <div 
           className="invoice-paper-wrapper shadow-2xl rounded-sm bg-white shrink-0 mx-auto transition-transform origin-top"
           style={{ 
-            width: '210mm',
-            minWidth: '210mm',
+            width: receiptFormat === 'thermal' ? '80mm' : '210mm',
+            minWidth: receiptFormat === 'thermal' ? '80mm' : '210mm',
             transform: `scale(${zoomLevel})`,
             transformOrigin: 'top center'
           }}
         >
           {order ? (
-            <InvoiceDocument order={order} id="standalone-invoice-paper" />
+            receiptFormat === 'thermal' ? (
+              <ThermalReceiptDocument order={order} id="thermal-receipt-paper" />
+            ) : (
+              <InvoiceDocument order={order} id="standalone-invoice-paper" />
+            )
           ) : (
             <div className="p-8 text-center text-slate-700 font-bold text-sm">
               Invoice document parameters loading...
@@ -391,7 +402,7 @@ export const InvoicePage: React.FC = () => {
               <span>{pdfError}</span>
             </span>
           ) : (
-            <span>MANIKANDAN LATHE — TAX INVOICE</span>
+            <span>MANIKANDAN LATHE — {receiptFormat === 'thermal' ? '3" THERMAL POS RECEIPT' : 'A4 TAX INVOICE'}</span>
           )}
         </div>
 
@@ -402,7 +413,7 @@ export const InvoicePage: React.FC = () => {
             className="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs shadow-md transition-colors flex items-center justify-center gap-2"
           >
             <Printer className="w-4 h-4" />
-            <span>Print Invoice</span>
+            <span>Print {receiptFormat === 'thermal' ? '3" Thermal Receipt' : 'A4 Invoice'}</span>
           </button>
 
           {/* 2. Open in New Tab */}
@@ -428,77 +439,36 @@ export const InvoicePage: React.FC = () => {
 
       <style>{`
         @page {
-          size: A4 portrait;
+          size: ${receiptFormat === 'thermal' ? '80mm auto' : 'A4 portrait'};
           margin: 0;
         }
         @media print {
           html, body {
-            width: 210mm !important;
-            height: 297mm !important;
-            max-height: 297mm !important;
+            width: ${receiptFormat === 'thermal' ? '80mm' : '210mm'} !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
-            overflow: hidden !important;
           }
-          .no-print {
+          body * {
+            visibility: hidden;
+          }
+          #${receiptFormat === 'thermal' ? 'thermal-receipt-paper' : 'standalone-invoice-paper'}, 
+          #${receiptFormat === 'thermal' ? 'thermal-receipt-paper' : 'standalone-invoice-paper'} * {
+            visibility: visible;
+          }
+          #${receiptFormat === 'thermal' ? 'thermal-receipt-paper' : 'standalone-invoice-paper'} {
+            position: absolute;
+            left: 0;
+            top: 0;
+            margin: 0 !important;
+            padding: ${receiptFormat === 'thermal' ? '2mm' : '12mm 14mm'} !important;
+            width: ${receiptFormat === 'thermal' ? '80mm' : '210mm'} !important;
+            max-width: ${receiptFormat === 'thermal' ? '80mm' : '210mm'} !important;
+            box-shadow: none !important;
+            transform: scale(1.0) !important;
+          }
+          .no-print, .invoice-page-wrapper > div:not(.invoice-viewer-scroll-container) {
             display: none !important;
-            height: 0 !important;
-            min-height: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            border: none !important;
-          }
-          .invoice-page-wrapper {
-            padding: 0 !important;
-            margin: 0 !important;
-            background: #ffffff !important;
-            min-height: 0 !important;
-            height: 297mm !important;
-            max-height: 297mm !important;
-            overflow: hidden !important;
-            display: block !important;
-          }
-          .invoice-viewer-scroll-container {
-            padding: 0 !important;
-            margin: 0 !important;
-            background: #ffffff !important;
-            min-height: 0 !important;
-            height: 297mm !important;
-            max-height: 297mm !important;
-            overflow: hidden !important;
-            display: block !important;
-          }
-          .invoice-paper-wrapper {
-            padding: 0 !important;
-            margin: 0 !important;
-            background: #ffffff !important;
-            min-height: 0 !important;
-            height: 297mm !important;
-            max-height: 297mm !important;
-            transform: none !important;
-            box-shadow: none !important;
-            overflow: hidden !important;
-            display: block !important;
-          }
-          #standalone-invoice-paper {
-            width: 210mm !important;
-            height: 297mm !important;
-            min-height: 297mm !important;
-            max-height: 297mm !important;
-            margin: 0 auto !important;
-            padding: 12mm 14mm !important;
-            box-sizing: border-box !important;
-            box-shadow: none !important;
-            transform: none !important;
-            page-break-before: avoid !important;
-            page-break-after: avoid !important;
-            page-break-inside: avoid !important;
-            break-before: avoid-page !important;
-            break-after: avoid-page !important;
-            break-inside: avoid-page !important;
-            overflow: hidden !important;
-            position: relative !important;
           }
         }
       `}</style>
