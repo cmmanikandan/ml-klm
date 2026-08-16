@@ -35,28 +35,36 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pro
     setLoading(true);
 
     const generatedId = await getNextEnquiryId();
+    const isUuid = product.id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(product.id) : false;
 
-    const enquiryRecord = {
+    const enquiryRecord: any = {
       enquiry_number: generatedId,
-      user_id: user?.id || 'demo-user-123',
-      product_id: product.id,
+      user_id: user?.id || 'guest_user',
+      customer_name: user?.full_name || 'Customer',
+      customer_phone: user?.phone || '',
+      product_id: isUuid ? product.id : null,
+      product_name: product.name_en || title || 'Custom Fabrication Item',
       quantity,
       size_requirement: sizeRequirement || product.available_sizes || 'Standard',
-      custom_notes: customNotes,
-      delivery_location: deliveryLocation,
+      custom_notes: customNotes || '',
+      delivery_location: deliveryLocation || 'Kallimandhayam',
       status: 'pending',
       created_at: new Date().toISOString()
     };
 
     try {
-      await supabase.from('enquiries').insert(enquiryRecord);
+      const { data, error } = await supabase.from('enquiries').insert(enquiryRecord);
+      if (error) {
+        console.error('Supabase enquiry insert error:', error.message);
+        // Fallback retry without foreign key product_id
+        if (enquiryRecord.product_id) {
+          delete enquiryRecord.product_id;
+          await supabase.from('enquiries').insert(enquiryRecord);
+        }
+      }
     } catch (err) {
-      console.warn('Enquiry fallback save');
+      console.error('Enquiry save exception:', err);
     }
-
-    // Save locally for instant preview responsiveness
-    const existingEnquiries = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-    localStorage.setItem('ml_enquiries', JSON.stringify([enquiryRecord, ...existingEnquiries]));
 
     setLoading(false);
     setSuccessEnquiryId(generatedId);

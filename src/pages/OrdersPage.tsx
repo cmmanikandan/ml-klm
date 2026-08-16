@@ -157,38 +157,23 @@ export const OrdersPage: React.FC = () => {
 
       setOrders(combinedOrders);
 
-      // 2. Fetch live enquiries — use broad OR filter so mobile users always see their data
+      // 2. Fetch live enquiries strictly from Supabase DB
       const { data: dbEnquiries } = await supabase
         .from('enquiries')
         .select('*')
-        .or(`user_id.eq.${user.id},user_id.eq.demo-user-123`)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      const filterDeletedEnquiries = (list: any[]) =>
-        list.filter((e: any) => {
-          const idStr = String(e.id || '');
-          const numStr = String(e.enquiry_number || e.number || '');
-          if (deletedSet.has(idStr) || deletedSet.has(numStr)) return false;
-          if ((e.status || '').toLowerCase() === 'deleted') return false;
-          return true;
-        });
-
       // Hydrate product names into enquiries
-      const hydrateEnquiries = (list: any[]) =>
-        list.map((e: any) => ({
-          ...e,
-          productName: e.productName || e.product_name || getProductName(e.product_id, 'Fabrication Enquiry'),
-        }));
+      const hydrated = (dbEnquiries || []).map((e: any) => ({
+        ...e,
+        productName: e.product_name || e.productName || getProductName(e.product_id, 'Fabrication Enquiry'),
+      }));
 
-      if (dbEnquiries && dbEnquiries.length > 0) {
-        setEnquiries(hydrateEnquiries(filterDeletedEnquiries(dbEnquiries)));
-      } else {
-        const filteredLocal = localEnquiries.filter((e) => !e.user_id || e.user_id === user.id || e.user_id === 'demo-user-123');
-        setEnquiries(hydrateEnquiries(filterDeletedEnquiries(filteredLocal)));
-      }
+      setEnquiries(hydrated);
     } catch (e) {
-      console.warn('Live Supabase DB fetch fallback:', e);
-      setEnquiries(localEnquiries);
+      console.warn('OrdersPage live Supabase DB fetch error:', e);
+      setEnquiries([]);
     } finally {
       setLoading(false);
     }
