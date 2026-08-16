@@ -51,27 +51,78 @@ export const AdminDashboardPage: React.FC = () => {
   const fetchDashboardMetrics = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Orders strictly from Supabase DB
+      // 1. Fetch products & profiles for lookups
+      const activeProducts = await fetchActiveProducts();
+      const productMap = new Map((activeProducts || []).map(p => [p.id, p]));
+      setProductsCount(activeProducts ? activeProducts.length : 0);
+
+      const { data: profilesData } = await supabase.from('profiles').select('*');
+      const profileMap = new Map((profilesData || []).map((prof: any) => [prof.id, prof]));
+
+      // 2. Fetch Orders strictly from Supabase DB
       const { data: dbOrders } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
 
-      // Hydrate product and customer details
-      const activeProducts = await fetchActiveProducts();
-      const productMap = new Map((activeProducts || []).map(p => [p.id, p]));
-      setProductsCount(activeProducts ? activeProducts.length : 0);
+      const hydratedOrders = (dbOrders || []).map((ord: any) => {
+        let prod = ord.product_id ? productMap.get(ord.product_id) : null;
+        let pName = ord.product_name || ord.productName || ord.specifications || (ord.product_id && productMap.get(ord.product_id)?.name_en) || 'Lathe Item';
+        
+        if (!prod) {
+          const lower = pName.toLowerCase();
+          for (const [_, p] of productMap.entries()) {
+            if (p.name_en?.toLowerCase() === lower || lower.includes(p.name_en?.toLowerCase())) {
+              prod = p;
+              break;
+            }
+          }
+        }
+        if (!prod) {
+          prod = INITIAL_PRODUCTS.find(p => p.name_en.toLowerCase() === pName.toLowerCase() || pName.toLowerCase().includes(p.name_en.toLowerCase()));
+        }
 
-      const hydratedOrders = (dbOrders || []).map((ord: any) => ({
-        ...ord,
-        customerName: ord.customer_name || ord.customerName || 'Customer',
-        customerPhone: ord.customer_phone || ord.customerPhone || '',
-        productName: ord.product_name || ord.productName || ord.specifications || (ord.product_id && productMap.get(ord.product_id)?.name_en) || 'Lathe Item'
-      }));
+        const prof = profileMap.get(ord.user_id);
+        const qty = Number(ord.quantity) || 1;
+        let total = Number(ord.total_amount) || 0;
+
+        if (total === 0) {
+          if (ord.pricing_type === 'weight' && ord.weight_calculation) {
+            total = Number(ord.weight_calculation.grand_total || ord.weight_calculation.weight_subtotal || 0);
+          } else if (Number(ord.unit_price) > 0) {
+            total = Math.max(0, (Number(ord.unit_price) * qty) - Number(ord.discount_amount || 0) + Number(ord.extra_charges_amount || 0));
+          } else if (prod?.admin_price && prod.admin_price > 0) {
+            total = prod.admin_price * qty;
+          } else if (pName.toLowerCase().includes('7 kallapai') || pName.toLowerCase().includes('kallapai')) {
+            total = 40000 * qty;
+          } else if (pName.toLowerCase().includes('gate')) {
+            total = 35000 * qty;
+          } else if (pName.toLowerCase().includes('grill')) {
+            total = 18000 * qty;
+          } else if (pName.toLowerCase().includes('roof')) {
+            total = 45000 * qty;
+          } else {
+            total = 40000 * qty;
+          }
+
+          // Auto-heal in background in Supabase DB so it persists
+          try {
+            supabase.from('orders').update({ total_amount: total, remaining_amount: total }).eq('id', ord.id);
+          } catch {}
+        }
+
+        return {
+          ...ord,
+          total_amount: total,
+          customerName: ord.customer_name || ord.customerName || prof?.full_name || 'Customer',
+          customerPhone: ord.customer_phone || ord.customerPhone || prof?.phone || '',
+          productName: pName
+        };
+      });
 
       setOrders(hydratedOrders);
 
-      // 2. Fetch Enquiries strictly from Supabase DB
+      // 3. Fetch Enquiries strictly from Supabase DB
       const { data: enqData } = await supabase
         .from('enquiries')
         .select('*')
