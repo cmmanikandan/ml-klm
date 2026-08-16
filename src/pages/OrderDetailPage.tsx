@@ -493,37 +493,47 @@ export const OrderDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Timeline */}
+          {/* Order Progress Timeline */}
           <div className="space-y-3 pt-2">
             <span className="text-xs font-extrabold text-charcoal-700 uppercase tracking-wider block">
               Order Progress Timeline
             </span>
 
-            <div className="relative py-3">
-              {/* Horizontal Progress Line Centered Across All 5 Step Circles */}
-              <div className="absolute left-6 right-6 top-7 h-1 bg-gray-200 z-0" />
-              <div
-                className="absolute left-6 top-7 h-1 bg-brand-600 z-0 transition-all duration-500"
-                style={{ width: `calc(${((currentStepIdx / (timelineSteps.length - 1)) * 100)}% - 24px)` }}
-              />
+            <div className="relative py-2">
+              {/* Connecting Line Track - centered directly across node centers */}
+              <div className="absolute left-[10%] right-[10%] top-[16px] h-1.5 bg-gray-200 rounded-full z-0">
+                {/* Active Progress Fill */}
+                <div
+                  className="h-full bg-gradient-to-r from-brand-600 to-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${(currentStepIdx / (timelineSteps.length - 1)) * 100}%` }}
+                />
+              </div>
 
               <div className="flex items-start justify-between relative z-10">
                 {timelineSteps.map((step, idx) => {
-                  const isDone = idx <= currentStepIdx;
+                  const isDone = idx < currentStepIdx;
+                  const isCurrent = idx === currentStepIdx;
+
                   return (
                     <div key={step.key} className="flex-1 flex flex-col items-center text-center px-1">
                       <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all shrink-0 ${
-                          isDone
-                            ? 'bg-brand-600 text-white ring-4 ring-brand-100 shadow-sm'
+                          isCurrent
+                            ? 'bg-brand-600 text-white ring-4 ring-brand-100 shadow-md scale-105'
+                            : isDone
+                            ? 'bg-brand-600 text-white shadow-sm'
                             : 'bg-white text-gray-400 border-2 border-gray-300'
                         }`}
                       >
-                        {isDone ? '✓' : idx + 1}
+                        {isDone ? '✓' : isCurrent ? '✓' : idx + 1}
                       </div>
                       <span
                         className={`text-[10px] font-extrabold mt-2 leading-tight ${
-                          isDone ? 'text-charcoal-900' : 'text-gray-400'
+                          isCurrent
+                            ? 'text-brand-700 font-black'
+                            : isDone
+                            ? 'text-charcoal-900'
+                            : 'text-gray-400'
                         }`}
                       >
                         {isTamil ? step.label_ta : step.label_en}

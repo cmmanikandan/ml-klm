@@ -205,10 +205,17 @@ export const AdminOrderDetailPage: React.FC = () => {
 
       if (ordRecord) {
         const prod = productMap.get(ordRecord.product_id);
-        const prof = profileMap.get(ordRecord.user_id);
+        const defaultUnitPrice = prod?.admin_price || 40000;
+        const qty = ordRecord.quantity || 1;
+        const computedTotal = (Number(ordRecord.total_amount) > 0) ? Number(ordRecord.total_amount) : (defaultUnitPrice * qty);
+        const computedRemaining = (ordRecord.remaining_amount != null && Number(ordRecord.remaining_amount) > 0) 
+          ? Number(ordRecord.remaining_amount) 
+          : (Number(ordRecord.total_amount) > 0 ? (ordRecord.remaining_amount ?? computedTotal) : computedTotal);
 
         const hydrated = {
           ...ordRecord,
+          total_amount: computedTotal,
+          remaining_amount: computedRemaining,
           customerName: ordRecord.customerName || ordRecord.customer_name || ordRecord.user_name || prof?.full_name || 'Karthik Kumar',
           customerPhone: ordRecord.customerPhone || ordRecord.customer_phone || prof?.phone || '+91 96592 86268',
           customerAddress: ordRecord.customerAddress || ordRecord.delivery_location || prof?.address || prof?.city_area || 'Kallimandhayam, Dindigul',
@@ -222,9 +229,8 @@ export const AdminOrderDetailPage: React.FC = () => {
         const isWeightType = hydrated.pricing_type === 'weight' || (hydrated.weight_calculation && hydrated.weight_calculation.parts && hydrated.weight_calculation.parts.some((p: any) => Number(p.weight_kg) > 0));
         setPricingMode(isWeightType ? 'weight' : 'fixed');
 
-        const qty = hydrated.quantity || 1;
         const orderTotalAmount = Number(hydrated.total_amount) || 0;
-        const baseUnit = orderTotalAmount > 0 ? Math.round(orderTotalAmount / qty) : (prod?.admin_price || 40000);
+        const baseUnit = orderTotalAmount > 0 ? Math.round(orderTotalAmount / qty) : defaultUnitPrice;
         setFixedUnitPrice(baseUnit);
         setFixedDiscount(Number(hydrated.discount_amount) || 0);
         setFixedDiscountNotes(hydrated.discount_notes || '');
@@ -1480,9 +1486,6 @@ export const AdminOrderDetailPage: React.FC = () => {
 
             {/* Interactive Milestone Timeline */}
             <div className="relative py-3">
-              {/* Background Grey Line */}
-              <div className="absolute left-6 right-6 top-7 h-1.5 bg-gray-200 rounded-full z-0" />
-              
               {(() => {
                 const getStepIndex = (status: OrderStatus) => {
                   switch (status) {
@@ -1491,7 +1494,7 @@ export const AdminOrderDetailPage: React.FC = () => {
                     case 'processing': return 2;
                     case 'ready': return 3;
                     case 'delivered': return 4;
-                    default: return 0;
+                    default: return 1;
                   }
                 };
                 const currentIdx = getStepIndex(order.status);
@@ -1507,18 +1510,20 @@ export const AdminOrderDetailPage: React.FC = () => {
 
                 return (
                   <div className="space-y-6">
-                    {/* Active Gradient Line */}
-                    <div
-                      className="absolute left-6 top-7 h-1.5 bg-gradient-to-r from-amber-500 via-brand-500 to-emerald-500 rounded-full z-0 transition-all duration-500"
-                      style={{ width: `calc(${((currentIdx / (steps.length - 1)) * 100)}% - 24px)` }}
-                    />
+                    {/* Connecting Line Track - centered directly across node centers */}
+                    <div className="absolute left-[10%] right-[10%] top-[18px] h-1.5 bg-gray-200 rounded-full z-0">
+                      {/* Active Progress Fill */}
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-500 via-brand-500 to-emerald-500 rounded-full transition-all duration-500"
+                        style={{ width: `${(currentIdx / (steps.length - 1)) * 100}%` }}
+                      />
+                    </div>
 
                     {/* Milestone Nodes */}
                     <div className="flex items-start justify-between relative z-10">
                       {steps.map((step, idx) => {
                         const isDone = idx < currentIdx;
                         const isCurrent = idx === currentIdx;
-                        const isUpcoming = idx > currentIdx;
 
                         return (
                           <div 
@@ -1530,13 +1535,13 @@ export const AdminOrderDetailPage: React.FC = () => {
                             <div
                               className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition-all shrink-0 ${
                                 isCurrent
-                                  ? 'bg-brand-600 text-white ring-4 ring-brand-200 shadow-md scale-110 animate-pulse'
+                                  ? 'bg-brand-600 text-white ring-4 ring-brand-200 shadow-md scale-110'
                                   : isDone
                                   ? 'bg-emerald-600 text-white shadow-sm group-hover:scale-105'
                                   : 'bg-white text-gray-400 border-2 border-gray-300 group-hover:border-brand-400'
                               }`}
                             >
-                              {isDone ? '✓' : isCurrent ? step.icon : idx + 1}
+                              {isDone ? '✓' : isCurrent ? '✓' : idx + 1}
                             </div>
 
                             <span
@@ -1817,24 +1822,38 @@ export const AdminOrderDetailPage: React.FC = () => {
           <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-4">
             <h3 className="text-xs font-black text-brand-600 uppercase tracking-widest">Payment Ledger</h3>
 
-            <div className="space-y-2.5 text-xs font-bold divide-y divide-warm-muted">
-              <div className="flex justify-between py-1">
-                <span className="text-charcoal-500">Total Quoted Amount</span>
-                <span className="text-charcoal-900 font-black font-mono text-sm">₹{(order.total_amount || 0).toLocaleString('en-IN')}</span>
-              </div>
+            {(() => {
+              const effectiveTotal = (order.total_amount && Number(order.total_amount) > 0) 
+                ? Number(order.total_amount) 
+                : Math.max(0, (fixedUnitPrice * (order.quantity || 1)) - fixedDiscount + fixedExtraCharges);
+              const totalPaid = paymentsHistory
+                .filter((p) => p.status === 'completed' || p.status === 'paid')
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+              const effectiveRemaining = order.remaining_amount != null && Number(order.remaining_amount) >= 0 && Number(order.total_amount) > 0
+                ? Number(order.remaining_amount)
+                : Math.max(0, effectiveTotal - totalPaid);
 
-              <div className="flex justify-between py-2">
-                <span className="text-charcoal-500">Total Paid Amount</span>
-                <span className="text-emerald-700 font-black font-mono">
-                  ₹{Math.max(0, (order.total_amount || 0) - (order.remaining_amount || 0)).toLocaleString('en-IN')}
-                </span>
-              </div>
+              return (
+                <div className="space-y-2.5 text-xs font-bold divide-y divide-warm-muted">
+                  <div className="flex justify-between py-1">
+                    <span className="text-charcoal-500">Total Quoted Amount</span>
+                    <span className="text-charcoal-900 font-black font-mono text-sm">₹{effectiveTotal.toLocaleString('en-IN')}</span>
+                  </div>
 
-              <div className="flex justify-between py-2 text-sm">
-                <span className="text-charcoal-900 font-black">Remaining Balance Due</span>
-                <span className="text-amber-700 font-black font-mono">₹{(order.remaining_amount || 0).toLocaleString('en-IN')}</span>
-              </div>
-            </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-charcoal-500">Total Paid Amount</span>
+                    <span className="text-emerald-700 font-black font-mono">
+                      ₹{totalPaid.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between py-2 text-sm">
+                    <span className="text-charcoal-900 font-black">Remaining Balance Due</span>
+                    <span className="text-amber-700 font-black font-mono">₹{effectiveRemaining.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
         </div>
