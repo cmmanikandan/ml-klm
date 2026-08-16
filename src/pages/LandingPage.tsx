@@ -71,8 +71,8 @@ export const LandingPage: React.FC = () => {
 
               <p className="text-sm sm:text-base text-charcoal-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-medium">
                 {isTamil
-                  ? 'உங்கள் வீடு, அலுவலகம் மற்றும் தொழிற்சாலைக்கான அனைத்து வகையான வெல்டிங் வேலைகளும் துல்லியமாகவும் உறுதியாகவும் செய்து தரப்படும்.'
-                  : 'Engineered for extreme durability. Browse our premium catalogue of steel chairs, main gates, safety grills, and custom lathe projects.'}
+                  ? 'உங்கள் வீடு, விவசாய நிலம் மற்றும் கட்டிடங்களுக்கான கேட், கிரில், ஏர் கலப்பை, கூரை ஸ்ட்ரக்சர் மற்றும் ARC வெல்டிங் லேத் வேலைகள் துல்லியமாகவும் உறுதியாகவும் செய்து தரப்படும்.'
+                  : 'Engineered for extreme durability. Browse our catalogue of steel chairs, main gates, safety grills, roofing structures, Kallapai, and precision ARC welding fabrication.'}
               </p>
 
               {/* CTA Buttons */}

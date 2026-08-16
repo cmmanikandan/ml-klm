@@ -26,8 +26,8 @@ export const AboutPage: React.FC = () => {
           </h1>
           <p className="text-sm sm:text-base text-charcoal-600 max-w-2xl mx-auto font-medium leading-relaxed">
             {isTamil
-              ? 'கள்ளிமந்தையம், திண்டுக்கல் மாவட்டத்தில் உள்ள எங்கள் பட்டறையில் திரு. K. செல்லமுத்து அவர்களின் வழிகாட்டுதலில் உயர்தர ஸ்டெயின்லெஸ் ஸ்டீல் நாற்காலிகள், மெயின் கேட்டுகள், பால்கனி கிரில்கள் மற்றும் தொழில்துறை லேத் வேலைகள் துல்லியமாக செய்யப்பட்டு வழங்கப்படுகின்றன.'
-              : 'Founded by K. Chellamuthu in Kallimandhayam, Dindigul District, Tamil Nadu, Manikandan Lathe – Welding Works specializes in heavy grade 304 stainless steel chairs, architectural entrance gates, safety grills, and custom industrial lathe fabrication.'}
+              ? 'கள்ளிமந்தையம், திண்டுக்கல் மாவட்டத்தில் உள்ள எங்கள் பட்டறையில் திரு. K. செல்லமுத்து அவர்களின் வழிகாட்டுதலில் உயர்தர ஸ்டீல் நாற்காலிகள், மெயின் கேட்டுகள், பால்கனி கிரில்கள், கூரை ஸ்ட்ரக்சர், ஏர் கலப்பை மற்றும் ARC வெல்டிங் லேத் வேலைகள் துல்லியமாக செய்யப்பட்டு வழங்கப்படுகின்றன.'
+              : 'Founded by K. Chellamuthu in Kallimandhayam, Dindigul District, Tamil Nadu, Manikandan Lathe – Welding Works specializes in stainless steel chairs, gates, safety grills, tables, roofing structures, Kallapai, and precision ARC welding fabrication.'}
           </p>
         </div>
       </section>
@@ -45,7 +45,7 @@ export const AboutPage: React.FC = () => {
           </div>
           <div className="bg-white p-6 rounded-3xl border border-warm-border text-center shadow-card space-y-1">
             <span className="text-3xl font-black text-brand-600">100%</span>
-            <span className="text-xs font-bold text-charcoal-700 block">Grade 304 SS Steel</span>
+            <span className="text-xs font-bold text-charcoal-700 block">ARC Welding Works</span>
           </div>
           <div className="bg-white p-6 rounded-3xl border border-warm-border text-center shadow-card space-y-1">
             <span className="text-3xl font-black text-brand-600">1,200+</span>

@@ -30,56 +30,56 @@ export const DEFAULT_SHOP_INFO: ShopInfo = {
 
 export const INITIAL_CATEGORIES: Category[] = [
   {
-    id: '11111111-1111-1111-1111-111111111111',
-    name_en: 'Steel Chairs',
-    name_ta: 'ஸ்டீல் நாற்காலிகள்',
-    slug: 'steel-chairs',
-    image_url: 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600&auto=format&fit=crop&q=80',
-    is_active: true,
-    sort_order: 1
-  },
-  {
     id: '22222222-2222-2222-2222-222222222222',
     name_en: 'Gates',
     name_ta: 'கேட்டுகள்',
     slug: 'gates',
     image_url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=80',
     is_active: true,
-    sort_order: 2
+    sort_order: 1
   },
   {
     id: '33333333-3333-3333-3333-333333333333',
-    name_en: 'Safety Grills',
+    name_en: 'Grills',
     name_ta: 'பாதுகாப்பு கிரில்கள்',
     slug: 'safety-grills',
     image_url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&auto=format&fit=crop&q=80',
     is_active: true,
+    sort_order: 2
+  },
+  {
+    id: '77777777-7777-7777-7777-777777777777',
+    name_en: 'Kallapai',
+    name_ta: 'ஏர் கலப்பை',
+    slug: 'kallapai',
+    image_url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&auto=format&fit=crop&q=80',
+    is_active: true,
     sort_order: 3
   },
   {
-    id: '44444444-4444-4444-4444-444444444444',
-    name_en: 'Tables & Desks',
-    name_ta: 'மேஜைகள்',
-    slug: 'tables',
-    image_url: 'https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?w=600&auto=format&fit=crop&q=80',
+    id: '88888888-8888-8888-8888-888888888888',
+    name_en: 'Roofing',
+    name_ta: 'கூரை ஸ்ட்ரக்சர்',
+    slug: 'roofing',
+    image_url: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=600&auto=format&fit=crop&q=80',
     is_active: true,
     sort_order: 4
   },
   {
-    id: '55555555-5555-5555-5555-555555555555',
-    name_en: 'Windows & Frames',
-    name_ta: 'ஜன்னல்கள்',
-    slug: 'windows',
-    image_url: 'https://images.unsplash.com/photo-1509644851169-2acc08aa25b5?w=600&auto=format&fit=crop&q=80',
+    id: '66666666-6666-6666-6666-666666666666',
+    name_en: 'ARC Welding Works',
+    name_ta: 'ARC வெல்டிங் வேலைகள்',
+    slug: 'custom-welding',
+    image_url: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80',
     is_active: true,
     sort_order: 5
   },
   {
-    id: '66666666-6666-6666-6666-666666666666',
-    name_en: 'Custom Welding',
-    name_ta: 'கஸ்டம் வெல்டிங்',
-    slug: 'custom-welding',
-    image_url: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80',
+    id: '11111111-1111-1111-1111-111111111111',
+    name_en: 'Steel Chairs & Tables',
+    name_ta: 'ஸ்டீல் நாற்காலிகள் & மேஜைகள்',
+    slug: 'steel-chairs',
+    image_url: 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600&auto=format&fit=crop&q=80',
     is_active: true,
     sort_order: 6
   }
