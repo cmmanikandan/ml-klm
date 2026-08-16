@@ -60,11 +60,11 @@ export const LandingPage: React.FC = () => {
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-charcoal-900 leading-tight tracking-tight">
                 {isTamil ? (
                   <>
-                    உயர்தர <span className="text-brand-600">ஸ்டீல் நாற்காலிகள்</span> & கனரக லேத் வெல்டிங் வேலைகள்
+                    கேட்டுகள், கிரில்கள், <span className="text-brand-600">ஏர் கலப்பை, கூரை ஸ்ட்ரக்சர்</span> & ARC வெல்டிங் வேலைகள்
                   </>
                 ) : (
                   <>
-                    Premium <span className="text-brand-600">Steel Chairs</span>, Gates & Custom Lathe Fabrication
+                    Gates, Grills, <span className="text-brand-600">Kallapai, Roofing</span> & ARC Welding Fabrication
                   </>
                 )}
               </h1>
