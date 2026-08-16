@@ -43,7 +43,7 @@ ALTER TABLE IF EXISTS public.payments DROP CONSTRAINT IF EXISTS payments_user_id
 ALTER TABLE IF EXISTS public.notifications DROP CONSTRAINT IF EXISTS notifications_user_id_fkey;
 ALTER TABLE IF EXISTS public.feedback DROP CONSTRAINT IF EXISTS feedback_user_id_fkey;
 
--- 1. PROFILES TABLE (TEXT id to support Firebase Auth Alphanumeric UIDs like 9QFtBzZ3Z8f2f8QH4bxgkn4sXVq1)
+-- 1. PROFILES TABLE (TEXT id to support Firebase Auth Alphanumeric UIDs)
 CREATE TABLE IF NOT EXISTS public.profiles (
     id TEXT PRIMARY KEY,
     full_name TEXT NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     phone TEXT,
     address TEXT,
     city_area TEXT,
-    language TEXT NOT NULL DEFAULT 'en' CHECK (language IN ('en', 'ta')),
+    language TEXT NOT NULL DEFAULT 'ta' CHECK (language IN ('en', 'ta')),
     role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'admin')),
     avatar_url TEXT,
     is_profile_completed BOOLEAN DEFAULT FALSE,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure profiles table compatibility for Firebase Auth string UIDs
+-- Ensure profiles table compatibility
 ALTER TABLE public.profiles ALTER COLUMN id TYPE TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_profile_completed BOOLEAN DEFAULT FALSE;
@@ -88,6 +88,10 @@ CREATE TABLE IF NOT EXISTS public.products (
     materials TEXT,
     available_sizes TEXT,
     specifications JSONB DEFAULT '{}'::jsonb,
+    pricing_type TEXT DEFAULT 'fixed' CHECK (pricing_type IN ('weight', 'sqft', 'fixed')),
+    price_per_kg NUMERIC(10, 2) DEFAULT 160.00,
+    price_per_sqft NUMERIC(10, 2) DEFAULT 150.00,
+    admin_price NUMERIC(10, 2) DEFAULT 0.00,
     is_best_selling BOOLEAN DEFAULT FALSE,
     is_new BOOLEAN DEFAULT TRUE,
     is_featured BOOLEAN DEFAULT TRUE,
@@ -95,13 +99,15 @@ CREATE TABLE IF NOT EXISTS public.products (
     is_custom_fabrication BOOLEAN DEFAULT TRUE,
     is_in_stock BOOLEAN DEFAULT TRUE,
     is_active BOOLEAN DEFAULT TRUE,
-    admin_price NUMERIC(10, 2) DEFAULT 0.00,
     internal_notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Ensure products table migration compatibility for existing databases
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS pricing_type TEXT DEFAULT 'fixed';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_per_kg NUMERIC(10, 2) DEFAULT 160.00;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_per_sqft NUMERIC(10, 2) DEFAULT 150.00;
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT TRUE;
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_popular BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_custom_fabrication BOOLEAN DEFAULT TRUE;
@@ -156,7 +162,7 @@ CREATE TABLE IF NOT EXISTS public.enquiries (
 );
 ALTER TABLE public.enquiries ALTER COLUMN user_id TYPE TEXT;
 
--- 8. ORDERS TABLE
+-- 8. ORDERS TABLE (POS Billing & Custom Fabrication Orders)
 CREATE TABLE IF NOT EXISTS public.orders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_number TEXT UNIQUE NOT NULL,
@@ -165,8 +171,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
     product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
     quantity INT DEFAULT 1,
     specifications TEXT,
-    delivery_location TEXT,
+    delivery_location TEXT DEFAULT 'Direct Workshop Counter Pickup (Kallimandhayam)',
     status TEXT NOT NULL DEFAULT 'accepted',
+    fabrication_stage TEXT DEFAULT 'accepted',
     expected_delivery_date DATE,
     total_amount NUMERIC(10, 2) DEFAULT 0.00,
     advance_amount NUMERIC(10, 2) DEFAULT 0.00,
@@ -174,27 +181,42 @@ CREATE TABLE IF NOT EXISTS public.orders (
     is_payment_requested BOOLEAN DEFAULT FALSE,
     payment_request_amount NUMERIC(10, 2) DEFAULT 0.00,
     payment_status TEXT DEFAULT 'pending',
+    pricing_type TEXT DEFAULT 'fixed',
+    weight_calculation JSONB,
+    sqft_calculation JSONB,
+    is_pos BOOLEAN DEFAULT FALSE,
     admin_notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure orders table migration compatibility
 ALTER TABLE public.orders ALTER COLUMN user_id TYPE TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS is_pos BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS pricing_type TEXT DEFAULT 'fixed';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS weight_calculation JSONB;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS sqft_calculation JSONB;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS fabrication_stage TEXT DEFAULT 'accepted';
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS is_payment_requested BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_request_amount NUMERIC(10, 2) DEFAULT 0.00;
 
 -- 9. PAYMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
-    user_id TEXT NOT NULL,
+    order_id UUID REFERENCES public.orders(id) ON DELETE CASCADE,
+    order_number TEXT,
+    user_id TEXT,
     amount NUMERIC(10, 2) NOT NULL,
-    payment_type TEXT NOT NULL,
+    payment_type TEXT DEFAULT 'cash',
+    payment_mode TEXT,
     transaction_id TEXT,
-    status TEXT NOT NULL DEFAULT 'pending',
+    status TEXT NOT NULL DEFAULT 'completed',
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE public.payments ALTER COLUMN user_id TYPE TEXT;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS order_number TEXT;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS payment_mode TEXT;
 
 -- 10. NOTIFICATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.notifications (
@@ -210,6 +232,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE public.notifications ALTER COLUMN user_id TYPE TEXT;
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
 
 -- 11. FEEDBACK TABLE
 CREATE TABLE IF NOT EXISTS public.feedback (
@@ -220,7 +243,6 @@ CREATE TABLE IF NOT EXISTS public.feedback (
     comment TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE public.feedback ALTER COLUMN user_id TYPE TEXT;
 
 -- 12. ADMIN SETTINGS TABLE
 CREATE TABLE IF NOT EXISTS public.admin_settings (
@@ -233,7 +255,6 @@ CREATE TABLE IF NOT EXISTS public.admin_settings (
 -- AUTOMATIC SEQUENCES & TRIGGERS
 -- ====================================================================
 
--- Function to set updated_at
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -258,7 +279,7 @@ DROP TRIGGER IF EXISTS update_orders_modtime ON public.orders;
 CREATE TRIGGER update_orders_modtime BEFORE UPDATE ON public.orders FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ====================================================================
--- ROW LEVEL SECURITY (ALLOW PUBLIC READ/WRITE FOR FIREBASE AUTH APP)
+-- ROW LEVEL SECURITY (ALLOW PUBLIC READ/WRITE FOR LATHE APP)
 -- ====================================================================
 
 ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
@@ -275,7 +296,7 @@ ALTER TABLE public.feedback DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_settings DISABLE ROW LEVEL SECURITY;
 
 -- ====================================================================
--- INITIAL SEED DATA (STRICT RFC 4122 VALID HEXADECIMAL UUIDS FOR PRODUCTS)
+-- INITIAL SEED DATA
 -- ====================================================================
 
 -- Seed Categories
@@ -288,7 +309,7 @@ INSERT INTO public.categories (id, name_en, name_ta, slug, image_url, sort_order
 ('66666666-6666-6666-6666-666666666666', 'Custom Welding', 'கஸ்டம் வெல்டிங்', 'custom-welding', 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80', 6)
 ON CONFLICT (slug) DO NOTHING;
 
--- Seed Admin Settings & Complete Workshop Profile
+-- Seed Admin Settings
 INSERT INTO public.admin_settings (key, value) VALUES
 ('shop_info', '{
     "name": "MANIKANDAN LATHE",
@@ -308,8 +329,3 @@ INSERT INTO public.admin_settings (key, value) VALUES
     "working_hours_ta": "திங்கள் - சனி: காலை 8:30 - இரவு 8:30"
 }'::jsonb)
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
-
--- Seed Master Admin Profile (Using Firebase Auth UID string 9QFtBzZ3Z8f2f8QH4bxgkn4sXVq1)
-INSERT INTO public.profiles (id, full_name, email, role, is_profile_completed) VALUES
-('9QFtBzZ3Z8f2f8QH4bxgkn4sXVq1', 'Manikandan Admin', 'manikandanlatheklm@gmail.com', 'admin', TRUE)
-ON CONFLICT (id) DO UPDATE SET role = 'admin', is_profile_completed = TRUE;
