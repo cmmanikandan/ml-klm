@@ -72,6 +72,27 @@ export const AdminOrdersPage: React.FC = () => {
 
   useEffect(() => {
     fetchLiveOrders();
+
+    // ── SUPABASE REALTIME LIVE SYNC ──────────────────────────────────
+    // Subscribe to orders & enquiries table changes so ALL devices
+    // instantly see adds, updates, and deletes without manual refresh.
+    const channel = supabase
+      .channel('admin-orders-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchLiveOrders();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'enquiries' }, () => {
+        fetchLiveOrders();
+      })
+      .subscribe();
+
+    // Polling fallback every 30 seconds for devices that miss realtime events
+    const pollInterval = setInterval(fetchLiveOrders, 30000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const fetchLiveOrders = async () => {

@@ -21,6 +21,26 @@ export const OrdersPage: React.FC = () => {
 
   useEffect(() => {
     loadOrdersAndEnquiries();
+
+    // ── SUPABASE REALTIME LIVE SYNC ──────────────────────────────────
+    // When admin deletes/updates on another device, this customer page
+    // auto-refreshes without any manual reload needed.
+    const channel = supabase
+      .channel('customer-orders-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        loadOrdersAndEnquiries();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'enquiries' }, () => {
+        loadOrdersAndEnquiries();
+      })
+      .subscribe();
+
+    const pollInterval = setInterval(loadOrdersAndEnquiries, 30000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
   }, [user?.id]);
 
   const loadOrdersAndEnquiries = async () => {
@@ -35,6 +55,22 @@ export const OrdersPage: React.FC = () => {
     }
 
     try {
+      // Fetch all products for name hydration
+      const { data: allProducts } = await supabase.from('products').select('id, name_en, name_ta, primary_image');
+      const productMap = new Map((allProducts || []).map((p: any) => [p.id, p]));
+
+      // Helper to get product name from product_id
+      const getProductName = (productId: string, fallback?: string): string => {
+        const prod = productMap.get(productId);
+        if (prod) return isTamil ? (prod.name_ta || prod.name_en) : prod.name_en;
+        return fallback || 'Custom Fabrication Item';
+      };
+
+      const getProductImage = (productId: string): string | null => {
+        const prod = productMap.get(productId);
+        return prod?.primary_image || null;
+      };
+
       // 1. Fetch live orders for logged in user from Supabase DB
       const { data: dbOrders } = await supabase
         .from('orders')
@@ -58,6 +94,7 @@ export const OrdersPage: React.FC = () => {
       });
 
       // Auto-synthesize order records for accepted/converted enquiries if missing
+      // Fetch enquiries broadly to ensure mobile users see their data
       const { data: dbEnqs } = await supabase.from('enquiries').select('*').or(`user_id.eq.${user.id},user_id.eq.demo-user-123`);
       const allUserEnqs = [...(dbEnqs || []), ...localEnquiries.filter((e) => !e.user_id || e.user_id === user.id || e.user_id === 'demo-user-123')];
 
@@ -73,6 +110,8 @@ export const OrdersPage: React.FC = () => {
             (o) => o.enquiry_id === enqId || o.id === enqId || o.order_number === enqId || (enq.converted_order_id && (o.id === enq.converted_order_id || o.order_number === enq.converted_order_id))
           );
           if (!matchExisting) {
+            const pName = getProductName(enq.product_id, enq.productName || enq.product_name);
+            const pImg = getProductImage(enq.product_id);
             const synthesizedOrd: any = {
               id: enq.converted_order_id || enq.enquiry_number || enq.id,
               order_number: enq.enquiry_number || enq.id,
@@ -82,8 +121,8 @@ export const OrdersPage: React.FC = () => {
               customerPhone: enq.customerPhone || enq.customer_phone || user.phone || '+91 96292 86268',
               customerAddress: enq.delivery_location || enq.location || 'Kallimandhayam',
               product_id: enq.product_id || 'demo-prod-1',
-              productName: enq.productName || enq.product_name || 'Compound Wall Gate',
-              productImage: enq.productImage || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
+              productName: pName,
+              productImage: pImg || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
               quantity: enq.quantity || 1,
               status: 'accepted',
               expected_delivery_date: 'Within 7 Days',
@@ -100,6 +139,13 @@ export const OrdersPage: React.FC = () => {
         }
       }
 
+      // Hydrate product names into all existing DB orders that lack them
+      combinedOrders = combinedOrders.map((o: any) => ({
+        ...o,
+        productName: o.productName || o.product_name || getProductName(o.product_id, 'Custom Fabrication Item'),
+        productImage: o.productImage || o.product_image || getProductImage(o.product_id) || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
+      }));
+
       const seen = new Set();
       combinedOrders = combinedOrders.filter((o: any) => {
         const idKey = o.id || o.order_number;
@@ -111,11 +157,11 @@ export const OrdersPage: React.FC = () => {
 
       setOrders(combinedOrders);
 
-      // 2. Fetch live enquiries for logged in user from Supabase DB
+      // 2. Fetch live enquiries — use broad OR filter so mobile users always see their data
       const { data: dbEnquiries } = await supabase
         .from('enquiries')
         .select('*')
-        .eq('user_id', user.id)
+        .or(`user_id.eq.${user.id},user_id.eq.demo-user-123`)
         .order('created_at', { ascending: false });
 
       const filterDeletedEnquiries = (list: any[]) =>
@@ -127,11 +173,18 @@ export const OrdersPage: React.FC = () => {
           return true;
         });
 
+      // Hydrate product names into enquiries
+      const hydrateEnquiries = (list: any[]) =>
+        list.map((e: any) => ({
+          ...e,
+          productName: e.productName || e.product_name || getProductName(e.product_id, 'Fabrication Enquiry'),
+        }));
+
       if (dbEnquiries && dbEnquiries.length > 0) {
-        setEnquiries(filterDeletedEnquiries(dbEnquiries));
+        setEnquiries(hydrateEnquiries(filterDeletedEnquiries(dbEnquiries)));
       } else {
-        const filteredLocal = localEnquiries.filter((e) => !e.user_id || e.user_id === user.id);
-        setEnquiries(filterDeletedEnquiries(filteredLocal));
+        const filteredLocal = localEnquiries.filter((e) => !e.user_id || e.user_id === user.id || e.user_id === 'demo-user-123');
+        setEnquiries(hydrateEnquiries(filterDeletedEnquiries(filteredLocal)));
       }
     } catch (e) {
       console.warn('Live Supabase DB fetch fallback:', e);
@@ -188,11 +241,10 @@ export const OrdersPage: React.FC = () => {
               </div>
             ) : (
               orders.map((order) => {
-                const prodTitle = order.product
-                  ? isTamil
-                    ? order.product.name_ta
-                    : order.product.name_en
-                  : 'Fabrication Item';
+                const prodTitle = (order as any).productName ||
+                  (order.product ? (isTamil ? order.product.name_ta : order.product.name_en) : null) ||
+                  'Custom Fabrication Item';
+                const prodImage = (order as any).productImage || order.product?.primary_image || null;
 
                 return (
                   <div
@@ -202,9 +254,9 @@ export const OrdersPage: React.FC = () => {
                   >
                     {/* Left: Product Thumbnail & Order Info */}
                     <div className="flex items-center gap-4">
-                      {order.product?.primary_image ? (
+                      {prodImage ? (
                         <img
-                          src={order.product.primary_image}
+                          src={prodImage}
                           alt={prodTitle}
                           className="w-16 h-16 rounded-2xl object-cover border border-warm-border shrink-0 group-hover:scale-105 transition-transform"
                         />
@@ -267,7 +319,7 @@ export const OrdersPage: React.FC = () => {
                         #{enq.enquiry_number}
                       </span>
                       <h4 className="text-sm font-bold text-charcoal-900 mt-0.5">
-                        {enq.product ? (isTamil ? enq.product.name_ta : enq.product.name_en) : 'Fabrication Enquiry'}
+                        {(enq as any).productName || (enq.product ? (isTamil ? enq.product.name_ta : enq.product.name_en) : 'Fabrication Enquiry')}
                       </h4>
                     </div>
 

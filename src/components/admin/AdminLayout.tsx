@@ -35,6 +35,25 @@ export const AdminLayout: React.FC = () => {
 
   useEffect(() => {
     fetchCounts();
+
+    // ── SUPABASE REALTIME LIVE SYNC ──────────────────────────────────
+    // Badge counts update instantly when orders/enquiries change on any device
+    const channel = supabase
+      .channel('admin-layout-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchCounts();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'enquiries' }, () => {
+        fetchCounts();
+      })
+      .subscribe();
+
+    const pollInterval = setInterval(fetchCounts, 15000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
   }, [location.pathname]);
 
   // Lock body scroll when mobile drawer is open

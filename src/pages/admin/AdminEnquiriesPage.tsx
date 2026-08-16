@@ -44,6 +44,24 @@ export const AdminEnquiriesPage: React.FC = () => {
 
   useEffect(() => {
     fetchLiveEnquiries();
+
+    // ── SUPABASE REALTIME LIVE SYNC ──────────────────────────────────
+    const channel = supabase
+      .channel('admin-enquiries-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'enquiries' }, () => {
+        fetchLiveEnquiries();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchLiveEnquiries();
+      })
+      .subscribe();
+
+    const pollInterval = setInterval(fetchLiveEnquiries, 30000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const getNormalizedStatus = (statusStr: string | null | undefined): string => {
