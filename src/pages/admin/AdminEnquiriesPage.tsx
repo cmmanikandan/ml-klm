@@ -400,22 +400,26 @@ export const AdminEnquiriesPage: React.FC = () => {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-charcoal-700 mb-1">Total Quoted Price (₹)</label>
-                <input
-                  type="number"
-                  value={quotePrice}
-                  onChange={(e) => setQuotePrice(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-warm-border focus:ring-2 focus:ring-brand-500 text-sm font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-charcoal-700 mb-1">Required Advance Payment (₹)</label>
+                <label className="block text-xs font-extrabold text-emerald-800 mb-1">Required Advance Amount (₹) *</label>
                 <input
                   type="number"
                   value={advanceRequired}
                   onChange={(e) => setAdvanceRequired(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-warm-border focus:ring-2 focus:ring-brand-500 text-sm font-bold text-emerald-600"
+                  placeholder="e.g. 5000"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 focus:ring-2 focus:ring-emerald-500 text-sm font-extrabold text-emerald-700 bg-emerald-50/50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-charcoal-700 mb-1">
+                  Total Quoted Price (₹) <span className="text-charcoal-400 font-medium">(Optional)</span>
+                </label>
+                <input
+                  type="number"
+                  value={quotePrice}
+                  onChange={(e) => setQuotePrice(Number(e.target.value))}
+                  placeholder="0 (Calculate later via Weight/SqFt)"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-warm-border focus:ring-2 focus:ring-brand-500 text-sm font-bold"
                 />
               </div>
             </div>

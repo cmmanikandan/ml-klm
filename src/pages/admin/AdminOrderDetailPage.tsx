@@ -287,8 +287,8 @@ export const AdminOrderDetailPage: React.FC = () => {
     setShowPaymentModal(false);
   };
 
-  // Record Payment (UPI or Cash)
-  const handleRecordPayment = async (mode: 'UPI QR Code' | 'Workshop Cash Counter') => {
+  // Record Payment (Cash, UPI, Card, Net Banking, Cheque, etc.)
+  const handleRecordPayment = async (mode: string) => {
     if (!order || customPayAmount <= 0) return;
 
     const currentRemaining = order.remaining_amount || 0;

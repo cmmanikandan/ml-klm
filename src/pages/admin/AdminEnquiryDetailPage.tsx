@@ -306,21 +306,25 @@ export const AdminEnquiryDetailPage: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <label className="block font-bold text-charcoal-700 mb-1">Total Quoted Price (₹) *</label>
-                <input
-                  type="number"
-                  value={quotePrice}
-                  onChange={(e) => setQuotePrice(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2.5 text-sm font-extrabold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-charcoal-700 mb-1">Advance Required (₹) *</label>
+                <label className="block font-extrabold text-emerald-800 mb-1">Required Advance Amount (₹) *</label>
                 <input
                   type="number"
                   value={advanceRequired}
                   onChange={(e) => setAdvanceRequired(parseFloat(e.target.value) || 0)}
+                  placeholder="e.g. 5000"
+                  className="w-full px-3.5 py-2.5 text-sm font-extrabold border border-emerald-300 rounded-xl bg-emerald-50/50 text-emerald-700 focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-charcoal-700 mb-1">
+                  Total Quoted Price (₹) <span className="text-charcoal-400 font-medium">(Optional)</span>
+                </label>
+                <input
+                  type="number"
+                  value={quotePrice}
+                  onChange={(e) => setQuotePrice(parseFloat(e.target.value) || 0)}
+                  placeholder="0 (Calculate later via Weight/SqFt)"
                   className="w-full px-3.5 py-2.5 text-sm font-extrabold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
                 />
               </div>
