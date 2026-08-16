@@ -32,12 +32,12 @@ const translations: Record<Language, Record<string, string>> = {
     greeting_evening: 'Good Evening',
 
     // Search
-    search_placeholder: 'Search chairs, gates, grills, tables...',
+    search_placeholder: 'Search gates, grills, roofing, Kallapai, ARC welding...',
     search_title: 'Search Products',
     search_recent: 'Recent Searches',
     search_suggested: 'Popular Categories',
     search_no_results: 'No products found',
-    search_no_results_sub: 'Try searching for chairs, gates, grills, or lathe works',
+    search_no_results_sub: 'Try searching for gates, grills, roofing, or ARC welding works',
     search_clear: 'Clear',
 
     // Home Sections

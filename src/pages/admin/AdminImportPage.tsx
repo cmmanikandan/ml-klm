@@ -18,7 +18,7 @@ export const AdminImportPage: React.FC = () => {
   const handleDownloadSampleCSV = () => {
     const csvContent =
       "product_name_en,product_name_ta,description_en,description_ta,category,material,sizes,admin_price,is_best_selling,is_new\n" +
-      "Heavy Steel Bench,கனரக இரும்பு பெஞ்ச்,Heavy outdoor steel bench with armrests,பூங்காக்களுக்கு ஏற்ற இரும்பு பெஞ்ச்,Steel Chairs,304 SS Pipe,5ft Length,4500,true,true\n" +
+      "Heavy Steel Bench,கனரக இரும்பு பெஞ்ச்,Heavy outdoor steel bench with armrests,பூங்காக்களுக்கு ஏற்ற இரும்பு பெஞ்ச்,Gates,Mild Steel Channel,5ft Length,4500,true,true\n" +
       "Compound Wall Gate,காம்பவுண்ட் கேட்,Anti-rust sliding entrance gate,துருப்பிடிக்காத ஸ்லைடிங் கேட்,Gates,Mild Steel Channel,12ft x 6ft,28000,false,true\n";
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

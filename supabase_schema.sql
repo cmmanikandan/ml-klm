@@ -301,12 +301,12 @@ ALTER TABLE public.admin_settings DISABLE ROW LEVEL SECURITY;
 
 -- Seed Categories
 INSERT INTO public.categories (id, name_en, name_ta, slug, image_url, sort_order) VALUES
-('11111111-1111-1111-1111-111111111111', 'Steel Chairs', 'ஸ்டீல் நாற்காலிகள்', 'steel-chairs', 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600&auto=format&fit=crop&q=80', 1),
-('22222222-2222-2222-2222-222222222222', 'Gates', 'கேட்டுகள்', 'gates', 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=80', 2),
-('33333333-3333-3333-3333-333333333333', 'Safety Grills', 'பாதுகாப்பு கிரில்கள்', 'safety-grills', 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&auto=format&fit=crop&q=80', 3),
-('44444444-4444-4444-4444-444444444444', 'Tables & Desks', 'மேஜைகள்', 'tables', 'https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?w=600&auto=format&fit=crop&q=80', 4),
-('55555555-5555-5555-5555-555555555555', 'Windows & Frames', 'ஜன்னல்கள்', 'windows', 'https://images.unsplash.com/photo-1509644851169-2acc08aa25b5?w=600&auto=format&fit=crop&q=80', 5),
-('66666666-6666-6666-6666-666666666666', 'Custom Welding', 'கஸ்டம் வெல்டிங்', 'custom-welding', 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80', 6)
+('22222222-2222-2222-2222-222222222222', 'Gates', 'கேட்டுகள்', 'gates', 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=80', 1),
+('33333333-3333-3333-3333-333333333333', 'Grills', 'பாதுகாப்பு கிரில்கள்', 'safety-grills', 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&auto=format&fit=crop&q=80', 2),
+('77777777-7777-7777-7777-777777777777', 'Kallapai', 'ஏர் கலப்பை', 'kallapai', 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&auto=format&fit=crop&q=80', 3),
+('88888888-8888-8888-8888-888888888888', 'Roofing', 'கூரை ஸ்ட்ரக்சர்', 'roofing', 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=600&auto=format&fit=crop&q=80', 4),
+('66666666-6666-6666-6666-666666666666', 'ARC Welding Works', 'ARC வெல்டிங் வேலைகள்', 'custom-welding', 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80', 5),
+('11111111-1111-1111-1111-111111111111', 'Lathe Works', 'லேத் வேலைகள்', 'lathe-works', 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80', 6)
 ON CONFLICT (slug) DO NOTHING;
 
 -- Seed Admin Settings

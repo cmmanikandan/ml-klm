@@ -76,10 +76,10 @@ export const INITIAL_CATEGORIES: Category[] = [
   },
   {
     id: '11111111-1111-1111-1111-111111111111',
-    name_en: 'Steel Chairs & Tables',
-    name_ta: 'ஸ்டீல் நாற்காலிகள் & மேஜைகள்',
-    slug: 'steel-chairs',
-    image_url: 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600&auto=format&fit=crop&q=80',
+    name_en: 'Lathe Works',
+    name_ta: 'லேத் வேலைகள்',
+    slug: 'lathe-works',
+    image_url: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80',
     is_active: true,
     sort_order: 6
   }

@@ -21,8 +21,8 @@ export const Footer: React.FC = () => {
             </div>
             <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
               {isTamil
-                ? 'உயர்தர ஸ்டீல் நாற்காலிகள், கேட், கிரில், மேஜைகள் மற்றும் அனைத்து வகையான லேத் வெல்டிங் வேலைகளுக்கு சிறந்த தேர்வு.'
-                : 'Premium quality stainless steel chairs, gates, safety grills, tables, and precision industrial welding fabrication.'}
+                ? 'உயர்தர மெயின் கேட்டுகள், பால்கனி கிரில்கள், கூரை ஸ்ட்ரக்சர், ஏர் கலப்பை மற்றும் ARC வெல்டிங் லேத் வேலைகளுக்கு சிறந்த தேர்வு.'
+                : 'Premium quality main entrance gates, safety grills, roofing structures, Kallapai, and precision ARC welding fabrication.'}
             </p>
             <div className="flex items-center gap-2 text-brand-400 text-xs font-extrabold">
               <ShieldCheck className="w-4 h-4 shrink-0" />

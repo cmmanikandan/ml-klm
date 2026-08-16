@@ -25,9 +25,9 @@ export const AdminProductEditPage: React.FC = () => {
   const [descEn, setDescEn] = useState('');
   const [descTa, setDescTa] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [categorySlug, setCategorySlug] = useState('steel-chairs');
-  const [categoryName, setCategoryName] = useState('Steel Chairs');
-  const [materials, setMaterials] = useState('304 Stainless Steel Pipe, Heavy Gauge Sheet');
+  const [categorySlug, setCategorySlug] = useState('gates');
+  const [categoryName, setCategoryName] = useState('Gates');
+  const [materials, setMaterials] = useState('Heavy Duty Steel, Iron Section Pipe, Anti-Rust Primer');
   const [availableSizes, setAvailableSizes] = useState('Standard Size (3.5ft x 1.8ft), High-back');
   const [adminPrice, setAdminPrice] = useState<number>(2800);
   const [pricingType, setPricingType] = useState<'fixed' | 'weight' | 'sqft'>('weight');

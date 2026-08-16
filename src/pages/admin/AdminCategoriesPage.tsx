@@ -176,7 +176,7 @@ export const AdminCategoriesPage: React.FC = () => {
               required
               value={nameEn}
               onChange={(e) => setNameEn(e.target.value)}
-              placeholder="e.g. Steel Chairs"
+              placeholder="e.g. Gates"
               className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
