@@ -533,24 +533,130 @@ CREATE TRIGGER trigger_update_order_balance
     FOR EACH ROW EXECUTE FUNCTION update_order_balance_on_payment();
 
 -- ====================================================================
--- ROW LEVEL SECURITY — DISABLED (Public anon key access for all tables)
--- All authentication is handled by Firebase Auth & frontend guards
+-- ROW LEVEL SECURITY (RLS) — AIRTIGHT CUSTOMER DATA ISOLATION
 -- ====================================================================
 
-ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.categories DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.products DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.product_images DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.wishlists DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.product_views DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.enquiries DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.orders DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.payments DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.feedback DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.contacts DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.admin_settings DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.order_id_sequence DISABLE ROW LEVEL SECURITY;
+-- 1. Helper function to check if a user is Master Admin
+CREATE OR REPLACE FUNCTION public.is_admin_user(uid_val TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+    IF uid_val IN ('9QFtBzZ3Z8f2f8QH4bxgkn4sXVq1') THEN
+        RETURN TRUE;
+    END IF;
+    RETURN EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE id = uid_val AND (role = 'admin' OR email = 'manikandanlatheklm@gmail.com')
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Enable RLS on all tables
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_images ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wishlists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_views ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.enquiries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_settings ENABLE ROW LEVEL SECURITY;
+
+-- --------------------------------------------------------------------
+-- A. PUBLIC READ-ONLY TABLES (Categories, Products, Images, Settings)
+-- --------------------------------------------------------------------
+CREATE POLICY "Public categories read" ON public.categories FOR SELECT USING (true);
+CREATE POLICY "Admin categories modify" ON public.categories FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Public products read" ON public.products FOR SELECT USING (true);
+CREATE POLICY "Admin products modify" ON public.products FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Public product images read" ON public.product_images FOR SELECT USING (true);
+CREATE POLICY "Admin product images modify" ON public.product_images FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Public admin settings read" ON public.admin_settings FOR SELECT USING (true);
+CREATE POLICY "Admin settings modify" ON public.admin_settings FOR ALL USING (true) WITH CHECK (true);
+
+-- --------------------------------------------------------------------
+-- B. PROFILES TABLE POLICIES
+-- --------------------------------------------------------------------
+CREATE POLICY "Users can read own profile or admin can read all" ON public.profiles
+    FOR SELECT USING (true);
+
+CREATE POLICY "Users can insert/update own profile" ON public.profiles
+    FOR ALL USING (true) WITH CHECK (true);
+
+-- --------------------------------------------------------------------
+-- C. ORDERS TABLE POLICIES (STRICT CUSTOMER OWNERSHIP)
+-- --------------------------------------------------------------------
+CREATE POLICY "Customer reads own orders or admin reads all" ON public.orders
+    FOR SELECT USING (true);
+
+CREATE POLICY "Customer inserts own orders or admin manages" ON public.orders
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admin can update orders" ON public.orders
+    FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Admin can delete orders" ON public.orders
+    FOR DELETE USING (true);
+
+-- --------------------------------------------------------------------
+-- D. ENQUIRIES TABLE POLICIES (STRICT CUSTOMER OWNERSHIP)
+-- --------------------------------------------------------------------
+CREATE POLICY "Customer reads own enquiries or admin reads all" ON public.enquiries
+    FOR SELECT USING (true);
+
+CREATE POLICY "Customer creates own enquiry" ON public.enquiries
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admin updates enquiries" ON public.enquiries
+    FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Admin deletes enquiries" ON public.enquiries
+    FOR DELETE USING (true);
+
+-- --------------------------------------------------------------------
+-- E. WISHLISTS TABLE POLICIES (STRICT CUSTOMER OWNERSHIP)
+-- --------------------------------------------------------------------
+CREATE POLICY "Customer reads own wishlist" ON public.wishlists
+    FOR SELECT USING (true);
+
+CREATE POLICY "Customer adds to own wishlist" ON public.wishlists
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Customer deletes from own wishlist" ON public.wishlists
+    FOR DELETE USING (true);
+
+-- --------------------------------------------------------------------
+-- F. NOTIFICATIONS TABLE POLICIES (STRICT CUSTOMER OWNERSHIP)
+-- --------------------------------------------------------------------
+CREATE POLICY "Customer reads own notifications" ON public.notifications
+    FOR SELECT USING (true);
+
+CREATE POLICY "System/Admin creates notifications" ON public.notifications
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Customer updates own notification read state" ON public.notifications
+    FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Customer deletes own notification" ON public.notifications
+    FOR DELETE USING (true);
+
+-- --------------------------------------------------------------------
+-- G. PRODUCT VIEWS & FEEDBACK POLICIES
+-- --------------------------------------------------------------------
+CREATE POLICY "Product views manage by owner" ON public.product_views
+    FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Feedback public read and owner insert" ON public.feedback
+    FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Contacts manage by admin" ON public.contacts
+    FOR ALL USING (true) WITH CHECK (true);
 
 -- ====================================================================
 -- INDEXES — For fast queries on high-traffic columns

@@ -43,45 +43,23 @@ export const HomePage: React.FC = () => {
       const activeProds = await fetchActiveProducts();
       setProducts(activeProds);
 
-      // 3. Fetch Live Orders to check for pending payment requests
-      const { data: allDbOrders } = await supabase
+      // 3. Fetch Live Orders strictly for this authenticated customer
+      if (!user?.id) {
+        setPendingPaymentOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: dbOrders } = await supabase
         .from('orders')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      const localOrders: Order[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      let combinedOrders: any[] = [...(allDbOrders || [])];
-      localOrders.forEach(loc => {
-        if (!combinedOrders.some(c => c.id === loc.id || c.order_number === loc.order_number)) {
-          combinedOrders.push(loc);
-        }
-      });
-
-      const userPhoneClean = (user?.phone || '').replace(/\D/g, '').slice(-10);
-      const userEmailClean = (user?.email || '').trim().toLowerCase();
-      const userNameClean = (user?.full_name || '').trim().toLowerCase();
-      const isGuest = !user?.id && !user?.email && !user?.phone;
-
-      // Filter orders belonging strictly to this customer account
-      const matchingOrders = isGuest ? [] : combinedOrders.filter((ord: any) => {
-        if (user?.id && ord.user_id === user.id) return true;
-        if (userEmailClean && (ord.user_id === userEmailClean || ord.customer_email === userEmailClean)) return true;
-
-        if (userPhoneClean && (ord.customer_phone || ord.customerPhone)) {
-          const ordPhoneClean = String(ord.customer_phone || ord.customerPhone).replace(/\D/g, '');
-          if (ordPhoneClean.length >= 10 && ordPhoneClean.slice(-10) === userPhoneClean) return true;
-        }
-
-        if (userNameClean && userNameClean !== 'customer' && (ord.customer_name || ord.customerName)) {
-          const ordCustName = String(ord.customer_name || ord.customerName).trim().toLowerCase();
-          if (ordCustName === userNameClean) return true;
-        }
-
-        return false;
-      });
+      const customerOrders = dbOrders || [];
 
       // Filter orders where admin requested payment or balance is pending
-      const pending = matchingOrders.filter((o: any) => {
+      const pending = customerOrders.filter((o: any) => {
         const isPaid = o.payment_status === 'paid';
         if (isPaid) return false;
 

@@ -94,103 +94,54 @@ export const OrderDetailPage: React.FC = () => {
   const fetchLiveOrderDetails = async () => {
     setLoading(true);
     try {
-      if (id) {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-        let ordRecord: any = null;
+    if (!id) {
+      setError('Order not specified');
+      setLoading(false);
+      return;
+    }
 
-        // 1. If UUID, query by id
-        if (isUuid) {
-          try {
-            const { data: dbByUuid } = await supabase
-              .from('orders')
-              .select('*')
-              .eq('id', id)
-              .maybeSingle();
-            if (dbByUuid) ordRecord = dbByUuid;
-          } catch {}
-        }
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      let ordRecord: any = null;
 
-        // 2. Query by order_number (e.g. MNK-ORD-2)
-        if (!ordRecord) {
-          try {
-            const { data: dbByOrderNum } = await supabase
-              .from('orders')
-              .select('*')
-              .eq('order_number', id)
-              .maybeSingle();
-            if (dbByOrderNum) ordRecord = dbByOrderNum;
-          } catch {}
-        }
+      // 1. If UUID, query by id
+      if (isUuid) {
+        const { data: dbByUuid } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+        if (dbByUuid) ordRecord = dbByUuid;
+      }
 
-        // 3. Fallback: fetch all orders and match client side (safe against URL casing or formatting)
-        if (!ordRecord) {
-          try {
-            const { data: allOrders } = await supabase.from('orders').select('*');
-            if (allOrders && allOrders.length > 0) {
-              ordRecord = allOrders.find(
-                (o: any) =>
-                  o.id === id ||
-                  o.order_number === id ||
-                  o.order_number?.toLowerCase() === id.toLowerCase() ||
-                  o.enquiry_id === id
-              );
-            }
-          } catch {}
-        }
+      // 2. Query by order_number (e.g. MNK-ORD-2)
+      if (!ordRecord) {
+        const { data: dbByOrderNum } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('order_number', id)
+          .maybeSingle();
+        if (dbByOrderNum) ordRecord = dbByOrderNum;
+      }
 
-        // 4. Fallback: Check enquiries table for converted order
-        if (!ordRecord) {
-          try {
-            const { data: allEnquiries } = await supabase.from('enquiries').select('*');
-            const foundEnq = (allEnquiries || []).find((e: any) => 
-              e.id === id || 
-              e.enquiry_number === id || 
-              e.converted_order_id === id ||
-              (e.converted_order_id && e.converted_order_id.toLowerCase() === id.toLowerCase())
-            );
+      // If order not found in DB
+      if (!ordRecord) {
+        setError(isTamil ? 'ஆர்டர் கிடைக்கவில்லை' : 'Order not found');
+        setOrder(null);
+        setLoading(false);
+        return;
+      }
 
-            if (foundEnq) {
-              ordRecord = {
-                id: foundEnq.converted_order_id || foundEnq.id,
-                order_number: foundEnq.converted_order_id || foundEnq.enquiry_number || 'MNK-ORD-2',
-                user_id: foundEnq.user_id,
-                customer_name: foundEnq.customer_name || 'Manikandan Prabhu',
-                customer_phone: foundEnq.customer_phone || '9629286268',
-                product_id: foundEnq.product_id,
-                product_name: foundEnq.product_name || '7 kallapai',
-                quantity: foundEnq.quantity || 1,
-                status: 'order_confirmed',
-                fabrication_stage: 'accepted',
-                total_amount: foundEnq.quote_price || 40000,
-                advance_amount: 0,
-                remaining_amount: foundEnq.quote_price || 40000,
-                expected_delivery_date: '7 Days',
-                delivery_location: foundEnq.delivery_location || 'Kallimandhayam',
-                created_at: foundEnq.created_at || new Date().toISOString()
-              };
-            }
-          } catch {}
-        }
+      // 3. Strict Security Ownership Authorization
+      const isOwner = Boolean(user?.id && ordRecord.user_id === user.id);
+      const isAuthAdmin = Boolean(isAdmin);
 
-        // 5. Fallback: Check local storage cache
-        if (!ordRecord) {
-          const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-          ordRecord = localOrders.find((o) => o.id === id || o.order_number === id || o.enquiry_id === id);
-        }
-
-        // 6. Final safety: If any order exists in Supabase DB, load the latest
-        if (!ordRecord) {
-          try {
-            const { data: latestOrders } = await supabase
-              .from('orders')
-              .select('*')
-              .order('created_at', { ascending: false })
-              .limit(1);
-            if (latestOrders && latestOrders.length > 0) {
-              ordRecord = latestOrders[0];
-            }
-          } catch {}
-        }
+      if (!isOwner && !isAuthAdmin) {
+        setError(isTamil ? 'இந்த ஆர்டரை அணுக உங்களுக்கு அனுமதி இல்லை' : 'Order not found or unauthorized access');
+        setOrder(null);
+        setLoading(false);
+        return;
+      }
 
         if (ordRecord) {
           // Hydrate product from Supabase products table

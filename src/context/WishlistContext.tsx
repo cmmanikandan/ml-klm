@@ -14,14 +14,13 @@ const WishlistContext = createContext<WishlistContextType | undefined>(undefined
 
 export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [wishlistProductIds, setWishlistProductIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('ml_wishlist');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [wishlistProductIds, setWishlistProductIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (user?.id) {
       fetchWishlist(user.id);
+    } else {
+      setWishlistProductIds([]);
     }
   }, [user?.id]);
 
@@ -35,7 +34,8 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (data) {
         const ids = data.map((item) => String(item.product_id)).filter(Boolean);
         setWishlistProductIds(ids);
-        localStorage.setItem('ml_wishlist', JSON.stringify(ids));
+      } else {
+        setWishlistProductIds([]);
       }
     } catch (e) {
       console.warn('Wishlist fetch error from Supabase');
@@ -49,11 +49,10 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const updated = [...wishlistProductIds, pid];
     setWishlistProductIds(updated);
-    localStorage.setItem('ml_wishlist', JSON.stringify(updated));
 
     if (user?.id) {
       try {
-        await supabase.from('wishlists').insert({ user_id: user.id, product_id: pid });
+        await supabase.from('wishlists').upsert({ user_id: user.id, product_id: pid });
       } catch (e) {
         console.warn('Wishlist insert fallback');
       }
@@ -65,7 +64,6 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const pid = String(productId);
     const updated = wishlistProductIds.filter((id) => id !== pid);
     setWishlistProductIds(updated);
-    localStorage.setItem('ml_wishlist', JSON.stringify(updated));
 
     if (user?.id) {
       try {

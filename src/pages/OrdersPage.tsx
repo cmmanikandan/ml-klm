@@ -71,85 +71,30 @@ export const OrdersPage: React.FC = () => {
         return prod?.primary_image || (prod?.images && prod.images[0]) || null;
       };
 
-      // 2. Extract clean phone and user search identifiers
-      const userPhone = user?.phone || '';
-      const cleanPhoneDigits = userPhone.replace(/\D/g, '');
-      const last10Digits = cleanPhoneDigits.slice(-10);
-      const userEmailClean = (user?.email || '').trim().toLowerCase();
-      const userNameClean = (user?.full_name || '').trim().toLowerCase();
-      const isGuest = !user?.id && !user?.email && !user?.phone;
+      if (!user?.id) {
+        setOrders([]);
+        setEnquiries([]);
+        setLoading(false);
+        return;
+      }
 
-      // 3. Fetch enquiries from Supabase DB first
-      const { data: allDbEnquiries } = await supabase
+      // 2. Fetch enquiries for this authenticated customer strictly from Supabase
+      const { data: dbEnquiries } = await supabase
         .from('enquiries')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      const localEnquiries: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-      let combinedEnquiries = [...(allDbEnquiries || [])];
-      localEnquiries.forEach(loc => {
-        if (!combinedEnquiries.some(c => c.id === loc.id || c.enquiry_number === loc.enquiry_number)) {
-          combinedEnquiries.push(loc);
-        }
-      });
+      const matchingEnquiries = dbEnquiries || [];
 
-      const matchingEnquiries = isGuest ? [] : combinedEnquiries.filter((enq: any) => {
-        if (user?.id && enq.user_id && enq.user_id === user.id) return true;
-        if (userEmailClean && (enq.customer_email === userEmailClean || enq.user_id === userEmailClean)) return true;
-        if (last10Digits && enq.customer_phone) {
-          const enqPhoneDigits = String(enq.customer_phone).replace(/\D/g, '');
-          if (enqPhoneDigits.length >= 10 && enqPhoneDigits.slice(-10) === last10Digits) return true;
-        }
-        if (userNameClean && userNameClean !== 'customer' && enq.customer_name && userNameClean === enq.customer_name.trim().toLowerCase()) return true;
-        return false;
-      });
-
-      // 4. Fetch all orders from Supabase DB
-      const { data: allDbOrders } = await supabase
+      // 3. Fetch orders for this authenticated customer strictly from Supabase
+      const { data: dbOrders } = await supabase
         .from('orders')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      let combinedOrders = [...(allDbOrders || [])];
-      localOrders.forEach(loc => {
-        if (!combinedOrders.some(c => c.id === loc.id || c.order_number === loc.order_number)) {
-          combinedOrders.push(loc);
-        }
-      });
-
-      // Filter orders belonging strictly to the customer account
-      const matchingOrders = isGuest ? [] : combinedOrders.filter((ord: any) => {
-        if (user?.id && ord.user_id && ord.user_id === user.id) return true;
-        if (userEmailClean && (ord.user_id === userEmailClean || ord.customer_email === userEmailClean)) return true;
-        
-        // Match by phone number digits
-        if (last10Digits && (ord.customer_phone || ord.customerPhone)) {
-          const orderPhoneDigits = String(ord.customer_phone || ord.customerPhone).replace(/\D/g, '');
-          if (orderPhoneDigits.length >= 10 && orderPhoneDigits.slice(-10) === last10Digits) {
-            return true;
-          }
-        }
-
-        // Match by name
-        if (userNameClean && userNameClean !== 'customer' && (ord.customer_name || ord.customerName)) {
-          const ordCustName = String(ord.customer_name || ord.customerName).trim().toLowerCase();
-          if (ordCustName === userNameClean) {
-            return true;
-          }
-        }
-
-        // Match if converted from an enquiry belonging to this customer
-        const isFromUserEnquiry = matchingEnquiries.some((e: any) =>
-          e.id === ord.enquiry_id ||
-          e.enquiry_number === ord.enquiry_id ||
-          e.converted_order_id === ord.id ||
-          e.converted_order_id === ord.order_number
-        );
-        if (isFromUserEnquiry) return true;
-
-        return false;
-      });
+      const matchingOrders = dbOrders || [];
 
       // Hydrate product names and images into orders
       const hydratedOrders = matchingOrders.map((o: any) => ({

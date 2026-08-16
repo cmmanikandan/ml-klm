@@ -173,6 +173,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setUser(null);
     localStorage.removeItem('ml_user_profile');
+    localStorage.removeItem('ml_orders');
+    localStorage.removeItem('ml_enquiries');
+    localStorage.removeItem('ml_wishlist');
+    localStorage.removeItem('ml_notifications');
+    localStorage.removeItem('ml_recently_viewed');
+    localStorage.removeItem('ml_read_notification_ids');
+    localStorage.removeItem('ml_deleted_notification_ids');
   };
 
   const updateProfile = async (data: Partial<Profile>) => {

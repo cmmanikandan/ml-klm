@@ -11,17 +11,39 @@ const RecentlyViewedContext = createContext<RecentlyViewedContextType | undefine
 
 export const RecentlyViewedProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('ml_recently_viewed');
-    return saved ? JSON.parse(saved) : ['p2222222-2222-2222-2222-222222222222', 'p1111111-1111-1111-1111-111111111111'];
-  });
+  const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchRecentlyViewed(user.id);
+    } else {
+      setRecentlyViewedIds([]);
+    }
+  }, [user?.id]);
+
+  const fetchRecentlyViewed = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('product_views')
+        .select('product_id')
+        .eq('user_id', userId)
+        .order('viewed_at', { ascending: false })
+        .limit(10);
+
+      if (data) {
+        const ids = data.map((item) => String(item.product_id)).filter(Boolean);
+        setRecentlyViewedIds(ids);
+      }
+    } catch (e) {
+      console.warn('Recently viewed fetch error');
+    }
+  };
 
   const trackProductView = (productId: string) => {
+    if (!productId) return;
     setRecentlyViewedIds((prev) => {
       const filtered = prev.filter((id) => id !== productId);
-      const updated = [productId, ...filtered].slice(0, 10);
-      localStorage.setItem('ml_recently_viewed', JSON.stringify(updated));
-      return updated;
+      return [productId, ...filtered].slice(0, 10);
     });
 
     if (user?.id) {
