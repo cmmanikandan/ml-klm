@@ -125,15 +125,6 @@ export const HomePage: React.FC = () => {
                   <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
                   <span>{getGreeting()} 👋</span>
                 </span>
-                {(user?.city_area || user?.address) ? (
-                  <span className="text-[10px] font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
-                    📍 {user.city_area || user.address}
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-mono font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
-                    ⏰ {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                )}
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-sm">
@@ -142,8 +133,8 @@ export const HomePage: React.FC = () => {
 
               <p className="text-xs text-slate-300 font-medium max-w-lg leading-relaxed">
                 {isTamil 
-                  ? 'மணிகண்டன் லேத் & வெல்டிங் ஒர்க்ஸ் — தரமான ஸ்டீல் கேட், கிரில் மற்றும் லேத் வேலைகள்'
-                  : 'MANIKANDAN LATHE — Custom Steel Gates, Heavy Grills, Rolling Shutters & Precision Lathe Works'}
+                  ? 'மணிகண்டன் லேத் — ஸ்டீல் கேட், கிரில்ஸ், கலப்பை, ரூஃபிங் மற்றும் லேத் வேலைகள்'
+                  : 'MANIKANDAN LATHE — Custom Steel Gates, Grills, Kallapai, Roofing & Precision Lathe Works'}
               </p>
             </div>
 
