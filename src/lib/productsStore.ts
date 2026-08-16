@@ -36,7 +36,15 @@ export const fetchActiveProducts = async (): Promise<Product[]> => {
   // Load local first (lower priority)
   localProducts.forEach((p) => map.set(p.id, p));
   // DB overwrites local (higher priority — source of truth)
-  dbProducts.forEach((p) => map.set(p.id, p));
+  dbProducts.forEach((p) => {
+    // Hydrate primary_image from images array if missing from older records
+    const hydratedProduct: Product = {
+      ...p,
+      primary_image: p.primary_image || (p.images && p.images.length > 0 ? p.images[0] : ''),
+      images: p.images && p.images.length > 0 ? p.images : (p.primary_image ? [p.primary_image] : [])
+    };
+    map.set(p.id, hydratedProduct);
+  });
 
   // Filter out deleted product IDs
   return Array.from(map.values()).filter((p) => !deletedIds.includes(p.id) && p.is_active !== false);
@@ -76,7 +84,6 @@ export const saveProductToStore = async (product: Product): Promise<boolean> => 
   }
 
   // 2. Format clean Payload strictly for Supabase PostgreSQL schema
-  // NOTE: category_name is NOT a DB column — do NOT include it or upsert will fail
   const dbPayload: any = {
     id: validProductId,
     name_en: normalizedProduct.name_en,
@@ -97,6 +104,9 @@ export const saveProductToStore = async (product: Product): Promise<boolean> => 
     pricing_type: normalizedProduct.pricing_type || 'weight',
     price_per_kg: normalizedProduct.price_per_kg || 160,
     price_per_sqft: normalizedProduct.price_per_sqft || 150,
+    // Store Cloudinary image URLs in DB so all devices see the same images
+    primary_image: normalizedProduct.primary_image || (normalizedProduct.images?.[0]) || '',
+    images: normalizedProduct.images || [],
     updated_at: new Date().toISOString()
   };
 
@@ -144,11 +154,14 @@ export const deleteProductFromStore = async (id: string): Promise<boolean> => {
     localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify(filtered));
   }
 
-  // 3. Execute delete query on Supabase DB
+  // 3. Execute delete query on Supabase DB if UUID is valid
   try {
-    await supabase.from('products').delete().eq('id', id);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (isUuid) {
+      await supabase.from('products').delete().eq('id', id);
+    }
   } catch (e) {
-    console.warn('Supabase DB delete local fallback active');
+    console.warn('Supabase DB product delete warning:', e);
   }
 
   return true;

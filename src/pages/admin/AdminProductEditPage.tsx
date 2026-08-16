@@ -16,6 +16,7 @@ export const AdminProductEditPage: React.FC = () => {
 
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null); // null = idle, 0-100 = uploading
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [savedProductId, setSavedProductId] = useState<string>('');
 
@@ -687,33 +688,59 @@ export const AdminProductEditPage: React.FC = () => {
           </label>
 
           <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                try {
-                  const { uploadImageToCloudinary } = await import('../../lib/cloudinary');
-                  const uploadedUrl = await uploadImageToCloudinary(file);
-                  setImages([...images, uploadedUrl]);
-                  setNotifyModal({
-                    isOpen: true,
-                    title: 'Image Uploaded',
-                    message: 'Image uploaded to Cloudinary successfully!',
-                    type: 'success'
-                  });
-                } catch (err) {
-                  setNotifyModal({
-                    isOpen: true,
-                    title: 'Image URL Fallback',
-                    message: 'Cloudinary upload fallback: Please paste web image URL.',
-                    type: 'info'
-                  });
-                }
-              }}
-              className="text-xs text-charcoal-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-brand-600 file:text-white hover:file:bg-brand-700 cursor-pointer"
-            />
+            <div className="relative">
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                disabled={uploadProgress !== null}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setUploadProgress(0);
+                  try {
+                    const { uploadFileToCloudinary } = await import('../../lib/cloudinary');
+                    const result = await uploadFileToCloudinary(file, (percent) => {
+                      setUploadProgress(percent);
+                    });
+                    // For PDFs, store URL with a pdf: prefix so we can render correctly
+                    const finalUrl = result.format === 'pdf' ? `pdf:${result.url}` : result.url;
+                    setImages([...images, finalUrl]);
+                    setUploadProgress(null);
+                    setNotifyModal({
+                      isOpen: true,
+                      title: result.format === 'pdf' ? 'PDF Uploaded' : 'Image Uploaded',
+                      message: `File uploaded to Cloudinary successfully!`,
+                      type: 'success'
+                    });
+                  } catch (err: any) {
+                    setUploadProgress(null);
+                    setNotifyModal({
+                      isOpen: true,
+                      title: 'Upload Failed',
+                      message: err?.message || 'Cloudinary upload failed. Ensure your upload preset is set to Unsigned.',
+                      type: 'error'
+                    });
+                  }
+                  // Reset input so same file can be re-selected after error
+                  e.target.value = '';
+                }}
+                className="text-xs text-charcoal-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-brand-600 file:text-white hover:file:bg-brand-700 cursor-pointer disabled:opacity-50"
+              />
+              {uploadProgress !== null && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-brand-600 border-t-transparent shrink-0" />
+                    <span className="text-xs font-bold text-brand-700">Uploading to Cloudinary... {uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-warm-border rounded-full h-1.5">
+                    <div
+                      className="bg-brand-600 h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="flex-1 flex gap-2">
               <input
@@ -730,18 +757,33 @@ export const AdminProductEditPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap gap-3 pt-2">
-            {images.map((img, idx) => (
-              <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-warm-border shadow-sm group">
-                <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveImage(idx)}
-                  className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
+            {images.map((img, idx) => {
+              const isPdf = img.startsWith('pdf:');
+              const displayUrl = isPdf ? img.replace(/^pdf:/, '') : img;
+              const isPrimary = idx === 0;
+              return (
+                <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-warm-border shadow-sm group">
+                  {isPdf ? (
+                    <div className="w-full h-full bg-red-50 flex flex-col items-center justify-center text-red-600 border border-red-200">
+                      <span className="text-2xl">📄</span>
+                      <span className="text-[8px] font-bold text-red-700 mt-0.5">PDF</span>
+                    </div>
+                  ) : (
+                    <img src={displayUrl} alt={`Product ${idx + 1}`} className="w-full h-full object-cover" />
+                  )}
+                  {isPrimary && (
+                    <span className="absolute top-1 left-1 bg-brand-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">PRIMARY</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(idx)}
+                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
 

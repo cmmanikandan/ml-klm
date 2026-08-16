@@ -63,64 +63,64 @@ export const AdminContactsPage: React.FC = () => {
   const fetchContacts = async () => {
     setLoading(true);
     let dbProfiles: Profile[] = [];
+    let dbContacts: any[] = [];
+
     try {
-      const { data, error } = await supabase
+      // 1. Fetch registered customers from profiles table
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
+        .eq('role', 'customer')
         .order('created_at', { ascending: false });
 
-      if (data && !error && data.length > 0) {
-        dbProfiles = data;
-      }
+      if (profileData) dbProfiles = profileData;
     } catch (e) {
       console.warn('Profiles DB fetch fallback');
     }
 
-    // Local storage customer contacts
-    const localContacts: Profile[] = JSON.parse(localStorage.getItem('ml_customer_contacts') || '[]');
+    try {
+      // 2. Fetch walk-in contacts from contacts table (cross-device sync)
+      const { data: contactData } = await supabase
+        .from('contacts')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    // Default Contacts
-    const defaultContacts: Profile[] = [
-      {
-        id: 'cust_01',
-        full_name: 'Karthik Kumar',
-        email: 'karthik.klm@gmail.com',
-        phone: '+91 98421 54321',
-        address: 'K. Keeranur Road, Kallimandhayam',
-        city_area: 'Kallimandhayam, Dindigul',
-        language: 'ta',
-        role: 'customer',
-        is_profile_completed: true,
-        created_at: '2026-08-10T10:30:00Z'
-      },
-      {
-        id: 'cust_02',
-        full_name: 'Muruganathan S',
-        email: 'murugan.lathe@yahoo.com',
-        phone: '+91 94432 87654',
-        address: 'Main Bazaar Street',
-        city_area: 'Palani, Dindigul',
-        language: 'ta',
-        role: 'customer',
-        is_profile_completed: true,
-        created_at: '2026-08-12T14:15:00Z'
+      if (contactData) {
+        dbContacts = contactData.map((c: any) => ({
+          id: c.id,
+          full_name: c.name,
+          email: c.email || '',
+          phone: c.phone,
+          address: c.address,
+          city_area: c.city_area,
+          language: 'ta' as const,
+          role: 'customer' as const,
+          is_profile_completed: true,
+          created_at: c.created_at
+        }));
       }
-    ];
-
-    let combined = [...dbProfiles, ...localContacts];
-    if (combined.length === 0) {
-      combined = defaultContacts;
+    } catch (e) {
+      console.warn('Contacts DB fetch fallback — contacts table may not exist yet. Run supabase_schema.sql first.');
     }
 
-    // Deduplicate by Name or Phone
-    const seen = new Set();
-    combined = combined.filter((c) => {
-      const key = (c.phone || c.full_name || c.id || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    // 3. Local storage cache for offline
+    const localContacts: Profile[] = JSON.parse(localStorage.getItem('ml_customer_contacts') || '[]');
 
+    // Merge all — DB is source of truth, deduplicate by phone or id
+    const seen = new Set<string>();
+    const combined: Profile[] = [];
+
+    for (const c of [...dbProfiles, ...dbContacts, ...localContacts]) {
+      const key = (c.phone || c.id || '').replace(/[^0-9]/g, '').slice(-10);
+      const nameKey = (c.full_name || '').toLowerCase().trim();
+      const uniqueKey = key || nameKey || c.id;
+      if (!uniqueKey || seen.has(uniqueKey)) continue;
+      seen.add(uniqueKey);
+      combined.push(c);
+    }
+
+    // Update localStorage cache with merged result
+    localStorage.setItem('ml_customer_contacts', JSON.stringify(combined));
     setContacts(combined);
     setLoading(false);
   };
@@ -138,11 +138,12 @@ export const AdminContactsPage: React.FC = () => {
     e.preventDefault();
     if (!fullName.trim()) return;
 
+    const contactId = crypto.randomUUID();
     const newContact: Profile = {
-      id: crypto.randomUUID(),
+      id: contactId,
       full_name: fullName.trim(),
-      email: email.trim() || `${fullName.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
-      phone: phone.trim() || '+91 96592 00000',
+      email: email.trim() || '',
+      phone: phone.trim() || '',
       address: address.trim(),
       city_area: cityArea.trim() || 'Kallimandhayam, Dindigul',
       language: 'ta',
@@ -151,15 +152,29 @@ export const AdminContactsPage: React.FC = () => {
       created_at: new Date().toISOString()
     };
 
-    // Save locally for POS sync
+    // Save to Supabase contacts table (cross-device source of truth)
+    try {
+      await supabase.from('contacts').insert({
+        id: contactId,
+        name: fullName.trim(),
+        phone: phone.trim() || '',
+        email: email.trim() || '',
+        address: address.trim() || '',
+        city_area: cityArea.trim() || 'Kallimandhayam, Dindigul',
+        created_by: 'admin'
+      });
+    } catch (err) {
+      // Also try saving to profiles table (for POS customer lookup)
+      try {
+        await supabase.from('profiles').upsert(newContact);
+      } catch (profileErr) {
+        console.warn('Supabase contact save fallback to localStorage only');
+      }
+    }
+
+    // Update localStorage cache
     const localContacts: Profile[] = JSON.parse(localStorage.getItem('ml_customer_contacts') || '[]');
     localStorage.setItem('ml_customer_contacts', JSON.stringify([newContact, ...localContacts]));
-
-    try {
-      await supabase.from('profiles').upsert(newContact);
-    } catch (err) {
-      console.warn('Supabase profile insert fallback');
-    }
 
     setContacts([newContact, ...contacts]);
     setIsAddModalOpen(false);
@@ -170,6 +185,17 @@ export const AdminContactsPage: React.FC = () => {
     if (!deletingContactId) return;
     const targetId = deletingContactId;
 
+    // Delete from Supabase contacts table (cross-device)
+    try {
+      await supabase.from('contacts').delete().eq('id', targetId);
+    } catch {}
+
+    // Also try profiles table
+    try {
+      await supabase.from('profiles').delete().eq('id', targetId);
+    } catch {}
+
+    // Update localStorage cache
     const localContacts: Profile[] = JSON.parse(localStorage.getItem('ml_customer_contacts') || '[]');
     const updatedLocal = localContacts.filter((c) => c.id !== targetId);
     localStorage.setItem('ml_customer_contacts', JSON.stringify(updatedLocal));

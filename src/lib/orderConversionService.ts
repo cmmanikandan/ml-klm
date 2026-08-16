@@ -137,23 +137,33 @@ export const convertEnquiryToOrderSafely = async ({
   );
   localStorage.setItem('ml_enquiries', JSON.stringify(updatedLocalEnq));
 
-  // Save to Supabase DB
+  // Save to Supabase DB — primary source of truth for all devices
   try {
     const dbPayload = {
       id: newOrderId,
       order_number: newOrderNumber,
+      enquiry_id: enquiryId,
       user_id: enquiry.user_id || 'demo-user-123',
-      product_id: enquiry.product_id || INITIAL_PRODUCTS[0].id,
+      // Denormalized customer info — required for cross-device display without joins
+      customer_name: enquiry.customerName || enquiry.customer_name || 'Customer',
+      customer_phone: enquiry.customerPhone || enquiry.customer_phone || '',
+      customer_address: enquiry.delivery_location || enquiry.location || enquiry.customerAddress || 'Kallimandhayam',
+      // Denormalized product info
+      product_id: enquiry.product_id || null,
+      product_name: productName,
+      // Order details
       quantity: enquiry.quantity || 1,
-      status: 'accepted',
+      specifications: enquiry.size_requirement || enquiry.custom_notes || '',
       delivery_location: enquiry.delivery_location || enquiry.location || 'Kallimandhayam',
+      status: 'order_confirmed',
       expected_delivery_date: deliveryDate,
+      // Pricing
       total_amount: quotePrice,
       advance_amount: advanceRequired,
       remaining_amount: quotePrice,
       is_payment_requested: advanceRequired > 0,
       payment_request_amount: advanceRequired,
-      payment_status: 'unpaid',
+      payment_status: 'pending',
       created_at: new Date().toISOString()
     };
     await supabase.from('orders').insert(dbPayload);

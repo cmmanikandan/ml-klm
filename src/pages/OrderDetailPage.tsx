@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, Phone, MapPin, CheckCircle2, CreditCard, QrCode, Star, Package, Printer, Share2 } from 'lucide-react';
 import { Badge } from '../components/common/Badge';
@@ -8,6 +8,7 @@ import { NotificationModal } from '../components/common/NotificationModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { DEFAULT_SHOP_INFO, INITIAL_PRODUCTS, supabase } from '../lib/supabase';
+import { fetchActiveProducts } from '../lib/productsStore';
 import { Order, OrderStatus, PaymentStatus } from '../types';
 import { InvoicePreviewModal } from '../components/invoice/InvoicePreviewModal';
 import { FabricationTimeline } from '../components/orders/FabricationTimeline';
@@ -43,9 +44,53 @@ export const OrderDetailPage: React.FC = () => {
     type: 'warning'
   });
 
+  // Realtime subscription ref
+  const realtimeChannelRef = useRef<any>(null);
+
   useEffect(() => {
     fetchLiveOrderDetails();
+    // Cleanup realtime on unmount
+    return () => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
+    };
   }, [id]);
+
+  // Subscribe to realtime order changes once order is fetched
+  useEffect(() => {
+    if (!order?.id) return;
+
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current);
+    }
+
+    const channel = supabase
+      .channel(`customer-order-${order.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${order.id}`
+        },
+        (payload) => {
+          if (payload.new) {
+            setOrder((prev: any) => ({
+              ...prev,
+              ...payload.new,
+              // Preserve hydrated product object
+              product: prev?.product
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    realtimeChannelRef.current = channel;
+  }, [order?.id]);
 
   const fetchLiveOrderDetails = async () => {
     setLoading(true);
@@ -58,7 +103,15 @@ export const OrderDetailPage: React.FC = () => {
           .maybeSingle();
 
         if (data && !error) {
-          setOrder(data);
+          // Hydrate product from Supabase products table
+          let hydratedProduct = undefined;
+          if (data.product_id) {
+            try {
+              const activeProducts = await fetchActiveProducts();
+              hydratedProduct = activeProducts.find((p) => p.id === data.product_id);
+            } catch {}
+          }
+          setOrder({ ...data, product: hydratedProduct } as any);
         } else {
           // Check local orders / enquiries fallback
           const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
@@ -410,9 +463,10 @@ export const OrderDetailPage: React.FC = () => {
 
           {/* DYNAMIC PAYMENT / NOTIFICATION CARD SECTION */}
           {(() => {
-            const hasPaymentRequested = order.is_payment_requested || (order.payment_request_amount || 0) > 0 || (order.advance_amount || 0) > 0;
             const isFullyPaid = order.payment_status === 'paid';
-            const requestedAmount = order.payment_request_amount || order.remaining_amount || order.advance_amount || 0;
+            // Only show payment UI if admin has set a payment request amount
+            const hasPaymentRequested = order.is_payment_requested && (order.payment_request_amount || 0) > 0;
+            const requestedAmount = order.payment_request_amount || 0;
 
             if (isFullyPaid) {
               return (
@@ -520,7 +574,8 @@ export const OrderDetailPage: React.FC = () => {
             );
           })()}
 
-          {order.payment_status === 'paid' && order.status !== 'delivered' && (
+          {/* Payment complete secondary notice - only show when not fully paid and order is delivered */}
+          {order.payment_status === 'paid' && order.status === 'delivered' && (
             <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between">
               <div className="flex items-center gap-2 text-emerald-800 font-extrabold text-xs">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />

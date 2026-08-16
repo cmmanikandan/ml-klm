@@ -33,52 +33,31 @@ export const AdminDashboardPage: React.FC = () => {
   const fetchDashboardMetrics = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Orders from Supabase DB & LocalStorage
-      const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-      const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+      // 1. Fetch Orders strictly from Supabase DB
+      const { data: dbOrders } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      let combinedOrders = [...(dbOrders || []), ...localOrders];
-      const seen = new Set();
-      combinedOrders = combinedOrders.filter((o: any) => {
-        const key = String(o.id || o.order_number || '');
-        if (!key || seen.has(key)) return false;
-        // Permanently filter out demo mock orders
-        if (key.includes('ord-101') || key.includes('ord-102') || key.includes('1785163424023') || (o.total_amount === 0 && o.customerName === 'Senthil Kumar')) {
-          return false;
-        }
-        seen.add(key);
-        return true;
-      });
+      setOrders(dbOrders || []);
 
-      setOrders(combinedOrders);
+      // 2. Fetch Enquiries strictly from Supabase DB
+      const { data: enqData } = await supabase
+        .from('enquiries')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      // 2. Fetch Enquiries from Supabase DB or LocalStorage
-      const { data: enqData } = await supabase.from('enquiries').select('*').order('created_at', { ascending: false });
-      if (enqData && enqData.length > 0) {
-        setEnquiries(enqData);
-      } else {
-        const localEnq = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-        setEnquiries(localEnq);
-      }
+      setEnquiries(enqData || []);
 
-      // 3. Fetch Active Products from Product Store
+      // 3. Fetch Active Products from Product Store (Supabase DB)
       const activeProducts = await fetchActiveProducts();
-      if (activeProducts && activeProducts.length > 0) {
-        setProductsCount(activeProducts.length);
-      }
+      setProductsCount(activeProducts ? activeProducts.length : 0);
 
-      // 4. Fetch Active Categories
-      const { data: catData } = await supabase.from('categories').select('*');
-      const localCat = JSON.parse(localStorage.getItem('ml_categories') || '[]');
-      if (catData && catData.length > 0) {
-        setCategoriesCount(catData.length);
-      } else if (localCat && localCat.length > 0) {
-        setCategoriesCount(localCat.length);
-      } else {
-        setCategoriesCount(INITIAL_CATEGORIES.length);
-      }
+      // 4. Fetch Active Categories from Supabase DB
+      const { data: catData } = await supabase.from('categories').select('*').eq('is_active', true);
+      setCategoriesCount(catData ? catData.length : 0);
     } catch (e) {
-      console.warn('Dashboard DB load fallback', e);
+      console.warn('Dashboard DB load error', e);
     } finally {
       setLoading(false);
     }

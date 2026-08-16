@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -75,11 +75,77 @@ export const AdminOrderDetailPage: React.FC = () => {
   const [calcExtraCharges, setCalcExtraCharges] = useState<{ id: string; description: string; amount: number }[]>([]);
   const [calcAdvanceReq, setCalcAdvanceReq] = useState<number>(0);
 
+  // Realtime subscription ref
+  const realtimeChannelRef = useRef<any>(null);
+
   useEffect(() => {
     if (id) {
       fetchOrderDetails(id);
     }
+    // Cleanup realtime on unmount
+    return () => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
+    };
   }, [id]);
+
+  // Subscribe to realtime order changes after order is loaded
+  useEffect(() => {
+    if (!order?.id) return;
+
+    // Remove old channel if exists
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current);
+    }
+
+    const channel = supabase
+      .channel(`admin-order-${order.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${order.id}`
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            setOrder((prev: any) => ({ ...prev, ...payload.new }));
+            // Also sync calculator state from updated weight_calculation
+            const wc = (payload.new as any).weight_calculation;
+            if (wc) {
+              if (wc.parts && wc.parts.length > 0) setCalcParts(wc.parts);
+              if (wc.rate_per_kg) setCalcRatePerKg(wc.rate_per_kg);
+              if (wc.extra_charges) setCalcExtraCharges(wc.extra_charges);
+              if (wc.advance_amount !== undefined) setCalcAdvanceReq(wc.advance_amount);
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'payments',
+          filter: `order_id=eq.${order.id}`
+        },
+        (payload) => {
+          if (payload.new) {
+            setPaymentsHistory((prev: any[]) => {
+              // Avoid duplicates
+              if (prev.find((p) => p.id === (payload.new as any).id)) return prev;
+              return [payload.new, ...prev];
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    realtimeChannelRef.current = channel;
+  }, [order?.id]);
 
   const fetchOrderDetails = async (orderId: string) => {
     setLoading(true);
@@ -120,29 +186,41 @@ export const AdminOrderDetailPage: React.FC = () => {
         setCustomPayAmount(hydrated.remaining_amount || 0);
 
         if (hydrated.weight_calculation) {
-          if (hydrated.weight_calculation.parts && hydrated.weight_calculation.parts.length > 0) {
-            setCalcParts(hydrated.weight_calculation.parts);
+          // Restore calculator state from saved DB data
+          const wc = hydrated.weight_calculation;
+          if (wc.parts && wc.parts.length > 0) {
+            setCalcParts(wc.parts);
+          } else {
+            // No parts saved yet — initialize with one empty part for user to fill
+            setCalcParts([{ id: 'part_1', name: 'Part 1', weight_kg: 0 }]);
           }
-          if (hydrated.weight_calculation.rate_per_kg) {
-            setCalcRatePerKg(hydrated.weight_calculation.rate_per_kg);
-          }
-          if (hydrated.weight_calculation.extra_charges) {
-            setCalcExtraCharges(hydrated.weight_calculation.extra_charges);
-          }
-          if (hydrated.weight_calculation.advance_amount !== undefined) {
-            setCalcAdvanceReq(hydrated.weight_calculation.advance_amount);
-          }
+          if (wc.rate_per_kg) setCalcRatePerKg(wc.rate_per_kg);
+          else if (prod?.price_per_kg) setCalcRatePerKg(prod.price_per_kg);
+          if (wc.extra_charges) setCalcExtraCharges(wc.extra_charges);
+          if (wc.advance_amount !== undefined) setCalcAdvanceReq(wc.advance_amount);
         } else {
+          // No calculation saved yet — initialize defaults
+          setCalcParts([{ id: 'part_1', name: 'Part 1', weight_kg: 0 }]);
           if (prod?.price_per_kg) setCalcRatePerKg(prod.price_per_kg);
           if (hydrated.advance_amount) setCalcAdvanceReq(hydrated.advance_amount);
         }
 
         // 2. Fetch Payment Transactions History for this Order
-        const { data: dbPayments } = await supabase
-          .from('payments')
-          .select('*')
-          .or(`order_id.eq.${orderId},order_id.eq.${hydrated.order_number}`)
-          .order('created_at', { ascending: false });
+        // NOTE: order_id is UUID — must query by actual order UUID, not order_number text
+        // Also fetch by order_number TEXT column separately for any text-keyed records
+        const [{ data: dbPaymentsByUuid }, { data: dbPaymentsByOrderNum }] = await Promise.all([
+          supabase
+            .from('payments')
+            .select('*')
+            .eq('order_id', ordRecord.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('payments')
+            .select('*')
+            .eq('order_number', hydrated.order_number || '')
+            .order('created_at', { ascending: false })
+        ]);
+        const dbPayments = [...(dbPaymentsByUuid || []), ...(dbPaymentsByOrderNum || [])];
 
         const localPayments: any[] = JSON.parse(localStorage.getItem('ml_payments') || '[]');
         const matchingLocal = localPayments.filter(
@@ -247,28 +325,34 @@ export const AdminOrderDetailPage: React.FC = () => {
     const enquiryId = String(order.enquiry_id || order.enquiryId || orderId);
     const orderNum = String(order.order_number || order.orderNumber || orderId);
 
-    // 1. Update enquiry status to 'deleted' in Supabase FIRST (cross-device sync)
-    //    Must happen BEFORE delete so all other devices read status='deleted' from DB
-    const enqFilter = [];
-    if (enquiryId && enquiryId !== orderId) enqFilter.push(`id.eq.${enquiryId}`);
-    enqFilter.push(`id.eq.${orderId}`);
-    if (orderNum && orderNum !== orderId) enqFilter.push(`enquiry_number.eq.${orderNum}`);
-    await supabase
-      .from('enquiries')
-      .update({ status: 'deleted' })
-      .or(enqFilter.join(','));
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
 
-    // 2. Delete orders row from Supabase
-    await supabase
-      .from('orders')
-      .delete()
-      .or(`id.eq.${orderId},order_number.eq.${orderNum}`);
+    // 1. Delete orders row from Supabase
+    try {
+      if (isUuid) {
+        await supabase.from('orders').delete().eq('id', orderId);
+      }
+      if (orderNum) {
+        await supabase.from('orders').delete().eq('order_number', orderNum);
+      }
+      if (enquiryId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enquiryId)) {
+        await supabase.from('orders').delete().eq('enquiry_id', enquiryId);
+      }
+    } catch (e) {
+      console.warn('Orders table delete warning', e);
+    }
 
-    // 3. Delete enquiry row from Supabase (status already saved above)
-    await supabase
-      .from('enquiries')
-      .delete()
-      .or(enqFilter.join(','));
+    // 2. Delete enquiry row from Supabase
+    try {
+      if (enquiryId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enquiryId)) {
+        await supabase.from('enquiries').delete().eq('id', enquiryId);
+      }
+      if (orderNum) {
+        await supabase.from('enquiries').delete().eq('enquiry_number', orderNum);
+      }
+    } catch (e) {
+      console.warn('Enquiries table delete warning', e);
+    }
 
     // 4. Track in LocalStorage as secondary safety net
     const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
@@ -681,8 +765,15 @@ export const AdminOrderDetailPage: React.FC = () => {
                 <Calendar className="w-4 h-4 text-brand-600 shrink-0" />
                 <input
                   type="date"
-                  value={order.expected_delivery_date || ''}
-                  onChange={(e) => handleUpdateDeliveryDate(e.target.value)}
+                  defaultValue={order.expected_delivery_date || ''}
+                  key={order.expected_delivery_date || 'no-date'}
+                  onBlur={(e) => {
+                    if (e.target.value) handleUpdateDeliveryDate(e.target.value);
+                  }}
+                  onChange={(e) => {
+                    // Update local display only; DB save happens onBlur when date is complete
+                    setOrder((prev: any) => ({ ...prev, expected_delivery_date: e.target.value }));
+                  }}
                   className="px-3 py-1.5 text-xs font-mono font-extrabold border border-warm-border rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-brand-500"
                 />
               </div>

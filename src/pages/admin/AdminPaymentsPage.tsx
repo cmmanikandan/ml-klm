@@ -23,9 +23,8 @@ export const AdminPaymentsPage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       const { data: dbOrders } = await supabase.from('orders').select('*');
-      const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      const allOrders = (dbOrders && dbOrders.length > 0) ? dbOrders : localOrders;
-      const orderMap = new Map((allOrders || []).map((o: any) => [o.id, o]));
+      const allOrders = dbOrders || [];
+      const orderMap = new Map(allOrders.map((o: any) => [o.id, o]));
 
       const { data: profilesData } = await supabase.from('profiles').select('*');
       const profileMap = new Map((profilesData || []).map((prof: any) => [prof.id, prof]));

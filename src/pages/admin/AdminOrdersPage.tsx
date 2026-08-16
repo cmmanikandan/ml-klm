@@ -98,7 +98,6 @@ export const AdminOrdersPage: React.FC = () => {
   const fetchLiveOrders = async () => {
     setLoading(true);
     try {
-      // 1. Fetch active products for hydration lookup
       const activeProducts = await fetchActiveProducts();
       const productMap = new Map(activeProducts.map(p => [p.id, p]));
 
@@ -106,115 +105,39 @@ export const AdminOrdersPage: React.FC = () => {
       const { data: profilesData } = await supabase.from('profiles').select('*');
       const profileMap = new Map((profilesData || []).map((prof: any) => [prof.id, prof]));
 
-      // 3. Fetch orders from Supabase DB
+      // 3. Fetch online orders directly from Supabase DB
       const { data: dbOrders, error } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
 
-      const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      let combined: any[] = [...(dbOrders || []), ...local];
-
-      const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
-      const deletedSet = new Set(deletedIds);
-
-      // Filter out permanently deleted orders
-      combined = combined.filter((o: any) => {
-        const idStr = String(o.id || '');
-        const numStr = String(o.order_number || '');
-        const enqStr = String(o.enquiry_id || '');
-        return !deletedSet.has(idStr) && !deletedSet.has(numStr) && !deletedSet.has(enqStr);
-      });
-
-      // Auto-synthesize order records for accepted/converted enquiries if missing
-      const localEnquiries: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-      const { data: dbEnquiries } = await supabase.from('enquiries').select('*');
-      const allEnqs = [...(dbEnquiries || []), ...localEnquiries];
-
-      for (const enq of allEnqs) {
-        const enqIdStr = String(enq.id || '');
-        const enqNumStr = String(enq.enquiry_number || '');
-        if (deletedSet.has(enqIdStr) || deletedSet.has(enqNumStr) || enq.status === 'deleted') continue;
-
-        const normSt = String(enq.status || '').toLowerCase();
-        if (normSt === 'accepted' || normSt === 'converted') {
-          const enqId = enq.id;
-          const matchExisting = combined.find(
-            (o) => o.enquiry_id === enqId || o.id === enqId || o.order_number === enqId || (enq.converted_order_id && (o.id === enq.converted_order_id || o.order_number === enq.converted_order_id))
-          );
-          if (!matchExisting) {
-            const targetProd = productMap.get(enq.product_id) || INITIAL_PRODUCTS[0];
-            const targetProf = profileMap.get(enq.user_id);
-            const synthesizedOrd = {
-              id: enq.converted_order_id || enq.enquiry_number || enq.id,
-              order_number: enq.enquiry_number || enq.id,
-              enquiry_id: enq.id,
-              user_id: enq.user_id || 'demo-user-123',
-              customerName: enq.customerName || enq.customer_name || targetProf?.full_name || 'Manikandan Prabhu',
-              customerPhone: enq.customerPhone || enq.customer_phone || targetProf?.phone || '+91 96292 86268',
-              customerAddress: enq.delivery_location || enq.location || 'Kallimandhayam',
-              product_id: enq.product_id || targetProd.id,
-              productName: enq.productName || enq.product_name || targetProd.name_en || 'Compound Wall Gate',
-              productImage: targetProd.primary_image || (targetProd.images && targetProd.images[0]) || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
-              quantity: enq.quantity || 1,
-              status: 'accepted',
-              expected_delivery_date: 'Within 7 Days',
-              total_amount: enq.quote_price || enq.total_amount || 0,
-              advance_amount: enq.advance_amount || 0,
-              remaining_amount: enq.quote_price || enq.total_amount || 0,
-              is_payment_requested: false,
-              payment_request_amount: 0,
-              payment_status: 'unpaid',
-              created_at: enq.created_at || new Date().toISOString()
-            };
-            combined.push(synthesizedOrd);
-            local.push(synthesizedOrd);
-            localStorage.setItem('ml_orders', JSON.stringify(local));
-          }
-        }
-      }
-
-      const seen = new Set();
-      combined = combined.filter((o: any) => {
-        const key = o.id || o.order_number;
-        if (!key || seen.has(key)) return false;
-        seen.add(key);
-        if (o.order_number) seen.add(o.order_number);
-        return true;
-      });
-
-      // Filter out demo mock orders AND POS Counter Sales permanently from Online Orders Page
-      combined = combined.filter((o: any) => {
-        const key = String(o.id || o.order_number || '');
-        if (key.includes('ord-101') || key.includes('ord-102') || key.includes('1785163424023') || key.includes('POS')) {
-          return false;
-        }
-        if (o.is_pos === true || (o.admin_notes && o.admin_notes.includes('POS'))) {
+      let list = (dbOrders || []).filter((o: any) => {
+        // Filter out POS Counter sales from Online Orders page
+        if (o.is_pos === true || (o.admin_notes && o.admin_notes.includes('POS')) || String(o.order_number || '').includes('POS')) {
           return false;
         }
         return true;
       });
 
-      // Hydrate missing customer & product info
-      const hydratedOrders = combined.map((ord: any) => {
+      // Hydrate missing customer & product info cleanly from DB lookups
+      const hydratedOrders = list.map((ord: any) => {
         const prod = productMap.get(ord.product_id);
         const prof = profileMap.get(ord.user_id);
 
         return {
           ...ord,
-          customerName: ord.customerName || ord.customer_name || ord.user_name || prof?.full_name || 'Karthik Kumar (Customer)',
-          customerPhone: ord.customerPhone || ord.customer_phone || prof?.phone || '+91 98421 54321',
-          customerAddress: ord.customerAddress || ord.delivery_location || prof?.address || prof?.city_area || 'Kallimandhayam, Dindigul',
-          productName: ord.productName || ord.product_name || prod?.name_en || 'Custom Lathe Fabricated Item',
-          productImage: ord.productImage || prod?.primary_image || (prod?.images && prod.images[0]) || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
-          productId: ord.product_id || prod?.id || 'demo-prod-1'
+          customerName: ord.customer_name || ord.customerName || prof?.full_name || 'Customer',
+          customerPhone: ord.customer_phone || ord.customerPhone || prof?.phone || '+91 96592 86268',
+          customerAddress: ord.customer_address || ord.customerAddress || ord.delivery_location || prof?.address || prof?.city_area || 'Kallimandhayam, Dindigul',
+          productName: ord.product_name || ord.productName || prod?.name_en || 'Custom Lathe Fabricated Item',
+          productImage: ord.product_image || ord.productImage || prod?.primary_image || (prod?.images && prod.images[0]) || '',
+          productId: ord.product_id || prod?.id
         };
       });
 
       setOrders(hydratedOrders);
-    } catch (e) {
-      console.warn('Admin live orders load fallback');
-      setOrders([]);
+    } catch (err) {
+      console.error('Failed to load orders from Supabase DB', err);
     } finally {
       setLoading(false);
     }
@@ -259,35 +182,36 @@ export const AdminOrdersPage: React.FC = () => {
   };
 
   const handleDeleteOrder = async (orderId: string) => {
-    const targetOrder = orders.find((o) => o.id === orderId);
-    const enquiryId = targetOrder?.enquiry_id || targetOrder?.enquiryId || orderId;
+    const targetOrder = orders.find((o) => o.id === orderId || o.order_number === orderId);
+    const enquiryId = targetOrder?.enquiry_id || targetOrder?.enquiryId;
     const orderNum = targetOrder?.order_number || targetOrder?.orderNumber || orderId;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
 
-    // 1. Update enquiry status to 'deleted' in Supabase FIRST (cross-device sync)
-    //    This must happen BEFORE delete so all devices see status='deleted' via DB
-    const enqFilter = [];
-    if (enquiryId && enquiryId !== orderId) enqFilter.push(`id.eq.${enquiryId}`);
-    if (orderId) enqFilter.push(`id.eq.${orderId}`);
-    if (orderNum && orderNum !== orderId) enqFilter.push(`enquiry_number.eq.${orderNum}`);
-    if (enqFilter.length > 0) {
-      await supabase
-        .from('enquiries')
-        .update({ status: 'deleted' })
-        .or(enqFilter.join(','));
+    // 1. Delete from orders table in Supabase
+    try {
+      if (isUuid) {
+        await supabase.from('orders').delete().eq('id', orderId);
+      }
+      if (orderNum) {
+        await supabase.from('orders').delete().eq('order_number', orderNum);
+      }
+      if (enquiryId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enquiryId)) {
+        await supabase.from('orders').delete().eq('enquiry_id', enquiryId);
+      }
+    } catch (e) {
+      console.warn('Orders table delete warning', e);
     }
 
-    // 2. Delete orders row from Supabase
-    await supabase
-      .from('orders')
-      .delete()
-      .or(`id.eq.${orderId},order_number.eq.${orderNum}`);
-
-    // 3. Delete enquiry row from Supabase (after status update already saved)
-    if (enqFilter.length > 0) {
-      await supabase
-        .from('enquiries')
-        .delete()
-        .or(enqFilter.join(','));
+    // 2. Delete related enquiry from enquiries table in Supabase
+    try {
+      if (enquiryId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enquiryId)) {
+        await supabase.from('enquiries').delete().eq('id', enquiryId);
+      }
+      if (orderNum) {
+        await supabase.from('enquiries').delete().eq('enquiry_number', orderNum);
+      }
+    } catch (e) {
+      console.warn('Enquiries table delete warning', e);
     }
 
     // 4. Track in LocalStorage as secondary safety net

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Printer, Download, ArrowLeft, ExternalLink, CheckCircle2, AlertCircle, ZoomIn, ZoomOut, Maximize2, Receipt, FileText } from 'lucide-react';
 import { InvoiceDocument } from '../components/invoice/InvoiceDocument';
 import { ThermalReceiptDocument } from '../components/invoice/ThermalReceiptDocument';
-import { INITIAL_PRODUCTS, supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { fetchActiveProducts } from '../lib/productsStore';
 
 export const InvoicePage: React.FC = () => {
@@ -195,15 +195,38 @@ export const InvoicePage: React.FC = () => {
 
       // Hydrate product details and final customer payload
       const activeProds = await fetchActiveProducts();
-      const prod = activeProds.find((p) => p.id === record.product_id) || INITIAL_PRODUCTS[0];
+      const prod = activeProds.find((p) => p.id === record.product_id);
+
+      // Fetch payment history for accurate balance calculation on invoice
+      let totalPaid = 0;
+      if (record.id) {
+        try {
+          const { data: paymentRows } = await supabase
+            .from('payments')
+            .select('amount')
+            .eq('order_id', record.id)
+            .eq('status', 'completed');
+          if (paymentRows && paymentRows.length > 0) {
+            totalPaid = paymentRows.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+          }
+        } catch {}
+      }
+
+      const totalAmount = Number(record.total_amount || 0);
+      const remainingFromPayments = totalPaid > 0
+        ? Math.max(0, totalAmount - totalPaid)
+        : Number(record.remaining_amount || 0);
 
       const finalOrderObj = {
         ...record,
-        customerName: customerName || record.customerName || record.customer_name || 'Manikandan Prabhu',
-        customerPhone: customerPhone || record.customerPhone || record.customer_phone || '+91 9629286268',
-        customerAddress: customerAddress || record.customerAddress || record.delivery_location || 'K. Keeranur road, Kallimandhayam, Dindigul',
-        productName: record.productName || record.product_name || prod.name_en || 'Steel Shoe Rack Work',
-        productImage: record.productImage || prod.primary_image
+        customerName: customerName || record.customerName || record.customer_name || 'Customer',
+        customerPhone: customerPhone || record.customerPhone || record.customer_phone || '+91 96592 86268',
+        customerAddress: customerAddress || record.customerAddress || record.delivery_location || 'Kallimandhayam, Dindigul',
+        productName: record.productName || record.product_name || (prod ? prod.name_en : 'Custom Fabrication Item'),
+        productImage: record.productImage || (prod ? prod.primary_image : undefined),
+        // Use payment-history-derived remaining if available
+        remaining_amount: remainingFromPayments,
+        total_paid: totalPaid
       };
 
       setOrder(finalOrderObj);

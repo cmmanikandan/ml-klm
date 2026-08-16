@@ -105,39 +105,16 @@ export const AdminEnquiriesPage: React.FC = () => {
       const uMap = new Map((profs || []).map((prof: any) => [prof.id, prof]));
       setProfileMap(uMap);
 
-      const { data } = await supabase.from('enquiries').select('*').order('created_at', { ascending: false });
-      const local: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+      const { data, error } = await supabase
+        .from('enquiries')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
-      const deletedSet = new Set(deletedIds);
-
-      let mergedEnqs: any[] = [];
-      if (data && data.length > 0) {
-        const localMap = new Map(local.map((l: any) => [l.id, l]));
-        mergedEnqs = data.map((d: any) => {
-          const loc = localMap.get(d.id);
-          if (loc && loc.status && loc.status !== d.status) {
-            return { ...d, status: loc.status };
-          }
-          return d;
-        });
-      } else {
-        mergedEnqs = local;
-      }
-
-      // Filter out permanently deleted enquiries
-      mergedEnqs = mergedEnqs.filter((e: any) => {
-        const idStr = String(e.id || '');
-        const numStr = String(e.enquiry_number || e.number || '');
-        const normSt = String(e.status || '').toLowerCase();
-        return !deletedSet.has(idStr) && !deletedSet.has(numStr) && normSt !== 'deleted';
-      });
-
-      setEnquiries(mergedEnqs);
+      if (error) throw error;
+      setEnquiries(data || []);
     } catch (e) {
-      console.warn('Live enquiries DB fetch fallback');
-      const local = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-      setEnquiries(local);
+      console.warn('Live enquiries DB fetch error', e);
+      setEnquiries([]);
     } finally {
       setLoading(false);
     }

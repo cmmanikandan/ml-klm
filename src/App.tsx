@@ -56,6 +56,14 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
+    // Purge legacy ghost data from localStorage so all devices stay 100% in sync with Supabase
+    try {
+      localStorage.removeItem('ml_orders');
+      localStorage.removeItem('ml_enquiries');
+      localStorage.removeItem('ml_payments');
+      localStorage.removeItem('ml_deleted_ids');
+    } catch (e) {}
+
     const timer = setTimeout(() => {
       setShowSplash(false);
     }, 1000);
