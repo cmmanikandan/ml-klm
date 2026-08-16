@@ -175,17 +175,20 @@ export const AdminEnquiryDetailPage: React.FC = () => {
     const targetCustomerPhone = rawPhone ? (rawPhone.startsWith('91') ? rawPhone : `91${rawPhone}`) : DEFAULT_SHOP_INFO.whatsapp;
 
     const text = encodeURIComponent(
-      `*MANIKANDAN LATHE WORKS - OFFICIAL QUOTE*\n` +
+      `🙏 *மணிகண்டன் லேத் ஒர்க்ஸ் (MANIKANDAN LATHE WORKS)*\n` +
       `--------------------------------------\n` +
+      `📋 *OFFICIAL PRICE QUOTE / விலை விவரம்*\n\n` +
       `📌 *Enquiry ID:* #${enquiry.enquiry_number || enquiry.id}\n` +
-      `👤 *Customer Name:* ${enquiry.customerName}\n` +
+      `👤 *Customer:* ${enquiry.customerName || 'Valued Customer'}\n` +
       `🛠️ *Fabrication Item:* ${enquiry.productName}\n` +
       `📦 *Requested Quantity:* ${enquiry.quantity || 1} Unit(s)\n` +
       `💰 *Quoted Price:* ₹${quotePrice.toLocaleString('en-IN')}\n` +
       `💳 *Advance Required:* ₹${advanceRequired.toLocaleString('en-IN')}\n` +
       `⏱️ *Estimated Delivery:* ${estimatedDays} Days\n` +
+      `🏬 *Workshop Location:* Kallimandhayam - 624616, Dindigul Dist\n` +
       `--------------------------------------\n` +
-      `Please reply to confirm your quote and start fabrication!`
+      `Please reply to confirm your order and begin fabrication!\n` +
+      `📞 Contact / WhatsApp: +91 96592 86268`
     );
     window.open(`https://wa.me/${targetCustomerPhone}?text=${text}`, '_blank');
   };

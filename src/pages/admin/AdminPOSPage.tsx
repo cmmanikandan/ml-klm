@@ -538,6 +538,7 @@ export const AdminPOSPage: React.FC = () => {
   const handleShareWhatsAppBill = (ord: any) => {
     const rawPhone = (ord.customerPhone || '').replace(/[^0-9]/g, '');
     const phone = rawPhone ? (rawPhone.startsWith('91') ? rawPhone : `91${rawPhone}`) : DEFAULT_SHOP_INFO.whatsapp;
+    const targetInvoiceNo = ord.order_number || ord.id;
     
     const text = encodeURIComponent(
       `*MANIKANDAN LATHE WORKS - COUNTER POS BILL*\n` +
@@ -546,8 +547,9 @@ export const AdminPOSPage: React.FC = () => {
       `👤 *Customer:* ${ord.customerName || 'Valued Customer'}\n` +
       `🛠️ *Items:* ${ord.productName}\n` +
       `💰 *Total Amount:* ₹${(ord.total_amount || 0).toLocaleString('en-IN')}\n` +
-      `💵 *Amount Paid:* ₹${(ord.advance_amount || 0).toLocaleString('en-IN')}\n` +
+      `💵 *Amount Paid:* ₹${(ord.advance_amount || ord.total_amount || 0).toLocaleString('en-IN')} (PAID IN FULL)\n` +
       `💳 *Payment Mode:* POS Counter Sale\n` +
+      `📄 *View / Download Invoice PDF:* ${window.location.origin}/invoice/${targetInvoiceNo}\n` +
       `--------------------------------------\n` +
       `Thank you for your business! Visit us again at K. Keeranur Road, Kallimandhayam.`
     );
