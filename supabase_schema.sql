@@ -572,93 +572,129 @@ ALTER TABLE public.admin_settings ENABLE ROW LEVEL SECURITY;
 -- --------------------------------------------------------------------
 -- A. PUBLIC READ-ONLY TABLES (Categories, Products, Images, Settings)
 -- --------------------------------------------------------------------
+DROP POLICY IF EXISTS "Public categories read" ON public.categories;
 CREATE POLICY "Public categories read" ON public.categories FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Admin categories modify" ON public.categories;
 CREATE POLICY "Admin categories modify" ON public.categories FOR ALL USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Public products read" ON public.products;
 CREATE POLICY "Public products read" ON public.products FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Admin products modify" ON public.products;
 CREATE POLICY "Admin products modify" ON public.products FOR ALL USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Public product images read" ON public.product_images;
 CREATE POLICY "Public product images read" ON public.product_images FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Admin product images modify" ON public.product_images;
 CREATE POLICY "Admin product images modify" ON public.product_images FOR ALL USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Public admin settings read" ON public.admin_settings;
 CREATE POLICY "Public admin settings read" ON public.admin_settings FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Admin settings modify" ON public.admin_settings;
 CREATE POLICY "Admin settings modify" ON public.admin_settings FOR ALL USING (true) WITH CHECK (true);
 
 -- --------------------------------------------------------------------
 -- B. PROFILES TABLE POLICIES
 -- --------------------------------------------------------------------
+DROP POLICY IF EXISTS "Users can read own profile or admin can read all" ON public.profiles;
 CREATE POLICY "Users can read own profile or admin can read all" ON public.profiles
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Users can insert/update own profile" ON public.profiles;
 CREATE POLICY "Users can insert/update own profile" ON public.profiles
     FOR ALL USING (true) WITH CHECK (true);
 
 -- --------------------------------------------------------------------
 -- C. ORDERS TABLE POLICIES (STRICT CUSTOMER OWNERSHIP)
 -- --------------------------------------------------------------------
+DROP POLICY IF EXISTS "Customer reads own orders or admin reads all" ON public.orders;
 CREATE POLICY "Customer reads own orders or admin reads all" ON public.orders
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Customer inserts own orders or admin manages" ON public.orders;
 CREATE POLICY "Customer inserts own orders or admin manages" ON public.orders
     FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Admin can update orders" ON public.orders;
 CREATE POLICY "Admin can update orders" ON public.orders
     FOR UPDATE USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Admin can delete orders" ON public.orders;
 CREATE POLICY "Admin can delete orders" ON public.orders
     FOR DELETE USING (true);
 
 -- --------------------------------------------------------------------
 -- D. ENQUIRIES TABLE POLICIES (STRICT CUSTOMER OWNERSHIP)
 -- --------------------------------------------------------------------
+DROP POLICY IF EXISTS "Customer reads own enquiries or admin reads all" ON public.enquiries;
 CREATE POLICY "Customer reads own enquiries or admin reads all" ON public.enquiries
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Customer creates own enquiry" ON public.enquiries;
 CREATE POLICY "Customer creates own enquiry" ON public.enquiries
     FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Admin updates enquiries" ON public.enquiries;
 CREATE POLICY "Admin updates enquiries" ON public.enquiries
     FOR UPDATE USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Admin deletes enquiries" ON public.enquiries;
 CREATE POLICY "Admin deletes enquiries" ON public.enquiries
     FOR DELETE USING (true);
 
 -- --------------------------------------------------------------------
 -- E. WISHLISTS TABLE POLICIES (STRICT CUSTOMER OWNERSHIP)
 -- --------------------------------------------------------------------
+DROP POLICY IF EXISTS "Customer reads own wishlist" ON public.wishlists;
 CREATE POLICY "Customer reads own wishlist" ON public.wishlists
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Customer adds to own wishlist" ON public.wishlists;
 CREATE POLICY "Customer adds to own wishlist" ON public.wishlists
     FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Customer deletes from own wishlist" ON public.wishlists;
 CREATE POLICY "Customer deletes from own wishlist" ON public.wishlists
     FOR DELETE USING (true);
 
 -- --------------------------------------------------------------------
 -- F. NOTIFICATIONS TABLE POLICIES (STRICT CUSTOMER OWNERSHIP)
 -- --------------------------------------------------------------------
+DROP POLICY IF EXISTS "Customer reads own notifications" ON public.notifications;
 CREATE POLICY "Customer reads own notifications" ON public.notifications
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "System/Admin creates notifications" ON public.notifications;
 CREATE POLICY "System/Admin creates notifications" ON public.notifications
     FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Customer updates own notification read state" ON public.notifications;
 CREATE POLICY "Customer updates own notification read state" ON public.notifications
     FOR UPDATE USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Customer deletes own notification" ON public.notifications;
 CREATE POLICY "Customer deletes own notification" ON public.notifications
     FOR DELETE USING (true);
 
 -- --------------------------------------------------------------------
--- G. PRODUCT VIEWS & FEEDBACK POLICIES
+-- G. PRODUCT VIEWS, PAYMENTS, FEEDBACK & CONTACTS POLICIES
 -- --------------------------------------------------------------------
+DROP POLICY IF EXISTS "Payments manage by admin and customer" ON public.payments;
+CREATE POLICY "Payments manage by admin and customer" ON public.payments
+    FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Product views manage by owner" ON public.product_views;
 CREATE POLICY "Product views manage by owner" ON public.product_views
     FOR ALL USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Feedback public read and owner insert" ON public.feedback;
 CREATE POLICY "Feedback public read and owner insert" ON public.feedback
     FOR ALL USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Contacts manage by admin" ON public.contacts;
 CREATE POLICY "Contacts manage by admin" ON public.contacts
     FOR ALL USING (true) WITH CHECK (true);
 
