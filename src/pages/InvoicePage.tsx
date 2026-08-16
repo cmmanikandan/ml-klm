@@ -43,48 +43,75 @@ export const InvoicePage: React.FC = () => {
 
   const fetchOrderDetails = async (targetId: string) => {
     setLoading(true);
-    const cleanId = String(targetId || '').trim();
+    const rawId = String(targetId || '').trim();
+    const cleanId = rawId.replace(/^#/, '').trim();
+    const hashId = `#${cleanId}`;
+
+    let record: any = null;
+    let customerName = '';
+    let customerPhone = '';
+    let customerAddress = '';
 
     try {
-      let record: any = null;
+      // 1. Fetch from Supabase Orders DB safely
+      try {
+        const { data: dbOrders } = await supabase
+          .from('orders')
+          .select('*');
 
-      // 1. Fetch from Supabase Orders
-      const { data: dbOrder } = await supabase
-        .from('orders')
-        .select('*')
-        .or(`id.eq.${cleanId},order_number.eq.${cleanId}`)
-        .maybeSingle();
+        if (dbOrders && dbOrders.length > 0) {
+          record = dbOrders.find((o: any) => {
+            const oNo = String(o.order_number || '').replace(/^#/, '').trim();
+            const oId = String(o.id || '').replace(/^#/, '').trim();
+            return oNo === cleanId || oId === cleanId || o.order_number === rawId || o.id === rawId;
+          });
+        }
+      } catch (e) {
+        console.warn('Supabase DB order query fallback', e);
+      }
 
-      record = dbOrder;
-
-      // 2. Fetch from Supabase Enquiries if not found in orders
+      // 2. Fetch from Supabase Enquiries DB if not found in orders
       if (!record) {
-        const { data: dbEnq } = await supabase
-          .from('enquiries')
-          .select('*')
-          .or(`id.eq.${cleanId},enquiry_number.eq.${cleanId}`)
-          .maybeSingle();
+        try {
+          const { data: dbEnquiries } = await supabase
+            .from('enquiries')
+            .select('*');
 
-        if (dbEnq) {
-          record = {
-            id: dbEnq.id,
-            order_number: dbEnq.enquiry_number || cleanId,
-            customerName: dbEnq.customerName || dbEnq.customer_name || 'Customer',
-            customerPhone: dbEnq.customerPhone || dbEnq.customer_phone || '+91 96592 86268',
-            customerAddress: dbEnq.delivery_location || dbEnq.location || 'Kallimandhayam',
-            productName: dbEnq.productName || dbEnq.product_name || 'Custom Lathe Fabricated Item',
-            quantity: dbEnq.quantity || 1,
-            total_amount: 15000,
-            remaining_amount: 10000,
-            created_at: dbEnq.created_at || new Date().toISOString()
-          };
+          if (dbEnquiries && dbEnquiries.length > 0) {
+            const foundEnq = dbEnquiries.find((enq: any) => {
+              const eNo = String(enq.enquiry_number || '').replace(/^#/, '').trim();
+              const eId = String(enq.id || '').replace(/^#/, '').trim();
+              return eNo === cleanId || eId === cleanId || enq.enquiry_number === rawId;
+            });
+
+            if (foundEnq) {
+              record = {
+                id: foundEnq.id,
+                order_number: foundEnq.enquiry_number || rawId,
+                customerName: foundEnq.customerName || foundEnq.customer_name || 'Customer',
+                customerPhone: foundEnq.customerPhone || foundEnq.customer_phone || '+91 96592 86268',
+                customerAddress: foundEnq.delivery_location || foundEnq.location || 'Kallimandhayam',
+                productName: foundEnq.productName || foundEnq.product_name || 'Custom Lathe Fabricated Item',
+                quantity: foundEnq.quantity || 1,
+                total_amount: 15000,
+                remaining_amount: 10000,
+                created_at: foundEnq.created_at || new Date().toISOString()
+              };
+            }
+          }
+        } catch (e) {
+          console.warn('Supabase DB enquiry query fallback', e);
         }
       }
 
       // 3. Check LocalStorage fallback
       if (!record) {
         const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-        record = localOrders.find((l: any) => l.id === cleanId || l.order_number === cleanId);
+        record = localOrders.find((l: any) => {
+          const lNo = String(l.order_number || '').replace(/^#/, '').trim();
+          const lId = String(l.id || '').replace(/^#/, '').trim();
+          return lNo === cleanId || lId === cleanId;
+        });
       }
 
       if (!record) {
