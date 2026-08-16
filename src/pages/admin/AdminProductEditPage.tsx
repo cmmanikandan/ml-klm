@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, Sparkles, Star, Flame, TrendingUp, Wrench, CheckCircle2, Package, Eye } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Sparkles, Star, Flame, TrendingUp, Wrench, CheckCircle2, Package, Eye, ThumbsUp, ShieldCheck } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { NotificationModal } from '../../components/common/NotificationModal';
 import { INITIAL_CATEGORIES } from '../../lib/supabase';
@@ -182,6 +182,10 @@ export const AdminProductEditPage: React.FC = () => {
       specifications: specObj,
       is_best_selling: isBestSelling,
       is_new: isNew,
+      is_featured: isFeatured,
+      is_popular: isPopular,
+      is_custom_fabrication: isCustomFabrication,
+      is_in_stock: isInStock,
       is_active: true,
       admin_price: adminPrice,
       pricing_type: pricingType,
@@ -435,87 +439,228 @@ export const AdminProductEditPage: React.FC = () => {
 
 
 
-        {/* Product Badges & Flags */}
+        {/* Pricing Calculation Mode */}
         <div className="space-y-3 pt-4 border-t border-warm-muted">
           <label className="block text-xs font-extrabold text-charcoal-900 uppercase tracking-wider">
-            Product Display Flags & Pricing Badges
+            Pricing Calculation Mode
           </label>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${pricingType === 'weight' ? 'border-brand-600 bg-brand-50' : 'border-warm-border hover:border-gray-300'}`}>
+          <div className="grid grid-cols-3 gap-3">
+            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-center gap-2 ${pricingType === 'weight' ? 'border-brand-600 bg-brand-50 text-brand-900 shadow-sm' : 'border-warm-border hover:border-gray-300 text-charcoal-700'}`}>
               <input
-                type="checkbox"
+                type="radio"
+                name="pricingType"
                 checked={pricingType === 'weight'}
                 onChange={() => setPricingType('weight')}
-                className="w-4 h-4 text-brand-600 rounded"
+                className="w-4 h-4 text-brand-600 focus:ring-brand-500"
               />
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
-                <span>⚖️ Weight Based</span>
-              </div>
+              <span className="text-xs font-extrabold">⚖️ Weight Based</span>
             </label>
 
-            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${pricingType === 'sqft' ? 'border-brand-600 bg-brand-50' : 'border-warm-border hover:border-gray-300'}`}>
+            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-center gap-2 ${pricingType === 'sqft' ? 'border-brand-600 bg-brand-50 text-brand-900 shadow-sm' : 'border-warm-border hover:border-gray-300 text-charcoal-700'}`}>
               <input
-                type="checkbox"
+                type="radio"
+                name="pricingType"
                 checked={pricingType === 'sqft'}
                 onChange={() => setPricingType('sqft')}
-                className="w-4 h-4 text-brand-600 rounded"
+                className="w-4 h-4 text-brand-600 focus:ring-brand-500"
               />
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
-                <span>📐 SqFt Based</span>
-              </div>
+              <span className="text-xs font-extrabold">📐 SqFt Based</span>
             </label>
 
-            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${pricingType === 'fixed' ? 'border-brand-600 bg-brand-50' : 'border-warm-border hover:border-gray-300'}`}>
+            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-center gap-2 ${pricingType === 'fixed' ? 'border-brand-600 bg-brand-50 text-brand-900 shadow-sm' : 'border-warm-border hover:border-gray-300 text-charcoal-700'}`}>
               <input
-                type="checkbox"
+                type="radio"
+                name="pricingType"
                 checked={pricingType === 'fixed'}
                 onChange={() => setPricingType('fixed')}
-                className="w-4 h-4 text-brand-600 rounded"
+                className="w-4 h-4 text-brand-600 focus:ring-brand-500"
               />
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
-                <span>🏷️ Fixed Price</span>
-              </div>
+              <span className="text-xs font-extrabold">🏷️ Fixed Price</span>
             </label>
+          </div>
+        </div>
 
-            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${isBestSelling ? 'border-amber-500 bg-amber-50' : 'border-warm-border hover:border-gray-300'}`}>
-              <input
-                type="checkbox"
-                checked={isBestSelling}
-                onChange={(e) => setIsBestSelling(e.target.checked)}
-                className="w-4 h-4 text-amber-500 rounded"
-              />
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
-                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                <span>Best Selling</span>
-              </div>
+        {/* Product Display Flags & Badges Section */}
+        <div className="space-y-4 pt-4 border-t border-warm-muted">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-extrabold text-charcoal-900 uppercase tracking-wider">
+              Product Display Flags & Pill Badges
             </label>
+            <span className="text-[11px] font-bold text-brand-600">Select active badges</span>
+          </div>
 
-            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${isNew ? 'border-brand-600 bg-brand-50' : 'border-warm-border hover:border-gray-300'}`}>
+          {/* LIVE BADGES PREVIEW BOX */}
+          <div className="bg-warm-bg p-4 rounded-2xl border border-warm-border space-y-2">
+            <span className="text-[10px] font-extrabold text-charcoal-500 uppercase tracking-widest block">
+              LIVE PREVIEW (How badges look on Product Detail Page):
+            </span>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-xs font-black text-brand-700 uppercase tracking-wider bg-orange-100 px-3.5 py-1 rounded-full border border-orange-200 shadow-sm">
+                {categoryName.toUpperCase()}
+              </span>
+
+              {isNew && (
+                <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 text-xs font-extrabold px-3.5 py-1 rounded-full border border-emerald-300 shadow-sm animate-fadeIn">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>New Design</span>
+                </span>
+              )}
+
+              {isFeatured && (
+                <span className="inline-flex items-center gap-1.5 bg-purple-100 text-purple-800 text-xs font-extrabold px-3.5 py-1 rounded-full border border-purple-300 shadow-sm animate-fadeIn">
+                  <ThumbsUp className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Featured Product</span>
+                </span>
+              )}
+
+              {isCustomFabrication && (
+                <span className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-800 text-xs font-extrabold px-3.5 py-1 rounded-full border border-orange-300 shadow-sm animate-fadeIn">
+                  <Wrench className="w-3.5 h-3.5 text-orange-600" />
+                  <span>Custom Dimensions Accepted</span>
+                </span>
+              )}
+
+              {isInStock && (
+                <span className="inline-flex items-center gap-1.5 bg-teal-100 text-teal-800 text-xs font-extrabold px-3.5 py-1 rounded-full border border-teal-300 shadow-sm animate-fadeIn">
+                  <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                  <span>In Stock</span>
+                </span>
+              )}
+
+              {isBestSelling && (
+                <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-xs font-extrabold px-3.5 py-1 rounded-full border border-amber-300 shadow-sm animate-fadeIn">
+                  <Star className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+                  <span>Best Selling Design</span>
+                </span>
+              )}
+
+              {isPopular && (
+                <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-800 text-xs font-extrabold px-3.5 py-1 rounded-full border border-blue-300 shadow-sm animate-fadeIn">
+                  <Flame className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Popular Design</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Interactive Flag Controls Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            
+            {/* 1. New Arrival */}
+            <label className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-3 ${isNew ? 'border-emerald-500 bg-emerald-50/70 shadow-sm' : 'border-warm-border bg-white hover:border-gray-300'}`}>
               <input
                 type="checkbox"
                 checked={isNew}
                 onChange={(e) => setIsNew(e.target.checked)}
-                className="w-4 h-4 text-brand-600 rounded"
+                className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
               />
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
-                <Sparkles className="w-3.5 h-3.5 text-brand-600" />
-                <span>New Arrival</span>
+              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal-900">
+                <span className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center border border-emerald-300 shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <div>
+                  <span className="block">New Design</span>
+                  <span className="text-[10px] text-charcoal-500 font-medium">Show green New badge</span>
+                </div>
               </div>
             </label>
 
-            <label className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-2.5 ${isInStock ? 'border-emerald-500 bg-emerald-50' : 'border-warm-border hover:border-gray-300'}`}>
+            {/* 2. Featured Product */}
+            <label className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-3 ${isFeatured ? 'border-purple-500 bg-purple-50/70 shadow-sm' : 'border-warm-border bg-white hover:border-gray-300'}`}>
+              <input
+                type="checkbox"
+                checked={isFeatured}
+                onChange={(e) => setIsFeatured(e.target.checked)}
+                className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+              />
+              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal-900">
+                <span className="w-7 h-7 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center border border-purple-300 shrink-0">
+                  <ThumbsUp className="w-4 h-4" />
+                </span>
+                <div>
+                  <span className="block">Featured Product</span>
+                  <span className="text-[10px] text-charcoal-500 font-medium">Show purple Featured badge</span>
+                </div>
+              </div>
+            </label>
+
+            {/* 3. Custom Dimensions Accepted */}
+            <label className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-3 ${isCustomFabrication ? 'border-orange-500 bg-orange-50/70 shadow-sm' : 'border-warm-border bg-white hover:border-gray-300'}`}>
+              <input
+                type="checkbox"
+                checked={isCustomFabrication}
+                onChange={(e) => setIsCustomFabrication(e.target.checked)}
+                className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+              />
+              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal-900">
+                <span className="w-7 h-7 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center border border-orange-300 shrink-0">
+                  <Wrench className="w-4 h-4" />
+                </span>
+                <div>
+                  <span className="block">Custom Dimensions</span>
+                  <span className="text-[10px] text-charcoal-500 font-medium">Show orange Custom badge</span>
+                </div>
+              </div>
+            </label>
+
+            {/* 4. In Stock */}
+            <label className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-3 ${isInStock ? 'border-teal-500 bg-teal-50/70 shadow-sm' : 'border-warm-border bg-white hover:border-gray-300'}`}>
               <input
                 type="checkbox"
                 checked={isInStock}
                 onChange={(e) => setIsInStock(e.target.checked)}
-                className="w-4 h-4 text-emerald-500 rounded"
+                className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
               />
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>In Stock</span>
+              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal-900">
+                <span className="w-7 h-7 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center border border-teal-300 shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
+                </span>
+                <div>
+                  <span className="block">In Stock</span>
+                  <span className="text-[10px] text-charcoal-500 font-medium">Show teal In Stock badge</span>
+                </div>
               </div>
             </label>
+
+            {/* 5. Best Selling Design */}
+            <label className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-3 ${isBestSelling ? 'border-amber-500 bg-amber-50/70 shadow-sm' : 'border-warm-border bg-white hover:border-gray-300'}`}>
+              <input
+                type="checkbox"
+                checked={isBestSelling}
+                onChange={(e) => setIsBestSelling(e.target.checked)}
+                className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
+              />
+              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal-900">
+                <span className="w-7 h-7 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center border border-amber-300 shrink-0">
+                  <Star className="w-4 h-4 fill-amber-500" />
+                </span>
+                <div>
+                  <span className="block">Best Selling</span>
+                  <span className="text-[10px] text-charcoal-500 font-medium">Show amber Star badge</span>
+                </div>
+              </div>
+            </label>
+
+            {/* 6. Popular Design */}
+            <label className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-3 ${isPopular ? 'border-blue-500 bg-blue-50/70 shadow-sm' : 'border-warm-border bg-white hover:border-gray-300'}`}>
+              <input
+                type="checkbox"
+                checked={isPopular}
+                onChange={(e) => setIsPopular(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <div className="flex items-center gap-2 text-xs font-extrabold text-charcoal-900">
+                <span className="w-7 h-7 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center border border-blue-300 shrink-0">
+                  <Flame className="w-4 h-4" />
+                </span>
+                <div>
+                  <span className="block">Popular Design</span>
+                  <span className="text-[10px] text-charcoal-500 font-medium">Show blue Popular badge</span>
+                </div>
+              </div>
+            </label>
+
           </div>
         </div>
 
