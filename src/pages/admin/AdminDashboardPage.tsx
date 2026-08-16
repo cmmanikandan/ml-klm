@@ -28,6 +28,24 @@ export const AdminDashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardMetrics();
+
+    // Realtime Supabase live sync
+    const channel = supabase
+      .channel('admin-dashboard-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'enquiries' }, () => {
+        fetchDashboardMetrics();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchDashboardMetrics();
+      })
+      .subscribe();
+
+    const pollInterval = setInterval(fetchDashboardMetrics, 20000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const fetchDashboardMetrics = async () => {
@@ -76,6 +94,28 @@ export const AdminDashboardPage: React.FC = () => {
   const onlineOrders = orders.filter((o) => !isPosOrder(o));
   const posOrders = orders.filter((o) => isPosOrder(o));
 
+  // Strict Filter: ONLY UNHANDLED NEW ENQUIRIES (After accept or reject, DO NOT SHOW)
+  const isNewEnquiry = (e: any) => {
+    const st = String(e.status || 'pending').toLowerCase().trim();
+    if (st === 'accepted' || st === 'converted' || st === 'converted_to_order' || st === 'rejected') {
+      return false;
+    }
+    if (e.converted_order_id) {
+      return false;
+    }
+    return st === 'pending' || st === 'new';
+  };
+
+  const newEnquiries = enquiries.filter(isNewEnquiry);
+
+  // Strict Filter: ONLY UNHANDLED NEW ORDERS
+  const isNewOrder = (o: any) => {
+    const st = String(o.status || '').toLowerCase().trim();
+    return !isPosOrder(o) && (st === 'pending' || st === 'new');
+  };
+
+  const newOrders = onlineOrders.filter(isNewOrder);
+
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
   const posRevenue = posOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
   const paidAmount = orders.reduce((sum, o) => sum + ((o.total_amount || 0) - (o.remaining_amount || 0)), 0);
@@ -94,7 +134,7 @@ export const AdminDashboardPage: React.FC = () => {
     { title: 'Unpaid Due Amount', value: `₹${unpaidAmount.toLocaleString('en-IN')}`, icon: Clock, color: 'bg-rose-50 text-rose-600 border-rose-200' },
     { title: 'POS Sales Count', value: posOrders.length, icon: Calculator, color: 'bg-brand-50 text-brand-600 border-brand-200' },
     { title: 'Online Orders', value: onlineOrders.length, icon: ShoppingBag, color: 'bg-blue-50 text-blue-600 border-blue-200' },
-    { title: 'Customer Enquiries', value: enquiries.length, icon: MessageSquare, color: 'bg-indigo-50 text-indigo-600 border-indigo-200' },
+    { title: 'New Enquiries', value: newEnquiries.length, icon: MessageSquare, color: 'bg-indigo-50 text-indigo-600 border-indigo-200' },
     { title: 'Shop Products', value: productsCount, icon: Package, color: 'bg-purple-50 text-purple-600 border-purple-200' }
   ];
 
@@ -121,19 +161,17 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       </div>
 
-
-
-      {/* Top High-Priority Notification Action Cards */}
-      {(enquiries.filter(e => e.status === 'pending').length > 0 || onlineOrders.filter(o => o.status === 'pending').length > 0) && (
+      {/* Top High-Priority Notification Action Cards (Only shown for UNHANDLED NEW items) */}
+      {(newEnquiries.length > 0 || newOrders.length > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {enquiries.filter(e => e.status === 'pending').length > 0 && (
+          {newEnquiries.length > 0 && (
             <div className="bg-gradient-to-r from-amber-500 to-brand-600 text-white p-5 rounded-3xl shadow-lg flex items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="bg-white/20 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Action Required</span>
                 </div>
                 <h4 className="text-sm font-black">
-                  {enquiries.filter(e => e.status === 'pending').length} New Customer Enquiries Waiting
+                  {newEnquiries.length} New Customer {newEnquiries.length === 1 ? 'Enquiry' : 'Enquiries'} Waiting
                 </h4>
                 <p className="text-xs text-amber-100 font-medium">Review specifications & send custom price quotes</p>
               </div>
@@ -142,19 +180,19 @@ export const AdminDashboardPage: React.FC = () => {
                 to="/admin/enquiries"
                 className="bg-white text-brand-700 hover:bg-amber-50 font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-md transition-all shrink-0 whitespace-nowrap"
               >
-                Review Enquiries →
+                Review Enquiries ({newEnquiries.length}) →
               </Link>
             </div>
           )}
 
-          {onlineOrders.filter(o => o.status === 'pending').length > 0 && (
+          {newOrders.length > 0 && (
             <div className="bg-gradient-to-r from-charcoal-800 to-charcoal-900 text-white p-5 rounded-3xl border border-charcoal-700 shadow-lg flex items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="bg-brand-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">New Order Received</span>
                 </div>
                 <h4 className="text-sm font-black">
-                  {onlineOrders.filter(o => o.status === 'pending').length} New Orders Awaiting Acceptance
+                  {newOrders.length} New {newOrders.length === 1 ? 'Order' : 'Orders'} Awaiting Acceptance
                 </h4>
                 <p className="text-xs text-gray-300 font-medium">Accept order & confirm fabrication schedule</p>
               </div>
@@ -163,7 +201,7 @@ export const AdminDashboardPage: React.FC = () => {
                 to="/admin/orders"
                 className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-md transition-all shrink-0 whitespace-nowrap"
               >
-                Accept Orders →
+                Accept Orders ({newOrders.length}) →
               </Link>
             </div>
           )}

@@ -417,15 +417,6 @@ export const CustomerInvoicePage: React.FC = () => {
               </button>
             </div>
 
-            {/* Print Button */}
-            <button
-              onClick={handlePrint}
-              className="hidden md:inline-flex items-center gap-1.5 bg-white hover:bg-warm-hover text-charcoal-700 font-extrabold px-3.5 py-2 rounded-xl text-xs border border-warm-border shadow-xs transition-colors"
-            >
-              <Printer className="w-3.5 h-3.5 text-charcoal-600" />
-              <span>Print</span>
-            </button>
-
             {/* Primary Download PDF Action Button */}
             <button
               onClick={handleDownloadPdf}
@@ -487,7 +478,7 @@ export const CustomerInvoicePage: React.FC = () => {
         </div>
       )}
 
-      {/* POST-DOWNLOAD SUCCESS MODAL (Open PDF / Share / Print) */}
+      {/* POST-DOWNLOAD SUCCESS MODAL (Open PDF / Share / Done) */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 bg-charcoal-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full border border-warm-border shadow-2xl space-y-5 text-center relative">
@@ -535,46 +526,34 @@ export const CustomerInvoicePage: React.FC = () => {
               </span>
             </div>
 
-            {/* Action Buttons Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            {/* Action Buttons */}
+            <div className="space-y-2.5 pt-1">
               {/* Open / View PDF */}
               <button
                 onClick={handleOpenPdf}
-                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 px-4 rounded-xl text-xs shadow-md transition-all"
+                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-4 rounded-xl text-xs shadow-md transition-all active:scale-95"
               >
                 <ExternalLink className="w-4 h-4" />
                 <span>Open / View PDF</span>
               </button>
 
-              {/* Print Document */}
-              <button
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  handlePrint();
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-white hover:bg-warm-hover text-charcoal-800 font-extrabold py-3 px-4 rounded-xl text-xs border border-warm-border shadow-xs transition-colors"
-              >
-                <Printer className="w-4 h-4 text-charcoal-600" />
-                <span>Print Document</span>
-              </button>
-            </div>
+              {/* Share WhatsApp & Done */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleShareWhatsApp}
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold py-3 px-3 rounded-xl text-xs border border-emerald-200 transition-colors"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Share WhatsApp</span>
+                </button>
 
-            {/* Share WhatsApp & Done */}
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                onClick={handleShareWhatsApp}
-                className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold py-2.5 px-3 rounded-xl text-xs border border-emerald-200 transition-colors"
-              >
-                <Share2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Share WhatsApp</span>
-              </button>
-
-              <button
-                onClick={() => setShowSuccessModal(false)}
-                className="flex-1 bg-charcoal-900 hover:bg-charcoal-800 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition-colors"
-              >
-                Done
-              </button>
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="flex-1 bg-charcoal-900 hover:bg-charcoal-800 text-white font-bold py-3 px-3 rounded-xl text-xs transition-colors"
+                >
+                  Done
+                </button>
+              </div>
             </div>
 
           </div>
