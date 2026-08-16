@@ -95,57 +95,77 @@ export const OrderDetailPage: React.FC = () => {
     setLoading(true);
     try {
       if (id) {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('*')
-          .or(`id.eq.${id},order_number.eq.${id},enquiry_id.eq.${id}`)
-          .maybeSingle();
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        let ordRecord: any = null;
 
-        if (data && !error) {
+        // 1. If UUID, query by id
+        if (isUuid) {
+          const { data: dbByUuid } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+          if (dbByUuid) ordRecord = dbByUuid;
+        }
+
+        // 2. Query by order_number (e.g. MNK-ORD-2)
+        if (!ordRecord) {
+          const { data: dbByOrderNum } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('order_number', id)
+            .maybeSingle();
+          if (dbByOrderNum) ordRecord = dbByOrderNum;
+        }
+
+        // 3. Fallback: fetch all orders and match client side (safe against URL casing or formatting)
+        if (!ordRecord) {
+          const { data: allOrders } = await supabase.from('orders').select('*');
+          if (allOrders && allOrders.length > 0) {
+            ordRecord = allOrders.find(
+              (o: any) =>
+                o.id === id ||
+                o.order_number === id ||
+                o.order_number?.toLowerCase() === id.toLowerCase() ||
+                o.enquiry_id === id
+            );
+          }
+        }
+
+        if (ordRecord) {
           // Hydrate product from Supabase products table
           let hydratedProduct = undefined;
-          if (data.product_id) {
-            try {
-              const activeProducts = await fetchActiveProducts();
-              hydratedProduct = activeProducts.find((p) => p.id === data.product_id);
-            } catch {}
-          }
-          setOrder({ ...data, product: hydratedProduct } as any);
+          try {
+            const activeProducts = await fetchActiveProducts();
+            hydratedProduct = activeProducts.find(
+              (p) => p.id === ordRecord.product_id || p.name_en?.toLowerCase() === (ordRecord.product_name || '').toLowerCase()
+            );
+          } catch {}
+
+          const prodTitle = ordRecord.product_name || hydratedProduct?.name_en || 'Custom Lathe Fabricated Item';
+          const prodImg = ordRecord.product_image || hydratedProduct?.primary_image || (hydratedProduct?.images && hydratedProduct.images[0]) || '';
+
+          setOrder({
+            ...ordRecord,
+            product_name: prodTitle,
+            productName: prodTitle,
+            product_image: prodImg,
+            productImage: prodImg,
+            product: hydratedProduct
+          } as any);
         } else {
-          // Check local orders / enquiries fallback
+          // Check local storage cache as emergency fallback
           const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
           const matchOrd = localOrders.find((o) => o.id === id || o.order_number === id || o.enquiry_id === id);
           if (matchOrd) {
             setOrder(matchOrd);
           } else {
-            const localEnquiries: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-            const match = localEnquiries.find((e) => e.id === id || e.enquiry_number === id);
-            if (match) {
-              setOrder({
-                id: match.id || id,
-                order_number: match.enquiry_number || match.number || 'MNK-ORD-LIVE',
-                user_id: user?.id || 'customer',
-                product: match.product || INITIAL_PRODUCTS[0],
-                quantity: match.quantity || 1,
-                status: (match.status || 'accepted') as OrderStatus,
-                expected_delivery_date: '7 Days',
-                total_amount: 15000,
-                advance_amount: 5000,
-                remaining_amount: 10000,
-                is_payment_requested: false,
-                payment_request_amount: 0,
-                payment_status: 'pending',
-                delivery_location: match.delivery_location || 'Kallimandhayam',
-                created_at: match.created_at || new Date().toISOString()
-              });
-            } else {
-              setOrder(null);
-            }
+            setOrder(null);
           }
         }
       }
     } catch (e) {
-      console.warn('Live order fetch fallback');
+      console.warn('Live order fetch fallback', e);
       setOrder(null);
     } finally {
       setLoading(false);

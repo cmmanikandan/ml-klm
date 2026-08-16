@@ -156,13 +156,40 @@ export const AdminOrderDetailPage: React.FC = () => {
       const profileMap = new Map((profilesData || []).map((prof: any) => [prof.id, prof]));
 
       // 1. Fetch Order Record
-      const { data: dbOrder } = await supabase
-        .from('orders')
-        .select('*')
-        .or(`id.eq.${orderId},order_number.eq.${orderId},enquiry_id.eq.${orderId}`)
-        .maybeSingle();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
+      let ordRecord: any = null;
+
+      if (isUuid) {
+        const { data: dbByUuid } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', orderId)
+          .maybeSingle();
+        if (dbByUuid) ordRecord = dbByUuid;
+      }
+
+      if (!ordRecord) {
+        const { data: dbByOrderNum } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('order_number', orderId)
+          .maybeSingle();
+        if (dbByOrderNum) ordRecord = dbByOrderNum;
+      }
+
+      if (!ordRecord) {
+        const { data: allOrders } = await supabase.from('orders').select('*');
+        if (allOrders && allOrders.length > 0) {
+          ordRecord = allOrders.find(
+            (o: any) =>
+              o.id === orderId ||
+              o.order_number === orderId ||
+              o.order_number?.toLowerCase() === orderId.toLowerCase() ||
+              o.enquiry_id === orderId
+          );
+        }
+      }
       
-      let ordRecord = dbOrder;
       if (!ordRecord) {
         const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
         ordRecord = local.find((l: any) => l.id === orderId || l.order_number === orderId);
