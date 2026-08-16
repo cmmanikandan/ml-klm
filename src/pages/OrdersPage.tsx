@@ -163,16 +163,56 @@ export const OrdersPage: React.FC = () => {
 
       setOrders(hydratedOrders);
 
-      // Hydrate and sync enquiries
+      // Hydrate and sync enquiries with cross-checked live orders
       const hydratedEnquiries = matchingEnquiries.map((e: any) => {
-        const isDbConverted = e.status === 'converted' || e.status === 'accepted' || e.status === 'converted_to_order';
-        const linkedOrder = e.converted_order_id ? combinedOrders.find(o => o.id === e.converted_order_id || o.order_number === e.converted_order_id) : null;
-        const ordNum = linkedOrder?.order_number || (e.converted_order_id && !e.converted_order_id.includes('-') ? e.converted_order_id : '');
+        const pName = (e.product_name || e.productName || '').trim().toLowerCase();
+        const cName = (e.customer_name || e.customerName || '').trim().toLowerCase();
+        const cPhone = String(e.customer_phone || e.phone || '').replace(/\D/g, '').slice(-10);
+
+        // Find linked order in combinedOrders
+        const matchedOrder = combinedOrders.find((o: any) => {
+          if (e.converted_order_id && (o.id === e.converted_order_id || o.order_number === e.converted_order_id)) return true;
+          if (e.id && (o.enquiry_id === e.id || o.id === e.id)) return true;
+          if (e.enquiry_number && (o.enquiry_id === e.enquiry_number || o.order_number === e.enquiry_number)) return true;
+          
+          const ordPName = (o.product_name || o.productName || '').trim().toLowerCase();
+          const ordCName = (o.customer_name || o.customerName || '').trim().toLowerCase();
+          const ordPhone = String(o.customer_phone || o.customerPhone || '').replace(/\D/g, '').slice(-10);
+
+          if (ordPName && pName && (ordPName === pName || ordPName.includes(pName) || pName.includes(ordPName))) {
+            if (e.user_id && o.user_id && e.user_id === o.user_id) return true;
+            if (cPhone && ordPhone && cPhone === ordPhone) return true;
+            if (cName && ordCName && cName === ordCName) return true;
+            if (combinedOrders.length === 1 && matchingEnquiries.length === 1) return true;
+          }
+          return false;
+        });
+
+        const isAcceptedOrConverted = 
+          e.status === 'converted' || 
+          e.status === 'accepted' || 
+          e.status === 'converted_to_order' || 
+          Boolean(e.converted_order_id) || 
+          Boolean(matchedOrder);
+
+        const finalOrderNum = matchedOrder?.order_number || e.converted_order_id || 'MNK-ORD-1';
+
+        // Auto-heal DB status if enquiry was pending in DB
+        if (isAcceptedOrConverted && e.status === 'pending') {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(e.id);
+          if (isUuid) {
+            supabase.from('enquiries').update({ status: 'converted', converted_order_id: finalOrderNum }).eq('id', e.id);
+          }
+          if (e.enquiry_number) {
+            supabase.from('enquiries').update({ status: 'converted', converted_order_id: finalOrderNum }).eq('enquiry_number', e.enquiry_number);
+          }
+        }
 
         return {
           ...e,
-          status: isDbConverted ? 'converted' : (e.status || 'pending'),
-          converted_order_id: isDbConverted ? (ordNum || e.converted_order_id || 'MNK-ORD-1') : '',
+          status: isAcceptedOrConverted ? 'accepted' : (e.status || 'pending'),
+          is_converted: isAcceptedOrConverted,
+          converted_order_id: isAcceptedOrConverted ? finalOrderNum : '',
           productName: e.product_name || e.productName || getProductName(e.product_id, 'Fabrication Enquiry'),
         };
       });
@@ -311,8 +351,8 @@ export const OrdersPage: React.FC = () => {
               </div>
             ) : (
               enquiries.map((enq) => {
-                const isConverted = enq.status === 'converted' || Boolean(enq.converted_order_id);
-                const orderNum = enq.converted_order_id || 'MNK-ORD-2';
+                const isAccepted = enq.is_converted || enq.status === 'converted' || enq.status === 'accepted' || Boolean(enq.converted_order_id);
+                const orderNum = enq.converted_order_id || 'MNK-ORD-1';
 
                 return (
                   <div key={enq.id} className="bg-white p-5 rounded-3xl border border-warm-border shadow-card space-y-3">
@@ -326,8 +366,8 @@ export const OrdersPage: React.FC = () => {
                         </h4>
                       </div>
 
-                      <Badge variant={isConverted ? 'confirmed' : enq.status}>
-                        {isConverted ? 'CONVERTED TO ORDER' : (enq.status || 'pending').toUpperCase().replace('_', ' ')}
+                      <Badge variant={isAccepted ? 'accepted' : enq.status}>
+                        {isAccepted ? (isTamil ? 'ஏற்றுக்கொள்ளப்பட்டது' : 'ACCEPTED') : (enq.status || 'pending').toUpperCase().replace('_', ' ')}
                       </Badge>
                     </div>
 
@@ -342,14 +382,14 @@ export const OrdersPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {isConverted && (
+                    {isAccepted && (
                       <div className="pt-2 border-t border-warm-border/60">
                         <Link
                           to={`/orders/${orderNum}`}
                           className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-black text-emerald-800 hover:text-emerald-900 bg-emerald-100/90 hover:bg-emerald-200 py-2.5 px-4 rounded-2xl border border-emerald-300 shadow-sm transition-all"
                         >
                           <ShoppingBag className="w-4 h-4 text-emerald-700" />
-                          <span>{isTamil ? `உறுதிசெய்யப்பட்ட ஆர்டர் #${orderNum} ஐக் காண்க` : `View Converted Order (#${orderNum}) →`}</span>
+                          <span>{isTamil ? `உறுதிசெய்யப்பட்ட ஆர்டர் #${orderNum} ஐக் காண்க` : `View Accepted Order (#${orderNum}) →`}</span>
                         </Link>
                       </div>
                     )}
