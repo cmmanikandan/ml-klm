@@ -8,11 +8,57 @@ interface InvoiceDocumentProps {
 export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a4-invoice-paper' }) => {
   if (!order) return null;
 
-  const total = Number(order.total_amount || 0);
-  const remaining = Number(order.remaining_amount || 0);
-  const advancePaid = Math.max(0, total - remaining);
+  const qty = Number(order.quantity) || 1;
+  const discount = Number(order.discount_amount || 0);
+  const extraCharges = Number(order.extra_charges_amount || 0);
 
-  const isFullyPaid = remaining === 0;
+  // 1. Determine Unit Price & Base Subtotal
+  let unitRate = Number(order.unit_price || 0);
+  if (unitRate <= 0) {
+    if (order.product?.admin_price) {
+      unitRate = Number(order.product.admin_price);
+    } else if (Number(order.total_amount) > 0) {
+      unitRate = Math.round((Number(order.total_amount) + discount - extraCharges) / qty);
+    } else {
+      unitRate = 40000;
+    }
+  }
+
+  const baseItemSubtotal = unitRate * qty;
+
+  // 2. Determine Total Order Amount
+  let total = Number(order.total_amount || 0);
+  if (total <= 0) {
+    if (order.pricing_type === 'weight' && order.weight_calculation) {
+      total = Number(order.weight_calculation.grand_total || order.weight_calculation.weight_subtotal || 0);
+    } else {
+      total = Math.max(0, baseItemSubtotal - discount + extraCharges);
+    }
+  }
+
+  // 3. Determine Paid and Remaining Due
+  const totalPaidInHistory = Number(order.total_paid || 0);
+  const explicitAdvance = Number(order.advance_amount || 0);
+
+  let advancePaid = 0;
+  if (totalPaidInHistory > 0) {
+    advancePaid = totalPaidInHistory;
+  } else if (order.remaining_amount != null && Number(order.remaining_amount) > 0 && Number(order.remaining_amount) < total) {
+    advancePaid = Math.max(0, total - Number(order.remaining_amount));
+  } else if (explicitAdvance > 0) {
+    advancePaid = explicitAdvance;
+  }
+
+  let remaining = 0;
+  if (totalPaidInHistory > 0) {
+    remaining = Math.max(0, total - totalPaidInHistory);
+  } else if (order.remaining_amount != null && Number(order.remaining_amount) > 0) {
+    remaining = Number(order.remaining_amount);
+  } else {
+    remaining = Math.max(0, total - advancePaid);
+  }
+
+  const isFullyPaid = remaining === 0 && total > 0 && advancePaid >= total;
   const isPartiallyPaid = advancePaid > 0 && remaining > 0;
   const statusStampText = isFullyPaid ? 'PAID IN FULL' : isPartiallyPaid ? 'PARTIALLY PAID' : 'PAYMENT PENDING';
   const statusBadgeBg = isFullyPaid ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : isPartiallyPaid ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-red-100 text-red-900 border-red-300';
@@ -192,12 +238,6 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
           }
 
           // STANDARD FIXED PRICE INVOICE TABLE
-          const qty = order.quantity || 1;
-          const discount = Number(order.discount_amount || 0);
-          const extraCharges = Number(order.extra_charges_amount || 0);
-          const calculatedSubtotal = total > 0 ? (total + discount - extraCharges) : 40000;
-          const unitRate = Math.round(calculatedSubtotal / qty);
-
           return (
             <table className="w-full border-collapse mb-4">
               <thead>
@@ -220,7 +260,7 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
                   </td>
                   <td className="py-2.5 px-3 text-center font-bold font-mono text-slate-900 border border-slate-200">{qty} Unit(s)</td>
                   <td className="py-2.5 px-3 text-right font-bold font-mono text-slate-800 border border-slate-200">₹{unitRate.toLocaleString('en-IN')}</td>
-                  <td className="py-2.5 px-3 text-right font-black font-mono text-slate-900 border border-slate-200">₹{calculatedSubtotal.toLocaleString('en-IN')}</td>
+                  <td className="py-2.5 px-3 text-right font-black font-mono text-slate-900 border border-slate-200">₹{baseItemSubtotal.toLocaleString('en-IN')}</td>
                 </tr>
 
                 {discount > 0 && (
@@ -265,7 +305,7 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
           <div className="w-[280px]">
             <table className="w-full text-xs font-semibold">
               <tbody>
-                {order.weight_calculation && order.pricing_type === 'weight' && (
+                {order.weight_calculation && order.pricing_type === 'weight' ? (
                   <>
                     <tr className="border-b border-slate-200">
                       <td className="py-1 text-slate-600">Base Weight Amount:</td>
@@ -278,17 +318,22 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
                       </tr>
                     )}
                   </>
-                )}
-                {Number(order.discount_amount || 0) > 0 && (
+                ) : (
                   <tr className="border-b border-slate-200">
-                    <td className="py-1 text-rose-700">Special Discount:</td>
-                    <td className="py-1 text-right font-bold text-rose-700 font-mono">-₹{Number(order.discount_amount).toLocaleString('en-IN')}</td>
+                    <td className="py-1 text-slate-600">Base Subtotal:</td>
+                    <td className="py-1 text-right font-bold text-slate-900 font-mono">₹{baseItemSubtotal.toLocaleString('en-IN')}</td>
                   </tr>
                 )}
-                {Number(order.extra_charges_amount || 0) > 0 && (
+                {discount > 0 && (
+                  <tr className="border-b border-slate-200">
+                    <td className="py-1 text-rose-700">Special Discount:</td>
+                    <td className="py-1 text-right font-bold text-rose-700 font-mono">-₹{discount.toLocaleString('en-IN')}</td>
+                  </tr>
+                )}
+                {extraCharges > 0 && (
                   <tr className="border-b border-slate-200">
                     <td className="py-1 text-amber-800">Extra Fitting / Transport:</td>
-                    <td className="py-1 text-right font-bold text-amber-800 font-mono">+₹{Number(order.extra_charges_amount).toLocaleString('en-IN')}</td>
+                    <td className="py-1 text-right font-bold text-amber-800 font-mono">+₹{extraCharges.toLocaleString('en-IN')}</td>
                   </tr>
                 )}
                 <tr className="border-b border-slate-200 font-black">

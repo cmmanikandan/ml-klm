@@ -171,10 +171,18 @@ export const CustomerInvoicePage: React.FC = () => {
         } catch {}
       }
 
-      const totalAmount = Number(record.total_amount || 0);
-      const remainingFromPayments = totalPaid > 0
-        ? Math.max(0, totalAmount - totalPaid)
-        : Number(record.remaining_amount || 0);
+      const qty = Number(record.quantity) || 1;
+      const discount = Number(record.discount_amount || 0);
+      const extra = Number(record.extra_charges_amount || 0);
+      const defaultUnitPrice = prod?.admin_price || 40000;
+
+      const computedTotal = (Number(record.total_amount) > 0)
+        ? Number(record.total_amount)
+        : Math.max(0, (defaultUnitPrice * qty) - discount + extra);
+
+      const computedRemaining = (record.remaining_amount != null && Number(record.remaining_amount) > 0)
+        ? Number(record.remaining_amount)
+        : (totalPaid > 0 ? Math.max(0, computedTotal - totalPaid) : computedTotal);
 
       const finalOrderObj = {
         ...record,
@@ -183,8 +191,10 @@ export const CustomerInvoicePage: React.FC = () => {
         customerAddress: customerAddress || record.customerAddress || record.delivery_location || 'Kallimandhayam, Dindigul',
         productName: record.productName || record.product_name || (prod ? prod.name_en : 'Custom Fabrication Item'),
         productImage: record.productImage || (prod ? prod.primary_image : undefined),
-        remaining_amount: remainingFromPayments,
-        total_paid: totalPaid
+        total_amount: computedTotal,
+        remaining_amount: computedRemaining,
+        total_paid: totalPaid,
+        product: prod
       };
 
       setOrder(finalOrderObj);
