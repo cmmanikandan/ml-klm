@@ -42,6 +42,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Home Sections
     categories_title: 'Shop by Category',
+    popular_categories: 'Popular Categories',
     new_products: 'New Products',
     best_selling: 'Best Selling',
     recommended: 'Recommended For You',
@@ -179,6 +180,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Home Sections
     categories_title: 'பிரிவுகள்',
+    popular_categories: 'பிரபலமான பிரிவுகள்',
     new_products: 'புதிய பொருட்கள்',
     best_selling: 'அதிகம் விற்பனையானவை',
     recommended: 'உங்களுக்கான பரிந்துரை',

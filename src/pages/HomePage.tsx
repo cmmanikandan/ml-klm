@@ -213,31 +213,32 @@ export const HomePage: React.FC = () => {
         {/* Search Bar Card Component */}
         <SearchCard />
 
-        {/* Categories Section */}
+        {/* Popular Categories Horizontal Scrolling Section */}
         {categories.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-black text-charcoal-900 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-brand-600" />
-                <span>{t('popular_categories')}</span>
+                <span>{isTamil ? 'பிரபலமான பிரிவுகள்' : 'Popular Categories'}</span>
               </h2>
               <Link to="/products" className="text-xs font-extrabold text-brand-600 hover:text-brand-700">
-                {isTamil ? 'அனைத்தும்' : 'View All →'}
+                {isTamil ? 'அனைத்தும் →' : 'View All →'}
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Left to Right Horizontal Scrolling Category Carousel */}
+            <div className="flex items-center gap-3 overflow-x-auto pb-3 pt-1 scrollbar-none no-scrollbar snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
               {categories.map((cat) => (
                 <Link
                   key={cat.id}
                   to={`/products?category=${cat.slug}`}
-                  className="bg-white rounded-2xl p-4 border border-warm-border shadow-card hover:shadow-warm-md hover:border-brand-300 transition-all flex flex-col items-center text-center group"
+                  className="snap-start shrink-0 w-32 sm:w-36 bg-white rounded-2xl p-3.5 border border-warm-border shadow-card hover:shadow-warm-md hover:border-brand-400 transition-all flex flex-col items-center text-center group cursor-pointer"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mb-2.5 group-hover:scale-110 group-hover:bg-brand-500 group-hover:text-white transition-all shadow-xs border border-brand-200/60">
                     <Flame className="w-6 h-6" />
                   </div>
-                  <span className="text-xs font-extrabold text-charcoal-900 group-hover:text-brand-600 transition-colors line-clamp-1">
-                    {isTamil ? cat.name_ta || cat.name_en : cat.name_en}
+                  <span className="text-xs font-black text-charcoal-900 group-hover:text-brand-600 transition-colors line-clamp-2 leading-tight">
+                    {isTamil ? (cat.name_ta || cat.name_en) : cat.name_en}
                   </span>
                 </Link>
               ))}
