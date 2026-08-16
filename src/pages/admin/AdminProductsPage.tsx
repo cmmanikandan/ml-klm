@@ -173,10 +173,24 @@ export const AdminProductsPage: React.FC = () => {
                     )}
                   </div>
                   <h3 className="text-sm font-extrabold text-charcoal-900">{prod.name_en}</h3>
-                  <p className="text-xs text-charcoal-500 font-bold">{prod.name_ta}</p>
-                  <span className="text-xs font-extrabold text-emerald-700 block mt-1">
-                    Workshop Base Price: ₹{(prod.admin_price || 0).toLocaleString('en-IN')} (Admin Only)
-                  </span>
+                  <div className="mt-1">
+                    {prod.pricing_type === 'weight' ? (
+                      <span className="text-xs font-extrabold text-amber-800 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-xl inline-flex items-center gap-1.5 shadow-sm">
+                        <span>⚖️ Rate: ₹{prod.price_per_kg || 160}/kg</span>
+                        <span className="text-[10px] font-bold text-amber-600 uppercase">(Weight Based)</span>
+                      </span>
+                    ) : prod.pricing_type === 'sqft' ? (
+                      <span className="text-xs font-extrabold text-blue-800 bg-blue-50 border border-blue-300 px-2.5 py-1 rounded-xl inline-flex items-center gap-1.5 shadow-sm">
+                        <span>📐 Rate: ₹{prod.price_per_sqft || 150}/sqft</span>
+                        <span className="text-[10px] font-bold text-blue-600 uppercase">(SqFt Based)</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-300 px-2.5 py-1 rounded-xl inline-flex items-center gap-1.5 shadow-sm">
+                        <span>🏷️ Fixed Price: ₹{(prod.admin_price || 0).toLocaleString('en-IN')}</span>
+                        <span className="text-[10px] font-bold text-emerald-600 uppercase">(Admin Base Price)</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
