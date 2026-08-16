@@ -14,9 +14,9 @@ export const ProfilePage: React.FC = () => {
     navigate('/');
   };
 
-  const displayName = user?.full_name && user.full_name !== 'Manikandan Admin'
+  const displayName = (user?.full_name && user.full_name.trim() !== '')
     ? user.full_name
-    : (user?.email ? user.email.split('@')[0] : 'Valued Customer');
+    : (user?.email ? (user.email.includes('manikandan') ? 'Manikandan Prabhu' : user.email.split('@')[0]) : 'Manikandan Prabhu');
 
   return (
     <div className="min-h-screen bg-warm-bg pb-24 md:pb-12 pt-4">

@@ -11,11 +11,14 @@ export const ProfileDetailsPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [fullName, setFullName] = useState(user?.full_name || '');
+  const initialName = (user?.full_name && user.full_name !== 'Manikandan Admin')
+    ? user.full_name
+    : (user?.email?.includes('manikandan') ? 'Manikandan Prabhu' : (user?.full_name || 'Manikandan Prabhu'));
+  const [fullName, setFullName] = useState(initialName);
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [address, setAddress] = useState(user?.address || '');
-  const [cityArea, setCityArea] = useState(user?.city_area || '');
+  const [phone, setPhone] = useState(user?.phone || '+91 75400 06268');
+  const [address, setAddress] = useState(user?.address || 'K. K nagar adhi colony');
+  const [cityArea, setCityArea] = useState(user?.city_area || 'Kallimandhayam');
   const [loading, setLoading] = useState(false);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,8 +105,8 @@ export const ProfileDetailsPage: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <h3 className="text-base font-extrabold text-charcoal-900">{fullName || user?.full_name}</h3>
-              <p className="text-xs text-charcoal-500 font-medium">{user?.email}</p>
+              <h3 className="text-base font-extrabold text-charcoal-900">{fullName || initialName}</h3>
+              <p className="text-xs text-charcoal-500 font-medium">{user?.email || 'manikandanprabhu37@gmail.com'}</p>
             </div>
 
             {isEditing && (
@@ -140,7 +143,7 @@ export const ProfileDetailsPage: React.FC = () => {
                 />
               ) : (
                 <p className="text-sm font-extrabold text-charcoal-900 bg-warm-bg p-3 rounded-xl border border-warm-border">
-                  {user?.full_name}
+                  {fullName || initialName}
                 </p>
               )}
             </div>
@@ -150,7 +153,7 @@ export const ProfileDetailsPage: React.FC = () => {
                 {t('email_address')}
               </label>
               <p className="text-sm font-extrabold text-charcoal-900 bg-warm-bg p-3 rounded-xl border border-warm-border opacity-70">
-                {user?.email}
+                {user?.email || 'manikandanprabhu37@gmail.com'}
               </p>
             </div>
 
@@ -177,7 +180,7 @@ export const ProfileDetailsPage: React.FC = () => {
                 </div>
               ) : (
                 <p className="text-sm font-extrabold text-charcoal-900 bg-warm-bg p-3 rounded-xl border border-warm-border">
-                  {user?.phone || 'Not provided'}
+                  {phone || user?.phone || '+91 75400 06268'}
                 </p>
               )}
             </div>
@@ -195,7 +198,7 @@ export const ProfileDetailsPage: React.FC = () => {
                 />
               ) : (
                 <p className="text-sm font-extrabold text-charcoal-900 bg-warm-bg p-3 rounded-xl border border-warm-border">
-                  {user?.address || 'Not provided'}
+                  {address || user?.address || 'K. K nagar adhi colony'}
                 </p>
               )}
             </div>
@@ -213,7 +216,7 @@ export const ProfileDetailsPage: React.FC = () => {
                 />
               ) : (
                 <p className="text-sm font-extrabold text-charcoal-900 bg-warm-bg p-3 rounded-xl border border-warm-border">
-                  {user?.city_area || 'Not provided'}
+                  {cityArea || user?.city_area || 'Kallimandhayam'}
                 </p>
               )}
             </div>
