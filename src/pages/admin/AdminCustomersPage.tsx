@@ -94,8 +94,8 @@ export const AdminCustomersPage: React.FC = () => {
     if (!userId && !phone) return [];
     const cleanPh = (phone || '').replace(/[^0-9]/g, '');
     return orders.filter((o) => {
-      if (userId && o.user_id === userId) return true;
-      if (cleanPh && (o.customerPhone || o.phone || '').replace(/[^0-9]/g, '').includes(cleanPh)) return true;
+      if (userId && (o.user_id === userId || o.userId === userId)) return true;
+      if (cleanPh && (o.customer_phone || o.customerPhone || o.phone || '').replace(/[^0-9]/g, '').includes(cleanPh)) return true;
       return false;
     });
   };
