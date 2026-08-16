@@ -265,14 +265,6 @@ export const OrderDetailPage: React.FC = () => {
           </button>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate(`/invoice/${order.order_number || order.id}`)}
-              className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white bg-brand-600 px-3.5 py-2 rounded-full shadow-md hover:bg-brand-700 transition-colors"
-            >
-              <Printer className="w-4 h-4" />
-              <span>{isTamil ? 'பில் பார்க்க' : 'View Bill'}</span>
-            </button>
-
             <span className="text-xs font-mono font-black text-brand-600 bg-white px-3 py-2 rounded-full border border-warm-border">
               #{order.order_number}
             </span>
