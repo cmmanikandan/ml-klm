@@ -323,16 +323,6 @@ export const CustomerInvoicePage: React.FC = () => {
               <span>Print</span>
             </button>
 
-            {/* Back to Home / Order */}
-            <Link
-              to={`/orders/${order?.id || ''}`}
-              className="inline-flex items-center gap-1.5 bg-white hover:bg-warm-hover text-charcoal-700 font-extrabold px-3.5 py-2 rounded-xl text-xs border border-warm-border shadow-xs transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-brand-600" />
-              <span className="hidden sm:inline">Back to Order</span>
-              <span className="sm:hidden">Back</span>
-            </Link>
-
             {/* Primary Download PDF Action Button */}
             <button
               onClick={handleDownloadPdf}
