@@ -24,7 +24,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { NotificationModal } from '../../components/common/NotificationModal';
 import { OrderStatus } from '../../types';
-import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
+import { DEFAULT_SHOP_INFO, INITIAL_PRODUCTS, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
 import { getStatusConfig } from '../../lib/statusConfig';
 import { InvoicePreviewModal } from '../../components/invoice/InvoicePreviewModal';

@@ -514,26 +514,75 @@ export const AdminOrderDetailPage: React.FC = () => {
             Print A4 Invoice
           </Button>
 
-          {/* Action ONLY for Unpaid / Partially Paid Orders */}
-          {isUnpaid ? (
-            <button
-              type="button"
-              onClick={() => {
-                setCustomPayAmount(remainingBalance);
-                setShowGeneratedQr(false);
-                setShowPaymentModal(true);
-              }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-4 py-2 rounded-2xl text-xs shadow-md transition-colors flex items-center gap-1.5"
-            >
-              <DollarSign className="w-4 h-4 text-emerald-300" />
-              <span>Collect Payment</span>
-            </button>
-          ) : (
-            <span className="bg-emerald-100 text-emerald-800 font-extrabold px-3 py-2 rounded-2xl text-xs flex items-center gap-1">
-              <Check className="w-4 h-4 text-emerald-600" />
-              <span>Paid in Full</span>
-            </span>
-          )}
+          {/* Action based on real payment history and advance status */}
+          {(() => {
+            const totalPaidInHistory = paymentsHistory.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+            const totalOrderPrice = Number(order.total_amount) || 0;
+            const requiredAdvance = Number(order.advance_amount || order.payment_request_amount || calcAdvanceReq) || 0;
+            
+            const isFullyPaid = totalOrderPrice > 0 && totalPaidInHistory >= totalOrderPrice;
+            const isAdvancePending = requiredAdvance > 0 && totalPaidInHistory < requiredAdvance;
+            const advanceDue = requiredAdvance - totalPaidInHistory;
+            const balanceDue = Math.max(0, totalOrderPrice - totalPaidInHistory);
+
+            if (isFullyPaid) {
+              return (
+                <span className="bg-emerald-100 text-emerald-800 font-extrabold px-3.5 py-2 rounded-2xl text-xs flex items-center gap-1.5 border border-emerald-300 shadow-sm">
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span>Paid in Full (₹{totalOrderPrice.toLocaleString('en-IN')})</span>
+                </span>
+              );
+            }
+
+            if (isAdvancePending) {
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomPayAmount(advanceDue);
+                    setShowGeneratedQr(false);
+                    setShowPaymentModal(true);
+                  }}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold px-4 py-2 rounded-2xl text-xs shadow-md transition-colors flex items-center gap-1.5"
+                >
+                  <DollarSign className="w-4 h-4 text-amber-200" />
+                  <span>Collect Advance (₹{advanceDue.toLocaleString('en-IN')})</span>
+                </button>
+              );
+            }
+
+            if (balanceDue > 0) {
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomPayAmount(balanceDue);
+                    setShowGeneratedQr(false);
+                    setShowPaymentModal(true);
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-4 py-2 rounded-2xl text-xs shadow-md transition-colors flex items-center gap-1.5"
+                >
+                  <DollarSign className="w-4 h-4 text-emerald-300" />
+                  <span>Collect Balance (₹{balanceDue.toLocaleString('en-IN')})</span>
+                </button>
+              );
+            }
+
+            return (
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomPayAmount(2000);
+                  setShowGeneratedQr(false);
+                  setShowPaymentModal(true);
+                }}
+                className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-4 py-2 rounded-2xl text-xs shadow-md transition-colors flex items-center gap-1.5"
+              >
+                <DollarSign className="w-4 h-4" />
+                <span>Collect Payment</span>
+              </button>
+            );
+          })()}
 
           <button
             onClick={() => setOrderToDelete(order)}
