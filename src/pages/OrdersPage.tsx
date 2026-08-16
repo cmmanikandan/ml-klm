@@ -112,17 +112,26 @@ export const OrdersPage: React.FC = () => {
       setOrders(combinedOrders);
 
       // 2. Fetch live enquiries for logged in user from Supabase DB
-      const { data: dbEnquiries, error: enqErr } = await supabase
+      const { data: dbEnquiries } = await supabase
         .from('enquiries')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
+      const filterDeletedEnquiries = (list: any[]) =>
+        list.filter((e: any) => {
+          const idStr = String(e.id || '');
+          const numStr = String(e.enquiry_number || e.number || '');
+          if (deletedSet.has(idStr) || deletedSet.has(numStr)) return false;
+          if ((e.status || '').toLowerCase() === 'deleted') return false;
+          return true;
+        });
+
       if (dbEnquiries && dbEnquiries.length > 0) {
-        setEnquiries(dbEnquiries);
+        setEnquiries(filterDeletedEnquiries(dbEnquiries));
       } else {
         const filteredLocal = localEnquiries.filter((e) => !e.user_id || e.user_id === user.id);
-        setEnquiries(filteredLocal);
+        setEnquiries(filterDeletedEnquiries(filteredLocal));
       }
     } catch (e) {
       console.warn('Live Supabase DB fetch fallback:', e);
