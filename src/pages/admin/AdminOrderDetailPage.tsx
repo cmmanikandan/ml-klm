@@ -343,10 +343,12 @@ export const AdminOrderDetailPage: React.FC = () => {
     const updatedLocal = localOrders.map((o) => (o.id === order.id ? updatedOrder : o));
     localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
 
+    const localPayId = `pay_${Date.now()}`;
     const newPayRecord = {
-      id: `pay_${Date.now()}`,
+      id: localPayId,
       order_id: order.id,
       order_number: order.order_number || order.id,
+      user_id: order.user_id || '',
       amount: customPayAmount,
       payment_mode: mode,
       notes: customPayNotes || `${mode} payment collected at shop counter`,
@@ -370,7 +372,9 @@ export const AdminOrderDetailPage: React.FC = () => {
         })
         .eq('id', order.id);
 
-      await supabase.from('payments').insert(newPayRecord);
+      // Strip local 'id' before DB insert — Supabase generates its own UUID
+      const { id: _localId, ...dbPayRecord } = newPayRecord;
+      await supabase.from('payments').insert(dbPayRecord);
     } catch (e) {
       console.warn('Payment DB insert fallback');
     }

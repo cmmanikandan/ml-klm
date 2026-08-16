@@ -157,10 +157,14 @@ CREATE TABLE IF NOT EXISTS public.enquiries (
     delivery_location TEXT,
     status TEXT NOT NULL DEFAULT 'pending',
     rejection_reason TEXT,
+    quote_price NUMERIC(10, 2) DEFAULT 0.00,
+    converted_order_id TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE public.enquiries ALTER COLUMN user_id TYPE TEXT;
+ALTER TABLE public.enquiries ADD COLUMN IF NOT EXISTS quote_price NUMERIC(10, 2) DEFAULT 0.00;
+ALTER TABLE public.enquiries ADD COLUMN IF NOT EXISTS converted_order_id TEXT;
 
 -- 8. ORDERS TABLE (POS Billing & Custom Fabrication Orders)
 CREATE TABLE IF NOT EXISTS public.orders (

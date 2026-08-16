@@ -139,7 +139,7 @@ export const AdminContactsPage: React.FC = () => {
     if (!fullName.trim()) return;
 
     const newContact: Profile = {
-      id: `cust_${Date.now()}`,
+      id: crypto.randomUUID(),
       full_name: fullName.trim(),
       email: email.trim() || `${fullName.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
       phone: phone.trim() || '+91 96592 00000',

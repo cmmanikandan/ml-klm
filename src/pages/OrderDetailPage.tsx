@@ -138,6 +138,7 @@ export const OrderDetailPage: React.FC = () => {
       id: `pay_${Date.now()}`,
       order_id: order.id,
       order_number: order.order_number || order.id,
+      user_id: user?.id || order.user_id || '',
       amount: paidAmount,
       payment_mode: paymentMode,
       notes: `Customer paid ₹${paidAmount} via ${paymentMode}`,
@@ -155,7 +156,9 @@ export const OrderDetailPage: React.FC = () => {
         })
         .eq('id', order.id);
 
-      await supabase.from('payments').insert(newPaymentObj);
+      // Strip local 'id' before DB insert — Supabase generates its own UUID
+      const { id: _localId, ...dbPayObj } = newPaymentObj;
+      await supabase.from('payments').insert(dbPayObj);
     } catch (e) {
       console.warn('Customer payment DB update fallback');
     }
