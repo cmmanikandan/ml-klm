@@ -91,14 +91,16 @@ export const AdminOrdersPage: React.FC = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      let combined: any[] = [];
-
-      if (dbOrders && dbOrders.length > 0) {
-        combined = dbOrders;
-      } else {
-        const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-        combined = local;
-      }
+      const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+      let combined: any[] = [...(dbOrders || []), ...local];
+      const seen = new Set();
+      combined = combined.filter((o: any) => {
+        const key = o.id || o.order_number;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        if (o.order_number) seen.add(o.order_number);
+        return true;
+      });
 
       // Filter out demo mock orders AND POS Counter Sales permanently from Online Orders Page
       combined = combined.filter((o: any) => {

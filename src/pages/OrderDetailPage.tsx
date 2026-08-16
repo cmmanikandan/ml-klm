@@ -54,35 +54,41 @@ export const OrderDetailPage: React.FC = () => {
         const { data, error } = await supabase
           .from('orders')
           .select('*')
-          .eq('id', id)
-          .single();
+          .or(`id.eq.${id},order_number.eq.${id},enquiry_id.eq.${id}`)
+          .maybeSingle();
 
         if (data && !error) {
           setOrder(data);
         } else {
-          // Check local enquiries/orders fallback
-          const localEnquiries: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-          const match = localEnquiries.find((e) => e.id === id || e.enquiry_number === id);
-          if (match) {
-            setOrder({
-              id: match.id || id,
-              order_number: match.enquiry_number || match.number || 'MNK-ORD-LIVE',
-              user_id: user?.id || 'customer',
-              product: match.product || INITIAL_PRODUCTS[0],
-              quantity: match.quantity || 1,
-              status: (match.status || 'accepted') as OrderStatus,
-              expected_delivery_date: '7 Days',
-              total_amount: 15000,
-              advance_amount: 5000,
-              remaining_amount: 10000,
-              is_payment_requested: false,
-              payment_request_amount: 0,
-              payment_status: 'pending',
-              delivery_location: match.delivery_location || 'Kallimandhayam',
-              created_at: match.created_at || new Date().toISOString()
-            });
+          // Check local orders / enquiries fallback
+          const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+          const matchOrd = localOrders.find((o) => o.id === id || o.order_number === id || o.enquiry_id === id);
+          if (matchOrd) {
+            setOrder(matchOrd);
           } else {
-            setOrder(null);
+            const localEnquiries: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+            const match = localEnquiries.find((e) => e.id === id || e.enquiry_number === id);
+            if (match) {
+              setOrder({
+                id: match.id || id,
+                order_number: match.enquiry_number || match.number || 'MNK-ORD-LIVE',
+                user_id: user?.id || 'customer',
+                product: match.product || INITIAL_PRODUCTS[0],
+                quantity: match.quantity || 1,
+                status: (match.status || 'accepted') as OrderStatus,
+                expected_delivery_date: '7 Days',
+                total_amount: 15000,
+                advance_amount: 5000,
+                remaining_amount: 10000,
+                is_payment_requested: false,
+                payment_request_amount: 0,
+                payment_status: 'pending',
+                delivery_location: match.delivery_location || 'Kallimandhayam',
+                created_at: match.created_at || new Date().toISOString()
+              });
+            } else {
+              setOrder(null);
+            }
           }
         }
       }

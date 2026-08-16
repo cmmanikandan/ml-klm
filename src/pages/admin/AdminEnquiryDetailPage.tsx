@@ -34,8 +34,8 @@ export const AdminEnquiryDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   // Quote & Conversion Form State
-  const [quotePrice, setQuotePrice] = useState<number>(15000);
-  const [advanceRequired, setAdvanceRequired] = useState<number>(5000);
+  const [quotePrice, setQuotePrice] = useState<number>(0);
+  const [advanceRequired, setAdvanceRequired] = useState<number>(0);
   const [estimatedDays, setEstimatedDays] = useState<number>(7);
 
   // Conversion Success Modal State
@@ -103,16 +103,39 @@ export const AdminEnquiryDetailPage: React.FC = () => {
 
   const handleUpdateStatus = async (status: string) => {
     if (!enquiry) return;
-    setEnquiry({ ...enquiry, status });
+    
+    let updatedObj = { ...enquiry, status };
+    if (status === 'accepted') {
+      try {
+        const result = await convertEnquiryToOrderSafely({
+          enquiry,
+          quotePrice: 0,
+          advanceRequired: advanceRequired || enquiry.advance_amount || 0,
+          estimatedDays: estimatedDays || 7
+        });
+        if (result.order) {
+          updatedObj.converted_order_id = result.order.id;
+          updatedObj.status = 'converted';
+          setConvertedSuccessOrder(result.order);
+        }
+      } catch (err) {
+        console.warn('Auto convert on accept fallback', err);
+      }
+    }
+
+    setEnquiry(updatedObj);
 
     try {
-      await supabase.from('enquiries').update({ status }).eq('id', enquiry.id);
+      await supabase.from('enquiries').update({ 
+        status: updatedObj.status, 
+        converted_order_id: updatedObj.converted_order_id 
+      }).eq('id', enquiry.id);
     } catch (e) {
       console.warn('Enquiry status DB update fallback');
     }
 
     const local = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-    const updatedLocal = local.map((l: any) => l.id === enquiry.id ? { ...l, status } : l);
+    const updatedLocal = local.map((l: any) => l.id === enquiry.id ? updatedObj : l);
     localStorage.setItem('ml_enquiries', JSON.stringify(updatedLocal));
   };
 
@@ -309,35 +332,23 @@ export const AdminEnquiryDetailPage: React.FC = () => {
                 <label className="block font-extrabold text-emerald-800 mb-1">Required Advance Amount (₹) *</label>
                 <input
                   type="number"
-                  value={advanceRequired}
+                  value={advanceRequired || ''}
                   onChange={(e) => setAdvanceRequired(parseFloat(e.target.value) || 0)}
-                  placeholder="e.g. 5000"
+                  placeholder="Enter advance amount (e.g. 2000)"
                   className="w-full px-3.5 py-2.5 text-sm font-extrabold border border-emerald-300 rounded-xl bg-emerald-50/50 text-emerald-700 focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-charcoal-700 mb-1">
-                  Total Quoted Price (₹) <span className="text-charcoal-400 font-medium">(Optional)</span>
-                </label>
+                <label className="block text-xs font-bold text-charcoal-700 mb-1">Estimated Fabrication Time (Days) *</label>
                 <input
                   type="number"
-                  value={quotePrice}
-                  onChange={(e) => setQuotePrice(parseFloat(e.target.value) || 0)}
-                  placeholder="0 (Calculate later via Weight/SqFt)"
-                  className="w-full px-3.5 py-2.5 text-sm font-extrabold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                  value={estimatedDays || ''}
+                  onChange={(e) => setEstimatedDays(parseInt(e.target.value) || 1)}
+                  placeholder="7"
+                  className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">Estimated Fabrication Time (Days) *</label>
-              <input
-                type="number"
-                value={estimatedDays}
-                onChange={(e) => setEstimatedDays(parseInt(e.target.value) || 1)}
-                className="w-full px-3.5 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white"
-              />
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row gap-3">

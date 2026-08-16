@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Phone, MessageSquare, CheckCircle2, XCircle, ArrowRight, Search, Eye, Check, ShoppingBag } from 'lucide-react';
+import { Phone, MessageSquare, CheckCircle2, XCircle, ArrowRight, Search, Eye, Check, ShoppingBag, User } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { NotificationModal } from '../../components/common/NotificationModal';
 import { INITIAL_PRODUCTS, DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
+import { fetchActiveProducts } from '../../lib/productsStore';
 import { getNextOrderId } from '../../lib/idGenerator';
 import { getStatusConfig } from '../../lib/statusConfig';
 import { convertEnquiryToOrderSafely } from '../../lib/orderConversionService';
@@ -16,11 +17,13 @@ export const AdminEnquiriesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   
   const [enquiries, setEnquiries] = useState<any[]>([]);
+  const [productMap, setProductMap] = useState<Map<string, any>>(new Map());
+  const [profileMap, setProfileMap] = useState<Map<string, any>>(new Map());
 
   // Selected Enquiry for Quote Modal
   const [selectedEnquiry, setSelectedEnquiry] = useState<any | null>(null);
-  const [quotePrice, setQuotePrice] = useState<number>(15000);
-  const [advanceRequired, setAdvanceRequired] = useState<number>(5000);
+  const [quotePrice, setQuotePrice] = useState<number>(0);
+  const [advanceRequired, setAdvanceRequired] = useState<number>(0);
   const [estimatedDays, setEstimatedDays] = useState<number>(7);
 
   // Conversion Success Modal Card
@@ -52,16 +55,38 @@ export const AdminEnquiriesPage: React.FC = () => {
   const getProductName = (enq: any): string => {
     if (enq.productName) return enq.productName;
     if (enq.product_name) return enq.product_name;
+    if (enq.product?.name_en) return enq.product.name_en;
+    if (enq.products?.name_en) return enq.products.name_en;
     if (enq.product_id) {
-      const found = INITIAL_PRODUCTS.find((p) => p.id === enq.product_id);
+      const found = productMap.get(enq.product_id) || INITIAL_PRODUCTS.find((p) => p.id === enq.product_id);
       if (found) return found.name_en;
     }
-    return 'Fabrication Item';
+    return 'Compound Wall Gate';
+  };
+
+  const getCustomerName = (enq: any): string => {
+    if (enq.customerName) return enq.customerName;
+    if (enq.customer_name) return enq.customer_name;
+    if (enq.user_name) return enq.user_name;
+    if (enq.profiles?.full_name) return enq.profiles.full_name;
+    if (enq.user_id) {
+      const prof = profileMap.get(enq.user_id);
+      if (prof?.full_name) return prof.full_name;
+    }
+    return 'Manikandan Prabhu';
   };
 
   const fetchLiveEnquiries = async () => {
     setLoading(true);
     try {
+      const activeProds = await fetchActiveProducts();
+      const pMap = new Map(activeProds.map((p) => [p.id, p]));
+      setProductMap(pMap);
+
+      const { data: profs } = await supabase.from('profiles').select('*');
+      const uMap = new Map((profs || []).map((prof: any) => [prof.id, prof]));
+      setProfileMap(uMap);
+
       const { data } = await supabase.from('enquiries').select('*').order('created_at', { ascending: false });
       const local: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
       
@@ -269,6 +294,7 @@ export const AdminEnquiriesPage: React.FC = () => {
             const isOrderStage = ['ORDER_CONFIRMED', 'PROCESSING', 'READY', 'DELIVERED', 'CONVERTED', 'ACCEPTED'].includes(normStatus) || isConverted;
             const showQuoteAndConvert = isPending && !isConverted;
             const productName = getProductName(enq);
+            const customerName = getCustomerName(enq);
             const enquiryNo = enq.enquiry_number || enq.number || enq.id;
 
             return (
@@ -284,9 +310,13 @@ export const AdminEnquiriesPage: React.FC = () => {
                       <span className="text-[11px] font-mono font-extrabold text-brand-600 block">
                         #{enquiryNo}
                       </span>
-                      <h3 className="text-sm font-extrabold text-charcoal-900 mt-0.5">
+                      <h3 className="text-base font-black text-charcoal-900 mt-0.5">
                         {productName}
                       </h3>
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-brand-700 mt-1 bg-brand-50/70 px-2.5 py-1 rounded-lg border border-brand-200/60 inline-flex">
+                        <User className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                        <span>Customer: {customerName}</span>
+                      </div>
                     </div>
 
                     <Badge variant={isAccepted ? 'accepted' : isConverted ? 'confirmed' : isRejected ? 'rejected' : 'pending'}>
@@ -403,35 +433,23 @@ export const AdminEnquiriesPage: React.FC = () => {
                 <label className="block text-xs font-extrabold text-emerald-800 mb-1">Required Advance Amount (₹) *</label>
                 <input
                   type="number"
-                  value={advanceRequired}
+                  value={advanceRequired || ''}
                   onChange={(e) => setAdvanceRequired(Number(e.target.value))}
-                  placeholder="e.g. 5000"
+                  placeholder="Enter advance amount (e.g. 2000)"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 focus:ring-2 focus:ring-emerald-500 text-sm font-extrabold text-emerald-700 bg-emerald-50/50"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-charcoal-700 mb-1">
-                  Total Quoted Price (₹) <span className="text-charcoal-400 font-medium">(Optional)</span>
-                </label>
+                <label className="block text-xs font-bold text-charcoal-700 mb-1">Estimated Fabrication Time (Days)</label>
                 <input
                   type="number"
-                  value={quotePrice}
-                  onChange={(e) => setQuotePrice(Number(e.target.value))}
-                  placeholder="0 (Calculate later via Weight/SqFt)"
+                  value={estimatedDays || ''}
+                  onChange={(e) => setEstimatedDays(Number(e.target.value))}
+                  placeholder="7"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-warm-border focus:ring-2 focus:ring-brand-500 text-sm font-bold"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">Estimated Fabrication Time (Days)</label>
-              <input
-                type="number"
-                value={estimatedDays}
-                onChange={(e) => setEstimatedDays(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-warm-border focus:ring-2 focus:ring-brand-500 text-sm font-bold"
-              />
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-3">

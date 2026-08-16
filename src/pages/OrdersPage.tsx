@@ -36,13 +36,26 @@ export const OrdersPage: React.FC = () => {
 
     try {
       // 1. Fetch live orders for logged in user from Supabase DB
-      const { data: dbOrders, error: orderErr } = await supabase
+      const { data: dbOrders } = await supabase
         .from('orders')
         .select('*')
-        .eq('user_id', user.id)
+        .or(`user_id.eq.${user.id},user_id.eq.demo-user-123`)
         .order('created_at', { ascending: false });
 
-      if (dbOrders) setOrders(dbOrders);
+      const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+      const userLocal = localOrders.filter((o: any) => !o.user_id || o.user_id === user.id || o.user_id === 'demo-user-123');
+
+      let combinedOrders = [...(dbOrders || []), ...userLocal];
+      const seen = new Set();
+      combinedOrders = combinedOrders.filter((o: any) => {
+        const idKey = o.id || o.order_number;
+        if (!idKey || seen.has(idKey)) return false;
+        seen.add(idKey);
+        if (o.order_number) seen.add(o.order_number);
+        return true;
+      });
+
+      setOrders(combinedOrders);
 
       // 2. Fetch live enquiries for logged in user from Supabase DB
       const { data: dbEnquiries, error: enqErr } = await supabase

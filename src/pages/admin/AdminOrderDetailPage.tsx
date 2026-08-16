@@ -70,13 +70,10 @@ export const AdminOrderDetailPage: React.FC = () => {
 
   // Weight & Price Calculator State
   const [isEditingCalc, setIsEditingCalc] = useState<boolean>(false);
-  const [calcParts, setCalcParts] = useState<{ id: string; name: string; weight_kg: number }[]>([
-    { id: 'p1', name: 'Gate Main Frame', weight_kg: 45 },
-    { id: 'p2', name: 'Grill Leaf Section', weight_kg: 30 }
-  ]);
+  const [calcParts, setCalcParts] = useState<{ id: string; name: string; weight_kg: number }[]>([]);
   const [calcRatePerKg, setCalcRatePerKg] = useState<number>(160);
   const [calcExtraCharges, setCalcExtraCharges] = useState<{ id: string; description: string; amount: number }[]>([]);
-  const [calcAdvanceReq, setCalcAdvanceReq] = useState<number>(5000);
+  const [calcAdvanceReq, setCalcAdvanceReq] = useState<number>(0);
 
   useEffect(() => {
     if (id) {
@@ -94,7 +91,11 @@ export const AdminOrderDetailPage: React.FC = () => {
       const profileMap = new Map((profilesData || []).map((prof: any) => [prof.id, prof]));
 
       // 1. Fetch Order Record
-      const { data: dbOrder } = await supabase.from('orders').select('*').eq('id', orderId).maybeSingle();
+      const { data: dbOrder } = await supabase
+        .from('orders')
+        .select('*')
+        .or(`id.eq.${orderId},order_number.eq.${orderId},enquiry_id.eq.${orderId}`)
+        .maybeSingle();
       
       let ordRecord = dbOrder;
       if (!ordRecord) {

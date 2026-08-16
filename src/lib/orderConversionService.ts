@@ -100,7 +100,7 @@ export const convertEnquiryToOrderSafely = async ({
   // STEP 2: CREATE SINGLE NEW ORDER RECORD IF NO PREVIOUS CONVERSION EXISTS
   const deliveryDate = new Date(Date.now() + estimatedDays * 86400000).toISOString().slice(0, 10);
   const newOrderNumber = await getNextOrderId();
-  const newOrderId = `ord_${Date.now()}`;
+  const newOrderId = newOrderNumber;
 
   const productName = enquiry.productName || enquiry.product_name || 'Custom Lathe Fabricated Item';
 
