@@ -139,7 +139,24 @@ export const convertEnquiryToOrderSafely = async ({
 
   // Save to Supabase DB
   try {
-    await supabase.from('orders').insert(newOrderRecord);
+    const dbPayload = {
+      id: newOrderId,
+      order_number: newOrderNumber,
+      user_id: enquiry.user_id || 'demo-user-123',
+      product_id: enquiry.product_id || INITIAL_PRODUCTS[0].id,
+      quantity: enquiry.quantity || 1,
+      status: 'accepted',
+      delivery_location: enquiry.delivery_location || enquiry.location || 'Kallimandhayam',
+      expected_delivery_date: deliveryDate,
+      total_amount: quotePrice,
+      advance_amount: advanceRequired,
+      remaining_amount: quotePrice,
+      is_payment_requested: advanceRequired > 0,
+      payment_request_amount: advanceRequired,
+      payment_status: 'unpaid',
+      created_at: new Date().toISOString()
+    };
+    await supabase.from('orders').insert(dbPayload);
     await supabase
       .from('enquiries')
       .update({ status: 'converted', converted_order_id: newOrderId })

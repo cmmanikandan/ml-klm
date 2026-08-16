@@ -93,6 +93,51 @@ export const AdminOrdersPage: React.FC = () => {
 
       const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
       let combined: any[] = [...(dbOrders || []), ...local];
+
+      // Auto-synthesize order records for accepted/converted enquiries if missing
+      const localEnquiries: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+      const { data: dbEnquiries } = await supabase.from('enquiries').select('*');
+      const allEnqs = [...(dbEnquiries || []), ...localEnquiries];
+
+      for (const enq of allEnqs) {
+        const normSt = String(enq.status || '').toLowerCase();
+        if (normSt === 'accepted' || normSt === 'converted') {
+          const enqId = enq.id;
+          const matchExisting = combined.find(
+            (o) => o.enquiry_id === enqId || o.id === enqId || o.order_number === enqId || (enq.converted_order_id && (o.id === enq.converted_order_id || o.order_number === enq.converted_order_id))
+          );
+          if (!matchExisting) {
+            const targetProd = productMap.get(enq.product_id) || INITIAL_PRODUCTS[0];
+            const targetProf = profileMap.get(enq.user_id);
+            const synthesizedOrd = {
+              id: enq.converted_order_id || enq.enquiry_number || enq.id,
+              order_number: enq.enquiry_number || enq.id,
+              enquiry_id: enq.id,
+              user_id: enq.user_id || 'demo-user-123',
+              customerName: enq.customerName || enq.customer_name || targetProf?.full_name || 'Manikandan Prabhu',
+              customerPhone: enq.customerPhone || enq.customer_phone || targetProf?.phone || '+91 96292 86268',
+              customerAddress: enq.delivery_location || enq.location || 'Kallimandhayam',
+              product_id: enq.product_id || targetProd.id,
+              productName: enq.productName || enq.product_name || targetProd.name_en || 'Compound Wall Gate',
+              productImage: targetProd.primary_image || (targetProd.images && targetProd.images[0]) || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
+              quantity: enq.quantity || 1,
+              status: 'accepted',
+              expected_delivery_date: 'Within 7 Days',
+              total_amount: enq.quote_price || enq.total_amount || 0,
+              advance_amount: enq.advance_amount || 0,
+              remaining_amount: enq.quote_price || enq.total_amount || 0,
+              is_payment_requested: false,
+              payment_request_amount: 0,
+              payment_status: 'unpaid',
+              created_at: enq.created_at || new Date().toISOString()
+            };
+            combined.push(synthesizedOrd);
+            local.push(synthesizedOrd);
+            localStorage.setItem('ml_orders', JSON.stringify(local));
+          }
+        }
+      }
+
       const seen = new Set();
       combined = combined.filter((o: any) => {
         const key = o.id || o.order_number;

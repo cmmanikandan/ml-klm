@@ -46,6 +46,46 @@ export const OrdersPage: React.FC = () => {
       const userLocal = localOrders.filter((o: any) => !o.user_id || o.user_id === user.id || o.user_id === 'demo-user-123');
 
       let combinedOrders = [...(dbOrders || []), ...userLocal];
+
+      // Auto-synthesize order records for accepted/converted enquiries if missing
+      const { data: dbEnqs } = await supabase.from('enquiries').select('*').or(`user_id.eq.${user.id},user_id.eq.demo-user-123`);
+      const allUserEnqs = [...(dbEnqs || []), ...localEnquiries.filter((e) => !e.user_id || e.user_id === user.id || e.user_id === 'demo-user-123')];
+
+      for (const enq of allUserEnqs) {
+        const normSt = String(enq.status || '').toLowerCase();
+        if (normSt === 'accepted' || normSt === 'converted') {
+          const enqId = enq.id;
+          const matchExisting = combinedOrders.find(
+            (o) => o.enquiry_id === enqId || o.id === enqId || o.order_number === enqId || (enq.converted_order_id && (o.id === enq.converted_order_id || o.order_number === enq.converted_order_id))
+          );
+          if (!matchExisting) {
+            const synthesizedOrd: any = {
+              id: enq.converted_order_id || enq.enquiry_number || enq.id,
+              order_number: enq.enquiry_number || enq.id,
+              enquiry_id: enq.id,
+              user_id: enq.user_id || user.id,
+              customerName: enq.customerName || enq.customer_name || user.full_name || 'Customer',
+              customerPhone: enq.customerPhone || enq.customer_phone || user.phone || '+91 96292 86268',
+              customerAddress: enq.delivery_location || enq.location || 'Kallimandhayam',
+              product_id: enq.product_id || 'demo-prod-1',
+              productName: enq.productName || enq.product_name || 'Compound Wall Gate',
+              productImage: enq.productImage || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
+              quantity: enq.quantity || 1,
+              status: 'accepted',
+              expected_delivery_date: 'Within 7 Days',
+              total_amount: enq.quote_price || enq.total_amount || 0,
+              advance_amount: enq.advance_amount || 0,
+              remaining_amount: enq.quote_price || enq.total_amount || 0,
+              is_payment_requested: false,
+              payment_request_amount: 0,
+              payment_status: 'unpaid',
+              created_at: enq.created_at || new Date().toISOString()
+            };
+            combinedOrders.push(synthesizedOrd);
+          }
+        }
+      }
+
       const seen = new Set();
       combinedOrders = combinedOrders.filter((o: any) => {
         const idKey = o.id || o.order_number;
