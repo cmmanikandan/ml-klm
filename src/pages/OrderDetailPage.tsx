@@ -202,7 +202,20 @@ export const OrderDetailPage: React.FC = () => {
 
   const recordCustomerPayment = async (paidAmount: number, paymentMode: string) => {
     if (!order) return;
-    const currentRemaining = order.remaining_amount || 0;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order.id);
+    let realOrderUuid = isUuid ? order.id : null;
+    const orderNum = order.order_number || (isUuid ? '' : order.id);
+
+    if (!realOrderUuid && orderNum) {
+      try {
+        const { data: dbO } = await supabase.from('orders').select('id').eq('order_number', orderNum).maybeSingle();
+        if (dbO?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dbO.id)) {
+          realOrderUuid = dbO.id;
+        }
+      } catch {}
+    }
+
+    const currentRemaining = Number(order.remaining_amount) || 0;
     const updatedRemaining = Math.max(0, currentRemaining - paidAmount);
     const newStatus: PaymentStatus = updatedRemaining === 0 ? 'paid' : 'partially_paid';
 
@@ -210,37 +223,53 @@ export const OrderDetailPage: React.FC = () => {
       ...order,
       remaining_amount: updatedRemaining,
       payment_status: newStatus,
-      is_payment_requested: false
+      is_payment_requested: false,
+      payment_request_amount: 0
     };
     setOrder(updatedOrder);
 
-    const newPaymentObj = {
-      id: `pay_${Date.now()}`,
-      order_id: order.id,
-      order_number: order.order_number || order.id,
-      user_id: user?.id || order.user_id || '',
-      amount: paidAmount,
-      payment_mode: paymentMode,
-      notes: `Customer paid ₹${paidAmount} via ${paymentMode}`,
-      created_at: new Date().toISOString(),
-      status: 'completed'
-    };
-
     try {
-      await supabase
-        .from('orders')
-        .update({
-          remaining_amount: updatedRemaining,
-          payment_status: newStatus,
-          is_payment_requested: false
-        })
-        .eq('id', order.id);
+      if (realOrderUuid) {
+        await supabase
+          .from('orders')
+          .update({
+            remaining_amount: updatedRemaining,
+            payment_status: newStatus,
+            is_payment_requested: false,
+            payment_request_amount: 0
+          })
+          .eq('id', realOrderUuid);
+      }
+      if (orderNum) {
+        await supabase
+          .from('orders')
+          .update({
+            remaining_amount: updatedRemaining,
+            payment_status: newStatus,
+            is_payment_requested: false,
+            payment_request_amount: 0
+          })
+          .eq('order_number', orderNum);
+      }
 
-      // Strip local 'id' before DB insert — Supabase generates its own UUID
-      const { id: _localId, ...dbPayObj } = newPaymentObj;
+      // Insert payment into payments table
+      const dbPayObj: any = {
+        order_number: orderNum,
+        user_id: user?.id || order.user_id || '',
+        amount: paidAmount,
+        payment_mode: paymentMode,
+        payment_type: paymentMode.toLowerCase().includes('upi') ? 'upi' : 'razorpay',
+        notes: `Customer paid ₹${paidAmount.toLocaleString('en-IN')} via ${paymentMode}`,
+        created_at: new Date().toISOString(),
+        status: 'completed',
+        recorded_by: user?.id || 'customer'
+      };
+      if (realOrderUuid) {
+        dbPayObj.order_id = realOrderUuid;
+      }
       await supabase.from('payments').insert(dbPayObj);
     } catch (e) {
-      console.warn('Customer payment DB update fallback');
+      console.warn('Customer payment DB update error', e);
     }
 
     const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
