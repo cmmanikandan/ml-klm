@@ -82,7 +82,36 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pro
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t('enquiry_title')} maxWidth="md">
-      {successEnquiryId ? (
+      {!user ? (
+        <div className="py-6 text-center space-y-4">
+          <div className="w-14 h-14 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto border border-amber-200 shadow-sm">
+            <Send className="w-6 h-6 text-amber-600" />
+          </div>
+          <h3 className="text-lg font-black text-charcoal-900">
+            {isTamil ? 'விசாரணை சமர்ப்பிக்க லாகின் செய்யவும்' : 'Login Required to Submit Free Enquiry'}
+          </h3>
+          <p className="text-xs text-charcoal-600 font-semibold max-w-sm mx-auto leading-relaxed">
+            {isTamil 
+              ? 'உங்கள் ஆர்டர் நிலை மற்றும் விலை மதிப்பீடுகளை எளிதாக கண்காணிக்க லாகின் செய்து தொடரவும்.'
+              : 'Please log in to your customer account so you can track live fabrication progress and receive price quotes for this item.'}
+          </p>
+          <div className="pt-2 flex flex-col gap-2">
+            <Button
+              onClick={() => {
+                onClose();
+                navigate('/login');
+              }}
+              variant="primary"
+              fullWidth
+            >
+              {isTamil ? 'உடனே லாகின் செய் ➔' : 'Login Now to Submit Enquiry ➔'}
+            </Button>
+            <Button onClick={onClose} variant="secondary" fullWidth>
+              {isTamil ? 'மூடு' : 'Cancel'}
+            </Button>
+          </div>
+        </div>
+      ) : successEnquiryId ? (
         <div className="py-6 text-center space-y-4">
           <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
             <CheckCircle2 className="w-10 h-10" />

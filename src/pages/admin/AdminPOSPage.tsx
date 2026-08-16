@@ -152,7 +152,7 @@ export const AdminPOSPage: React.FC = () => {
       const { data: dbOrders } = await supabase
         .from('orders')
         .select('*')
-        .eq('is_pos', true)
+        .or('is_pos.eq.true,admin_notes.ilike.%POS%')
         .order('created_at', { ascending: false });
 
       const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
@@ -169,7 +169,7 @@ export const AdminPOSPage: React.FC = () => {
 
       setPosOrdersHistory(combined);
     } catch (e) {
-      console.warn('POS History fetch fallback', e);
+      console.warn('POS history fetch error', e);
     }
   };
 
@@ -478,7 +478,7 @@ export const AdminPOSPage: React.FC = () => {
     const localPayments = JSON.parse(localStorage.getItem('ml_payments') || '[]');
     localStorage.setItem('ml_payments', JSON.stringify([paymentObj, ...localPayments]));
 
-    // Try Supabase Insert
+    // Try Supabase Insert with full cross-device sync fields
     try {
       await supabase.from('orders').insert({
         id: orderId,
@@ -487,13 +487,18 @@ export const AdminPOSPage: React.FC = () => {
         product_id: mainItem.product.id,
         quantity: posOrderObj.quantity,
         status: 'delivered',
+        fabrication_stage: 'delivered',
         total_amount: finalCartGrandTotal,
         advance_amount: paid,
         remaining_amount: remaining,
         payment_status: isPaid ? 'paid' : 'partially_paid',
         is_pos: true,
+        pricing_type: mainItem.pricing_type,
         weight_calculation: mainItem.weight_calculation || mainItem.sqft_calculation,
-        admin_notes: posOrderObj.admin_notes
+        admin_notes: posOrderObj.admin_notes,
+        specifications: posOrderObj.productName,
+        delivery_location: 'Direct Workshop Counter Pickup (Kallimandhayam)',
+        created_at: new Date().toISOString()
       });
       await supabase.from('payments').insert(paymentObj);
     } catch (e) {

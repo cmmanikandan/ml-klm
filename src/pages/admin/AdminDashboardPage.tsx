@@ -129,42 +129,7 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* WORKSHOP PROFIT & LOSS (P&L) FINANCIAL CARD */}
-      <div className="bg-gradient-to-br from-charcoal-900 via-charcoal-800 to-brand-950 text-white p-6 rounded-3xl border border-charcoal-700 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-charcoal-700 pb-3">
-          <div className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-emerald-400" />
-            <h3 className="text-base font-black tracking-wide">Workshop Profit & Loss (P&L) Financial Ledger</h3>
-          </div>
-          <span className="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-800">
-            Real-time Gross Profit Margin: {totalRevenue > 0 ? `${Math.round((netWorkshopProfit / totalRevenue) * 100)}%` : '0%'}
-          </span>
-        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-bold">
-          <div className="bg-charcoal-800/80 p-3.5 rounded-2xl border border-charcoal-700">
-            <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">Total Sales Revenue</span>
-            <span className="text-xl font-black font-mono text-white">₹{totalRevenue.toLocaleString('en-IN')}</span>
-          </div>
-
-          <div className="bg-charcoal-800/80 p-3.5 rounded-2xl border border-charcoal-700">
-            <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest block">Raw Steel Material Cost</span>
-            <span className="text-xl font-black font-mono text-amber-300">₹{rawSteelMaterialCost.toLocaleString('en-IN')}</span>
-            <span className="text-[9px] text-charcoal-400 block mt-0.5">Est. ₹70/kg MS Steel</span>
-          </div>
-
-          <div className="bg-charcoal-800/80 p-3.5 rounded-2xl border border-charcoal-700">
-            <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest block">Labor & Welding Expenses</span>
-            <span className="text-xl font-black font-mono text-blue-300">₹{laborAndWeldingExpenses.toLocaleString('en-IN')}</span>
-            <span className="text-[9px] text-charcoal-400 block mt-0.5">Lathe & welding work</span>
-          </div>
-
-          <div className="bg-emerald-950/90 p-3.5 rounded-2xl border border-emerald-600">
-            <span className="text-[10px] font-black text-emerald-300 uppercase tracking-widest block">Net Workshop Profit (P&L)</span>
-            <span className="text-2xl font-black font-mono text-emerald-400">+ ₹{netWorkshopProfit.toLocaleString('en-IN')}</span>
-          </div>
-        </div>
-      </div>
 
       {/* Top High-Priority Notification Action Cards */}
       {(enquiries.filter(e => e.status === 'pending').length > 0 || onlineOrders.filter(o => o.status === 'pending').length > 0) && (
