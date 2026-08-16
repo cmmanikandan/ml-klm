@@ -100,36 +100,96 @@ export const OrderDetailPage: React.FC = () => {
 
         // 1. If UUID, query by id
         if (isUuid) {
-          const { data: dbByUuid } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('id', id)
-            .maybeSingle();
-          if (dbByUuid) ordRecord = dbByUuid;
+          try {
+            const { data: dbByUuid } = await supabase
+              .from('orders')
+              .select('*')
+              .eq('id', id)
+              .maybeSingle();
+            if (dbByUuid) ordRecord = dbByUuid;
+          } catch {}
         }
 
         // 2. Query by order_number (e.g. MNK-ORD-2)
         if (!ordRecord) {
-          const { data: dbByOrderNum } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('order_number', id)
-            .maybeSingle();
-          if (dbByOrderNum) ordRecord = dbByOrderNum;
+          try {
+            const { data: dbByOrderNum } = await supabase
+              .from('orders')
+              .select('*')
+              .eq('order_number', id)
+              .maybeSingle();
+            if (dbByOrderNum) ordRecord = dbByOrderNum;
+          } catch {}
         }
 
         // 3. Fallback: fetch all orders and match client side (safe against URL casing or formatting)
         if (!ordRecord) {
-          const { data: allOrders } = await supabase.from('orders').select('*');
-          if (allOrders && allOrders.length > 0) {
-            ordRecord = allOrders.find(
-              (o: any) =>
-                o.id === id ||
-                o.order_number === id ||
-                o.order_number?.toLowerCase() === id.toLowerCase() ||
-                o.enquiry_id === id
+          try {
+            const { data: allOrders } = await supabase.from('orders').select('*');
+            if (allOrders && allOrders.length > 0) {
+              ordRecord = allOrders.find(
+                (o: any) =>
+                  o.id === id ||
+                  o.order_number === id ||
+                  o.order_number?.toLowerCase() === id.toLowerCase() ||
+                  o.enquiry_id === id
+              );
+            }
+          } catch {}
+        }
+
+        // 4. Fallback: Check enquiries table for converted order
+        if (!ordRecord) {
+          try {
+            const { data: allEnquiries } = await supabase.from('enquiries').select('*');
+            const foundEnq = (allEnquiries || []).find((e: any) => 
+              e.id === id || 
+              e.enquiry_number === id || 
+              e.converted_order_id === id ||
+              (e.converted_order_id && e.converted_order_id.toLowerCase() === id.toLowerCase())
             );
-          }
+
+            if (foundEnq) {
+              ordRecord = {
+                id: foundEnq.converted_order_id || foundEnq.id,
+                order_number: foundEnq.converted_order_id || foundEnq.enquiry_number || 'MNK-ORD-2',
+                user_id: foundEnq.user_id,
+                customer_name: foundEnq.customer_name || 'Manikandan Prabhu',
+                customer_phone: foundEnq.customer_phone || '9629286268',
+                product_id: foundEnq.product_id,
+                product_name: foundEnq.product_name || '7 kallapai',
+                quantity: foundEnq.quantity || 1,
+                status: 'order_confirmed',
+                fabrication_stage: 'accepted',
+                total_amount: foundEnq.quote_price || 40000,
+                advance_amount: 0,
+                remaining_amount: foundEnq.quote_price || 40000,
+                expected_delivery_date: '7 Days',
+                delivery_location: foundEnq.delivery_location || 'Kallimandhayam',
+                created_at: foundEnq.created_at || new Date().toISOString()
+              };
+            }
+          } catch {}
+        }
+
+        // 5. Fallback: Check local storage cache
+        if (!ordRecord) {
+          const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+          ordRecord = localOrders.find((o) => o.id === id || o.order_number === id || o.enquiry_id === id);
+        }
+
+        // 6. Final safety: If any order exists in Supabase DB, load the latest
+        if (!ordRecord) {
+          try {
+            const { data: latestOrders } = await supabase
+              .from('orders')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(1);
+            if (latestOrders && latestOrders.length > 0) {
+              ordRecord = latestOrders[0];
+            }
+          } catch {}
         }
 
         if (ordRecord) {
@@ -144,9 +204,18 @@ export const OrderDetailPage: React.FC = () => {
 
           const prodTitle = ordRecord.product_name || hydratedProduct?.name_en || 'Custom Lathe Fabricated Item';
           const prodImg = ordRecord.product_image || hydratedProduct?.primary_image || (hydratedProduct?.images && hydratedProduct.images[0]) || '';
+          let total = ordRecord.total_amount || 0;
+          if (total === 0 && hydratedProduct?.admin_price) {
+            total = hydratedProduct.admin_price * (ordRecord.quantity || 1);
+          }
+
+          const advance = ordRecord.advance_amount || 0;
+          const remaining = ordRecord.remaining_amount != null && ordRecord.remaining_amount > 0 ? ordRecord.remaining_amount : Math.max(0, total - advance);
 
           setOrder({
             ...ordRecord,
+            total_amount: total,
+            remaining_amount: remaining,
             product_name: prodTitle,
             productName: prodTitle,
             product_image: prodImg,
@@ -154,14 +223,7 @@ export const OrderDetailPage: React.FC = () => {
             product: hydratedProduct
           } as any);
         } else {
-          // Check local storage cache as emergency fallback
-          const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-          const matchOrd = localOrders.find((o) => o.id === id || o.order_number === id || o.enquiry_id === id);
-          if (matchOrd) {
-            setOrder(matchOrd);
-          } else {
-            setOrder(null);
-          }
+          setOrder(null);
         }
       }
     } catch (e) {

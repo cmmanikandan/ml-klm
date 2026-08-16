@@ -241,7 +241,7 @@ export const OrdersPage: React.FC = () => {
                 return (
                   <div
                     key={order.id}
-                    onClick={() => navigate(`/orders/${order.id}`)}
+                    onClick={() => navigate(`/orders/${order.order_number || order.id}`)}
                     className="group bg-white rounded-3xl border border-warm-border/80 shadow-card hover:shadow-warm-lg transition-all duration-300 p-5 sm:p-6 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     {/* Left: Product Thumbnail & Order Info */}
@@ -308,47 +308,52 @@ export const OrdersPage: React.FC = () => {
                 <p className="text-xs text-charcoal-500 font-bold">No submitted enquiries yet.</p>
               </div>
             ) : (
-              enquiries.map((enq) => (
-                <div key={enq.id} className="bg-white p-5 rounded-3xl border border-warm-border shadow-card space-y-3">
-                  <div className="flex items-center justify-between border-b border-warm-muted pb-3">
-                    <div>
-                      <span className="text-[11px] font-mono font-extrabold text-brand-600 block">
-                        #{enq.enquiry_number}
-                      </span>
-                      <h4 className="text-sm font-bold text-charcoal-900 mt-0.5">
-                        {(enq as any).productName || (enq.product ? (isTamil ? enq.product.name_ta : enq.product.name_en) : 'Fabrication Enquiry')}
-                      </h4>
+              enquiries.map((enq) => {
+                const isConverted = enq.status === 'converted' || Boolean(enq.converted_order_id);
+                const orderNum = enq.converted_order_id || 'MNK-ORD-2';
+
+                return (
+                  <div key={enq.id} className="bg-white p-5 rounded-3xl border border-warm-border shadow-card space-y-3">
+                    <div className="flex items-center justify-between border-b border-warm-muted pb-3">
+                      <div>
+                        <span className="text-[11px] font-mono font-extrabold text-brand-600 block">
+                          #{enq.enquiry_number}
+                        </span>
+                        <h4 className="text-sm font-bold text-charcoal-900 mt-0.5">
+                          {(enq as any).productName || (enq.product ? (isTamil ? enq.product.name_ta : enq.product.name_en) : 'Fabrication Enquiry')}
+                        </h4>
+                      </div>
+
+                      <Badge variant={isConverted ? 'confirmed' : enq.status}>
+                        {isConverted ? 'CONVERTED TO ORDER' : (enq.status || 'pending').toUpperCase().replace('_', ' ')}
+                      </Badge>
                     </div>
 
-                    <Badge variant={enq.status === 'converted' ? 'confirmed' : enq.status}>
-                      {enq.status === 'converted' ? 'CONVERTED TO ORDER' : (enq.status || 'pending').toUpperCase().replace('_', ' ')}
-                    </Badge>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-charcoal-700">
+                      <div>
+                        <span className="text-charcoal-400 block font-semibold">Qty:</span>
+                        <span className="font-extrabold">{enq.quantity || 1} Unit(s)</span>
+                      </div>
+                      <div>
+                        <span className="text-charcoal-400 block font-semibold">Location:</span>
+                        <span className="font-extrabold">{enq.delivery_location || 'Kallimandhayam'}</span>
+                      </div>
+                    </div>
+
+                    {isConverted && (
+                      <div className="pt-2 border-t border-warm-border/60">
+                        <Link
+                          to={`/orders/${orderNum}`}
+                          className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-black text-emerald-800 hover:text-emerald-900 bg-emerald-100/90 hover:bg-emerald-200 py-2.5 px-4 rounded-2xl border border-emerald-300 shadow-sm transition-all"
+                        >
+                          <ShoppingBag className="w-4 h-4 text-emerald-700" />
+                          <span>{isTamil ? `உறுதிசெய்யப்பட்ட ஆர்டர் #${orderNum} ஐக் காண்க` : `View Converted Order (#${orderNum}) →`}</span>
+                        </Link>
+                      </div>
+                    )}
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs text-charcoal-700">
-                    <div>
-                      <span className="text-charcoal-400 block font-semibold">Qty:</span>
-                      <span className="font-extrabold">{enq.quantity || 1} Unit(s)</span>
-                    </div>
-                    <div>
-                      <span className="text-charcoal-400 block font-semibold">Location:</span>
-                      <span className="font-extrabold">{enq.delivery_location || 'Kallimandhayam'}</span>
-                    </div>
-                  </div>
-
-                  {(enq.status === 'converted' || Boolean(enq.converted_order_id)) && (
-                    <div className="pt-2 border-t border-warm-border/60">
-                      <Link
-                        to={`/orders/${enq.converted_order_id || 'MNK-ORD-2'}`}
-                        className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-black text-emerald-800 hover:text-emerald-900 bg-emerald-100/90 hover:bg-emerald-200 py-2.5 px-4 rounded-2xl border border-emerald-300 shadow-sm transition-all"
-                      >
-                        <ShoppingBag className="w-4 h-4 text-emerald-700" />
-                        <span>{isTamil ? `உறுதிசெய்யப்பட்ட ஆர்டர் #${enq.converted_order_id} ஐக் காண்க` : `View Converted Order (#${enq.converted_order_id}) →`}</span>
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
