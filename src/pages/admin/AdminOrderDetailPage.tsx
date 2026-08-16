@@ -374,7 +374,7 @@ export const AdminOrderDetailPage: React.FC = () => {
 
   // Set Request Money for Customer Panel
   const handleSetCustomerRequestMoney = async () => {
-    if (!order) return;
+    if (!order || customPayAmount <= 0) return;
     const updatedOrder = {
       ...order,
       is_payment_requested: true,
@@ -382,6 +382,31 @@ export const AdminOrderDetailPage: React.FC = () => {
       payment_status: 'pending'
     };
     setOrder(updatedOrder);
+
+    const localPayId = `pay_req_${Date.now()}`;
+    const newReqPayRecord = {
+      id: localPayId,
+      order_id: order.id,
+      order_number: order.order_number || order.id,
+      user_id: order.user_id || '',
+      amount: customPayAmount,
+      payment_mode: 'Payment Request Sent to Customer',
+      notes: `Payment request of ₹${customPayAmount.toLocaleString('en-IN')} sent to customer`,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    };
+
+    setPaymentsHistory((prev) => [newReqPayRecord, ...prev.filter((p: any) => p.status !== 'pending')]);
+
+    const localPay = JSON.parse(localStorage.getItem('ml_payments') || '[]');
+    localStorage.setItem(
+      'ml_payments',
+      JSON.stringify([newReqPayRecord, ...localPay.filter((p: any) => p.order_id !== order.id || p.status !== 'pending')])
+    );
+
+    const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocal = localOrders.map((o) => (o.id === order.id ? updatedOrder : o));
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
 
     try {
       await supabase
@@ -392,14 +417,30 @@ export const AdminOrderDetailPage: React.FC = () => {
           payment_status: 'pending'
         })
         .eq('id', order.id);
+
+      const { id: _localId, ...dbPayRecord } = newReqPayRecord;
+      await supabase.from('payments').insert(dbPayRecord);
+
+      await supabase.from('notifications').insert({
+        id: crypto.randomUUID(),
+        user_id: order.user_id || 'customer',
+        title_en: `Payment Requested for Order #${order.order_number || order.id}`,
+        title_ta: `ஆர்டர் #${order.order_number || order.id}க்கு கட்டணம் கோரப்பட்டுள்ளது`,
+        message_en: `Workshop admin requested payment of ₹${customPayAmount.toLocaleString('en-IN')}. Please click to pay online.`,
+        message_ta: `வொர்க்ஷாப் நிர்வாகி ₹${customPayAmount.toLocaleString('en-IN')} கட்டணம் செலுத்துமாறு கோரியுள்ளார்.`,
+        type: 'payment',
+        link: `/orders/${order.order_number || order.id}`,
+        is_read: false,
+        created_at: new Date().toISOString()
+      });
     } catch (e) {
-      console.warn('Payment request DB update fallback');
+      console.warn('Payment request DB update fallback', e);
     }
 
     setNotifyModal({
       isOpen: true,
       title: 'Payment Request Sent',
-      message: `Payment request of ₹${customPayAmount.toLocaleString('en-IN')} set for customer dashboard!`,
+      message: `Payment request of ₹${customPayAmount.toLocaleString('en-IN')} sent to customer! Recorded as UNPAID in Payment History.`,
       type: 'success'
     });
     setShowPaymentModal(false);
@@ -418,7 +459,8 @@ export const AdminOrderDetailPage: React.FC = () => {
       remaining_amount: updatedRemaining,
       advance_amount: (order.advance_amount || 0) + customPayAmount,
       payment_status: newStatus as PaymentStatus,
-      is_payment_requested: false
+      is_payment_requested: false,
+      payment_request_amount: 0
     };
 
     setOrder(updatedOrder);
@@ -440,10 +482,14 @@ export const AdminOrderDetailPage: React.FC = () => {
       created_at: new Date().toISOString()
     };
     
-    setPaymentsHistory((prev) => [newPayRecord, ...prev]);
+    // Replace any pending payment request in paymentsHistory with this completed payment
+    setPaymentsHistory((prev) => [newPayRecord, ...prev.filter((p: any) => p.status !== 'pending')]);
 
     const localPay = JSON.parse(localStorage.getItem('ml_payments') || '[]');
-    localStorage.setItem('ml_payments', JSON.stringify([newPayRecord, ...localPay]));
+    localStorage.setItem(
+      'ml_payments', 
+      JSON.stringify([newPayRecord, ...localPay.filter((p: any) => p.order_id !== order.id || p.status !== 'pending')])
+    );
 
     try {
       await supabase
@@ -452,15 +498,23 @@ export const AdminOrderDetailPage: React.FC = () => {
           remaining_amount: updatedRemaining,
           advance_amount: updatedOrder.advance_amount,
           payment_status: newStatus,
-          is_payment_requested: false
+          is_payment_requested: false,
+          payment_request_amount: 0
         })
         .eq('id', order.id);
+
+      // Update any pending request record to completed in payments table
+      await supabase
+        .from('payments')
+        .delete()
+        .eq('order_id', order.id)
+        .eq('status', 'pending');
 
       // Strip local 'id' before DB insert — Supabase generates its own UUID
       const { id: _localId, ...dbPayRecord } = newPayRecord;
       await supabase.from('payments').insert(dbPayRecord);
     } catch (e) {
-      console.warn('Payment DB insert fallback');
+      console.warn('Payment DB insert fallback', e);
     }
 
     setShowPaymentModal(false);
@@ -1220,60 +1274,28 @@ export const AdminOrderDetailPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-warm-muted font-medium">
-                  {/* Calculate advance payment collection status */}
+                  {/* Render All Transactions & Requests from paymentsHistory */}
                   {(() => {
-                    const totalPaid = paymentsHistory.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-                    const advanceReq = Number(order.advance_amount || 0);
-                    const isAdvancePaid = advanceReq > 0 && totalPaid >= advanceReq;
-                    const remainingBalance = Math.max(0, (order.total_amount || 0) - totalPaid);
+                    const completedPayments = paymentsHistory.filter((p) => p.status === 'completed' || p.status === 'paid');
+                    const totalPaid = completedPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+                    const totalOrderPrice = Number(order.total_amount) || 0;
+                    const remainingBalance = Math.max(0, totalOrderPrice - totalPaid);
 
                     return (
                       <>
-                        {/* 1. Unpaid Advance Payment Request Row */}
-                        {advanceReq > 0 && !isAdvancePaid && (
-                          <tr className="bg-rose-50/70 border-l-4 border-rose-500">
-                            <td className="py-3 px-3 font-extrabold text-rose-800">#Advance</td>
-                            <td className="py-3 px-3 font-mono font-bold text-rose-700">Pending Advance Collection</td>
-                            <td className="py-3 px-3 font-bold text-charcoal-900">
-                              Advance Payment Request
-                              <span className="block text-[10px] text-rose-600 font-semibold">Required to start fabrication</span>
-                            </td>
-                            <td className="py-3 px-3 font-black text-rose-700 font-mono text-sm">₹{advanceReq.toLocaleString('en-IN')}</td>
-                            <td className="py-3 px-3 text-charcoal-600 text-[11px]">Advance payment requested from customer</td>
-                            <td className="py-3 px-3">
-                              <span className="bg-rose-100 text-rose-800 border border-rose-300 font-black px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider">
-                                UNPAID
-                              </span>
-                            </td>
-                            <td className="py-3 px-3 text-center">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCustomPayAmount(advanceReq);
-                                  setShowGeneratedQr(false);
-                                  setShowPaymentModal(true);
-                                }}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
-                              >
-                                Collect Advance
-                              </button>
-                            </td>
-                          </tr>
-                        )}
-
-                        {/* 2. Unpaid Remaining Balance Due Row */}
-                        {remainingBalance > (isAdvancePaid ? 0 : advanceReq) && (
+                        {/* 1. If no transactions or requests exist yet and remaining balance > 0 */}
+                        {paymentsHistory.length === 0 && remainingBalance > 0 && (
                           <tr className="bg-amber-50/70 border-l-4 border-amber-500">
                             <td className="py-3 px-3 font-extrabold text-amber-800">#Due</td>
-                            <td className="py-3 px-3 font-mono font-bold text-amber-700">Pending Collection</td>
+                            <td className="py-3 px-3 font-mono font-bold text-amber-700">Order Placed</td>
                             <td className="py-3 px-3 font-bold text-charcoal-900">
-                              Remaining Balance Due
-                              <span className="block text-[10px] text-amber-700 font-semibold">Due upon delivery</span>
+                              Full Balance Due
+                              <span className="block text-[10px] text-amber-700 font-semibold">Payment not requested yet</span>
                             </td>
                             <td className="py-3 px-3 font-black text-amber-800 font-mono text-sm">
-                              ₹{(remainingBalance - (isAdvancePaid ? 0 : advanceReq)).toLocaleString('en-IN')}
+                              ₹{remainingBalance.toLocaleString('en-IN')}
                             </td>
-                            <td className="py-3 px-3 text-charcoal-600 text-[11px]">Final balance payment</td>
+                            <td className="py-3 px-3 text-charcoal-600 text-[11px]">Awaiting advance/full payment request</td>
                             <td className="py-3 px-3">
                               <span className="bg-amber-100 text-amber-900 border border-amber-300 font-black px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider">
                                 UNPAID
@@ -1283,32 +1305,79 @@ export const AdminOrderDetailPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setCustomPayAmount(remainingBalance - (isAdvancePaid ? 0 : advanceReq));
+                                  setCustomPayAmount(remainingBalance);
                                   setShowGeneratedQr(false);
                                   setShowPaymentModal(true);
                                 }}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
+                                className="bg-brand-600 hover:bg-brand-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
                               >
-                                Collect Balance
+                                Request / Collect
                               </button>
                             </td>
                           </tr>
                         )}
 
-                        {/* 3. Completed Payments Transactions Rows */}
-                        {paymentsHistory.map((pay, idx) => (
-                          <tr key={pay.id || idx} className="hover:bg-warm-hover transition-colors">
-                            <td className="py-3 px-3 font-extrabold text-charcoal-500">#{idx + 1}</td>
-                            <td className="py-3 px-3 font-mono font-bold text-charcoal-700">
-                              {pay.created_at ? new Date(pay.created_at).toLocaleString('en-IN') : 'Recent'}
-                            </td>
-                            <td className="py-3 px-3 font-bold text-charcoal-900">{pay.payment_mode || 'Online Payment'}</td>
-                            <td className="py-3 px-3 font-black text-emerald-700 font-mono text-sm">+₹{(pay.amount || 0).toLocaleString('en-IN')}</td>
-                            <td className="py-3 px-3 text-charcoal-600 text-[11px]">{pay.notes || 'Payment collected'}</td>
-                            <td className="py-3 px-3"><Badge variant="paid">PAID</Badge></td>
-                            <td className="py-3 px-3 text-center font-bold text-charcoal-400 text-[11px]">-</td>
-                          </tr>
-                        ))}
+                        {/* 2. All Actual Payment Records (Pending Requests & Completed Payments) */}
+                        {paymentsHistory.map((pay, idx) => {
+                          const isPending = pay.status === 'pending' || pay.status === 'unpaid';
+
+                          if (isPending) {
+                            return (
+                              <tr key={pay.id || idx} className="bg-rose-50/70 border-l-4 border-rose-500">
+                                <td className="py-3 px-3 font-extrabold text-rose-800">#{idx + 1}</td>
+                                <td className="py-3 px-3 font-mono font-bold text-rose-700">
+                                  {pay.created_at ? new Date(pay.created_at).toLocaleString('en-IN') : 'Recent Request'}
+                                </td>
+                                <td className="py-3 px-3 font-bold text-charcoal-900">
+                                  {pay.payment_mode || 'Payment Request Sent to Customer'}
+                                  <span className="block text-[10px] text-rose-600 font-semibold">Waiting for customer online / cash payment</span>
+                                </td>
+                                <td className="py-3 px-3 font-black text-rose-700 font-mono text-sm">
+                                  ₹{(Number(pay.amount) || 0).toLocaleString('en-IN')}
+                                </td>
+                                <td className="py-3 px-3 text-charcoal-600 text-[11px]">
+                                  {pay.notes || 'Payment requested by shop admin'}
+                                </td>
+                                <td className="py-3 px-3">
+                                  <span className="bg-rose-100 text-rose-800 border border-rose-300 font-black px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider animate-pulse">
+                                    UNPAID
+                                  </span>
+                                </td>
+                                <td className="py-3 px-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCustomPayAmount(Number(pay.amount) || remainingBalance);
+                                      setShowGeneratedQr(false);
+                                      setShowPaymentModal(true);
+                                    }}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
+                                  >
+                                    Mark as Paid
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return (
+                            <tr key={pay.id || idx} className="hover:bg-warm-hover transition-colors">
+                              <td className="py-3 px-3 font-extrabold text-charcoal-500">#{idx + 1}</td>
+                              <td className="py-3 px-3 font-mono font-bold text-charcoal-700">
+                                {pay.created_at ? new Date(pay.created_at).toLocaleString('en-IN') : 'Recent'}
+                              </td>
+                              <td className="py-3 px-3 font-bold text-charcoal-900">{pay.payment_mode || 'Online Payment'}</td>
+                              <td className="py-3 px-3 font-black text-emerald-700 font-mono text-sm">+₹{(Number(pay.amount) || 0).toLocaleString('en-IN')}</td>
+                              <td className="py-3 px-3 text-charcoal-600 text-[11px]">{pay.notes || 'Payment collected'}</td>
+                              <td className="py-3 px-3">
+                                <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-black px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider">
+                                  PAID
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-center font-bold text-emerald-600 text-[11px]">✓ Received</td>
+                            </tr>
+                          );
+                        })}
                       </>
                     );
                   })()}
