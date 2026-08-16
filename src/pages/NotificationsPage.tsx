@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ArrowLeft, CheckCircle2, Sparkles, ShoppingBag, Clock, X, CheckCheck } from 'lucide-react';
+import { Bell, ArrowLeft, CheckCircle2, Sparkles, ShoppingBag, Clock, X, CheckCheck, Eye } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -37,10 +37,12 @@ export const NotificationsPage: React.FC = () => {
   };
 
   const handleCardClick = async (notif: AppNotification) => {
-    await markNotificationAsRead(notif.id);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
-    );
+    if (!notif.is_read) {
+      await markNotificationAsRead(notif.id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
+      );
+    }
     if (notif.link) {
       navigate(notif.link);
     }
@@ -114,14 +116,16 @@ export const NotificationsPage: React.FC = () => {
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}
-                className="inline-flex items-center gap-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-black px-3 py-1.5 rounded-2xl border border-brand-200 transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-black px-3.5 py-2 rounded-2xl border border-brand-200 transition-all shadow-sm"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
                 <span>{isTamil ? 'அனைத்தையும் வாசித்ததாக குறிக்க' : 'Mark All Read'}</span>
               </button>
             )}
 
-            <span className="bg-brand-600 text-white text-xs font-black px-3 py-1.5 rounded-2xl shadow-sm">
+            <span className={`text-xs font-black px-3 py-2 rounded-2xl shadow-sm ${
+              unreadCount > 0 ? 'bg-brand-600 text-white' : 'bg-warm-bg text-charcoal-700 border border-warm-border'
+            }`}>
               {unreadCount > 0 ? `${unreadCount} Unread` : `${notifications.length} Total`}
             </span>
           </div>
@@ -144,14 +148,14 @@ export const NotificationsPage: React.FC = () => {
               <div
                 key={notif.id}
                 onClick={() => handleCardClick(notif)}
-                className={`group relative p-4.5 rounded-3xl border transition-all duration-200 cursor-pointer ${
+                className={`group relative p-5 rounded-3xl border transition-all duration-200 cursor-pointer ${
                   notif.is_read
-                    ? 'bg-white/90 border-warm-border hover:bg-white hover:shadow-md'
+                    ? 'bg-white border-warm-border hover:border-brand-300 hover:shadow-md'
                     : 'bg-amber-50/90 border-amber-300 shadow-md hover:shadow-lg hover:border-amber-400'
                 }`}
               >
-                <div className="flex items-start gap-3.5">
-                  <div className="p-2.5 rounded-2xl bg-white border border-warm-border shrink-0 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-2xl bg-white border border-warm-border shrink-0 shadow-sm">
                     {getNotificationIcon(notif.type)}
                   </div>
 
@@ -162,12 +166,14 @@ export const NotificationsPage: React.FC = () => {
                           {isTamil ? notif.title_ta || notif.title_en : notif.title_en}
                         </h4>
                         {!notif.is_read ? (
-                          <span className="bg-brand-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            Unread
+                          <span className="bg-brand-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm inline-flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                            <span>Unread</span>
                           </span>
                         ) : (
-                          <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded-full">
-                            Seen ✓
+                          <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                            <span>Seen</span>
+                            <span>✓</span>
                           </span>
                         )}
                       </div>
@@ -183,7 +189,7 @@ export const NotificationsPage: React.FC = () => {
 
                     {notif.link && (
                       <span className="text-[11px] font-extrabold text-brand-600 group-hover:underline inline-flex items-center gap-1 pt-1">
-                        <span>View Details</span>
+                        <span>View Order Details</span>
                         <span>→</span>
                       </span>
                     )}
