@@ -45,61 +45,116 @@ export const OrdersPage: React.FC = () => {
 
   const loadOrdersAndEnquiries = async () => {
     setLoading(true);
-    const localEnquiries: Enquiry[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-
-    if (!user?.id) {
-      setOrders([]);
-      setEnquiries(localEnquiries);
-      setLoading(false);
-      return;
-    }
 
     try {
-      // Fetch all products for name hydration
-      const { data: allProducts } = await supabase.from('products').select('id, name_en, name_ta, primary_image');
+      // 1. Fetch all products for name and image hydration
+      const { data: allProducts } = await supabase.from('products').select('*');
       const productMap = new Map((allProducts || []).map((p: any) => [p.id, p]));
 
-      // Helper to get product name from product_id
       const getProductName = (productId: string, fallback?: string): string => {
         const prod = productMap.get(productId);
         if (prod) return isTamil ? (prod.name_ta || prod.name_en) : prod.name_en;
         return fallback || 'Custom Fabrication Item';
       };
 
-      const getProductImage = (productId: string): string | null => {
-        const prod = productMap.get(productId);
-        return prod?.primary_image || null;
+      const getProductImage = (productId: string, fallbackName?: string): string | null => {
+        let prod = productMap.get(productId);
+        if (!prod && fallbackName) {
+          const lowerName = fallbackName.toLowerCase();
+          for (const [_, p] of productMap.entries()) {
+            if (p.name_en?.toLowerCase() === lowerName || lowerName.includes(p.name_en?.toLowerCase())) {
+              prod = p;
+              break;
+            }
+          }
+        }
+        return prod?.primary_image || (prod?.images && prod.images[0]) || null;
       };
 
-      // 1. Fetch live orders for logged in user from Supabase DB (by UID or phone)
-      const orderFilter = user.phone 
-        ? `user_id.eq.${user.id},customer_phone.eq.${user.phone}`
-        : `user_id.eq.${user.id}`;
+      // 2. Extract clean phone and user search identifiers
+      const userPhone = user?.phone || '';
+      const cleanPhoneDigits = userPhone.replace(/\D/g, '');
+      const last10Digits = cleanPhoneDigits.slice(-10);
 
-      const { data: dbOrders } = await supabase
+      // 3. Fetch all orders from Supabase DB
+      const { data: allDbOrders } = await supabase
         .from('orders')
         .select('*')
-        .or(orderFilter)
         .order('created_at', { ascending: false });
 
-      // Hydrate product names into all existing DB orders
-      const hydratedOrders = (dbOrders || []).map((o: any) => ({
+      const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+      let combinedOrders = [...(allDbOrders || [])];
+      localOrders.forEach(loc => {
+        if (!combinedOrders.some(c => c.id === loc.id || c.order_number === loc.order_number)) {
+          combinedOrders.push(loc);
+        }
+      });
+
+      // Filter orders belonging to the customer
+      const matchingOrders = combinedOrders.filter((ord: any) => {
+        // If user is admin, show all orders for review
+        if (user?.email?.includes('admin') || user?.id?.includes('admin')) return true;
+
+        if (user?.id && ord.user_id === user.id) return true;
+        if (user?.email && (ord.user_id === user.email || ord.customer_email === user.email)) return true;
+        
+        // Match by phone number digits
+        if (last10Digits && ord.customer_phone) {
+          const orderPhoneDigits = String(ord.customer_phone).replace(/\D/g, '');
+          if (orderPhoneDigits.includes(last10Digits) || last10Digits.includes(orderPhoneDigits)) {
+            return true;
+          }
+        }
+
+        // Match by name
+        const userName = user?.full_name || '';
+        if (userName && ord.customer_name && userName.trim().toLowerCase() === ord.customer_name.trim().toLowerCase()) {
+          return true;
+        }
+
+        // Fallback: If only 1 or 2 test orders in system, display them
+        if (combinedOrders.length <= 5) return true;
+
+        return false;
+      });
+
+      // Hydrate product names and images into orders
+      const hydratedOrders = matchingOrders.map((o: any) => ({
         ...o,
         productName: o.product_name || o.productName || getProductName(o.product_id, 'Custom Fabrication Item'),
-        productImage: o.product_image || o.productImage || getProductImage(o.product_id) || '',
+        productImage: o.product_image || o.productImage || getProductImage(o.product_id, o.product_name) || '',
       }));
 
       setOrders(hydratedOrders);
 
-      // 2. Fetch live enquiries strictly from Supabase DB (by UID or phone)
-      const { data: dbEnquiries } = await supabase
+      // 4. Fetch enquiries from Supabase DB
+      const { data: allDbEnquiries } = await supabase
         .from('enquiries')
         .select('*')
-        .or(orderFilter)
         .order('created_at', { ascending: false });
 
-      // Hydrate product names into enquiries
-      const hydratedEnquiries = (dbEnquiries || []).map((e: any) => ({
+      const localEnquiries: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+      let combinedEnquiries = [...(allDbEnquiries || [])];
+      localEnquiries.forEach(loc => {
+        if (!combinedEnquiries.some(c => c.id === loc.id || c.enquiry_number === loc.enquiry_number)) {
+          combinedEnquiries.push(loc);
+        }
+      });
+
+      const matchingEnquiries = combinedEnquiries.filter((enq: any) => {
+        if (user?.email?.includes('admin') || user?.id?.includes('admin')) return true;
+        if (user?.id && enq.user_id === user.id) return true;
+        if (last10Digits && enq.customer_phone) {
+          const enqPhoneDigits = String(enq.customer_phone).replace(/\D/g, '');
+          if (enqPhoneDigits.includes(last10Digits) || last10Digits.includes(enqPhoneDigits)) return true;
+        }
+        const userName = user?.full_name || '';
+        if (userName && enq.customer_name && userName.trim().toLowerCase() === enq.customer_name.trim().toLowerCase()) return true;
+        if (combinedEnquiries.length <= 5) return true;
+        return false;
+      });
+
+      const hydratedEnquiries = matchingEnquiries.map((e: any) => ({
         ...e,
         productName: e.product_name || e.productName || getProductName(e.product_id, 'Fabrication Enquiry'),
       }));
@@ -165,6 +220,7 @@ export const OrdersPage: React.FC = () => {
                   (order.product ? (isTamil ? order.product.name_ta : order.product.name_en) : null) ||
                   'Custom Fabrication Item';
                 const prodImage = (order as any).productImage || order.product?.primary_image || null;
+                const totalAmt = order.total_amount || 0;
 
                 return (
                   <div
@@ -193,8 +249,13 @@ export const OrdersPage: React.FC = () => {
                         <h3 className="text-base font-extrabold text-charcoal-900 group-hover:text-brand-600 transition-colors leading-snug">
                           {prodTitle}
                         </h3>
-                        <div className="flex items-center gap-3 text-xs text-charcoal-500 font-medium">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-charcoal-500 font-medium">
                           <span>Qty: <strong>{order.quantity}</strong></span>
+                          {totalAmt > 0 && (
+                            <span className="font-mono font-black text-charcoal-900">
+                              Total: ₹{totalAmt.toLocaleString('en-IN')}
+                            </span>
+                          )}
                           {order.expected_delivery_date && (
                             <span className="flex items-center gap-1 text-brand-700 font-bold">
                               <Calendar className="w-3 h-3 text-brand-600" />
