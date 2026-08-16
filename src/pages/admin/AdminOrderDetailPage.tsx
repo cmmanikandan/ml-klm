@@ -34,9 +34,13 @@ import { fetchActiveProducts } from '../../lib/productsStore';
 import { getStatusConfig } from '../../lib/statusConfig';
 import { 
   sendOrderConfirmationWhatsApp, 
+  sendOrderConfirmationSMS,
   sendStatusUpdateWhatsApp, 
+  sendStatusUpdateSMS,
   sendInvoiceLinkWhatsApp, 
-  sendPaymentReceiptWhatsApp 
+  sendPaymentReceiptWhatsApp,
+  sendPaymentReminderWhatsApp,
+  sendPaymentReminderSMS
 } from '../../lib/whatsappService';
 
 export const AdminOrderDetailPage: React.FC = () => {
@@ -1941,7 +1945,17 @@ export const AdminOrderDetailPage: React.FC = () => {
                           title="Notify Customer on WhatsApp"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">WhatsApp Alert</span>
+                          <span className="hidden sm:inline">WhatsApp</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => sendStatusUpdateSMS(order, steps[currentIdx]?.label || order.status)}
+                          className="inline-flex items-center justify-center gap-1.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-black py-2 px-3 rounded-xl shadow-sm transition-all"
+                          title="Send SMS notification to customer"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">SMS</span>
                         </button>
                       </div>
                     </div>

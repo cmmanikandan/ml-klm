@@ -556,6 +556,17 @@ export const AdminPOSPage: React.FC = () => {
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
   };
 
+  // SMS Share Generator for POS Bill
+  const handleShareSMSBill = (ord: any) => {
+    const rawPhone = (ord.customerPhone || '').replace(/[^0-9]/g, '');
+    const phone = rawPhone ? (rawPhone.startsWith('91') ? `+${rawPhone}` : `+91${rawPhone}`) : '+919659286268';
+    const targetInvoiceNo = ord.order_number || ord.id;
+    const body = encodeURIComponent(
+      `MANIKANDAN LATHE: Bill #${ord.order_number} for ${ord.customerName || 'Valued Customer'}. Paid: Rs.${(ord.advance_amount || ord.total_amount || 0).toLocaleString('en-IN')}. View Invoice: ${window.location.origin}/invoice/${targetInvoiceNo} Ph: 9659286268`
+    );
+    window.open(`sms:${phone}?body=${body}`, '_blank');
+  };
+
   // Handle Editing Past History Order
   const handleSaveHistoryOrderEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1225,6 +1236,15 @@ export const AdminPOSPage: React.FC = () => {
                             title="Share on WhatsApp"
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleShareSMSBill(ord)}
+                            className="bg-sky-600 hover:bg-sky-700 text-white font-extrabold p-1.5 rounded-xl text-[11px] shadow-sm transition-colors inline-flex items-center"
+                            title="Send SMS"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
                           </button>
 
                           <button
