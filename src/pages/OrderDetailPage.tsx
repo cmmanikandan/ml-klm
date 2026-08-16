@@ -11,7 +11,6 @@ import { DEFAULT_SHOP_INFO, INITIAL_PRODUCTS, supabase } from '../lib/supabase';
 import { fetchActiveProducts } from '../lib/productsStore';
 import { Order, OrderStatus, PaymentStatus } from '../types';
 import { InvoicePreviewModal } from '../components/invoice/InvoicePreviewModal';
-import { FabricationTimeline } from '../components/orders/FabricationTimeline';
 import confetti from 'canvas-confetti';
 
 export const OrderDetailPage: React.FC = () => {
@@ -453,13 +452,6 @@ export const OrderDetailPage: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* VISUAL WORKSHOP FABRICATION PROGRESS TIMELINE */}
-          <FabricationTimeline 
-            currentStage={order.fabrication_stage} 
-            orderStatus={order.status} 
-            updatedAt={order.updated_at}
-          />
 
           {/* DYNAMIC PAYMENT / NOTIFICATION CARD SECTION */}
           {(() => {

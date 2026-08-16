@@ -32,6 +32,8 @@ import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
 import { Product, Profile, Order } from '../../types';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 interface CartItem {
   id: string;
   product: Product;
@@ -167,19 +169,14 @@ export const AdminPOSPage: React.FC = () => {
         console.warn('Supabase DB POS history query fallback', err);
       }
 
-      const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      const localPos = localOrders.filter((o: any) => o.is_pos || (o.admin_notes && o.admin_notes.includes('POS')));
+      const hydrated = dbOrders.map((o: any) => ({
+        ...o,
+        customerName: o.customer_name || o.customerName || 'Walk-in Customer',
+        customerPhone: o.customer_phone || o.customerPhone || '',
+        productName: o.product_name || o.productName || o.specifications || 'Custom Lathe Item',
+      }));
 
-      let combined = [...dbOrders, ...localPos];
-      const seen = new Set();
-      combined = combined.filter((o: any) => {
-        const key = o.id || o.order_number;
-        if (!key || seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-
-      setPosOrdersHistory(combined);
+      setPosOrdersHistory(hydrated);
     } catch (e) {
       console.warn('POS history fetch error', e);
     }
@@ -487,16 +484,17 @@ export const AdminPOSPage: React.FC = () => {
       created_at: new Date().toISOString(),
       status: 'completed'
     };
-    const localPayments = JSON.parse(localStorage.getItem('ml_payments') || '[]');
-    localStorage.setItem('ml_payments', JSON.stringify([paymentObj, ...localPayments]));
-
     // Try Supabase Insert with full cross-device sync fields
     try {
-      await supabase.from('orders').insert({
+      const dbPayload = {
         id: orderId,
         order_number: orderNo,
         user_id: selectedCustomer?.id || 'pos_customer',
-        product_id: mainItem.product.id,
+        customer_name: customerDisplayName,
+        customer_phone: customerPhone.trim(),
+        customer_address: 'Direct Workshop Counter Pickup (Kallimandhayam)',
+        product_id: mainItem.product.id && UUID_REGEX.test(mainItem.product.id) ? mainItem.product.id : null,
+        product_name: posOrderObj.productName,
         quantity: posOrderObj.quantity,
         status: 'delivered',
         fabrication_stage: 'delivered',
@@ -511,8 +509,21 @@ export const AdminPOSPage: React.FC = () => {
         specifications: posOrderObj.productName,
         delivery_location: 'Direct Workshop Counter Pickup (Kallimandhayam)',
         created_at: new Date().toISOString()
-      });
-      await supabase.from('payments').insert(paymentObj);
+      };
+
+      await supabase.from('orders').insert(dbPayload);
+
+      const dbPayment = {
+        id: crypto.randomUUID(),
+        order_id: orderId,
+        order_number: orderNo,
+        amount: paid,
+        payment_mode: `POS Counter (${mode.toUpperCase()})`,
+        notes: posNotes || 'POS Counter Sale Payment',
+        created_at: new Date().toISOString(),
+        status: 'completed'
+      };
+      await supabase.from('payments').insert(dbPayment);
     } catch (e) {
       console.warn('POS DB save fallback', e);
     }
@@ -1184,9 +1195,9 @@ export const AdminPOSPage: React.FC = () => {
                       <td className="py-3 px-3 font-mono text-charcoal-600">
                         {ord.created_at ? new Date(ord.created_at).toLocaleString('en-IN') : 'Recent'}
                       </td>
-                      <td className="py-3 px-3 font-extrabold text-charcoal-900">{ord.customerName || 'Walk-in'}</td>
-                      <td className="py-3 px-3 font-mono text-charcoal-700">{ord.customerPhone || '-'}</td>
-                      <td className="py-3 px-3 font-semibold text-charcoal-800">{ord.productName || 'Lathe Item'}</td>
+                      <td className="py-3 px-3 font-extrabold text-charcoal-900">{ord.customer_name || ord.customerName || 'Walk-in Customer'}</td>
+                      <td className="py-3 px-3 font-mono text-charcoal-700">{ord.customer_phone || ord.customerPhone || '-'}</td>
+                      <td className="py-3 px-3 font-semibold text-charcoal-800">{ord.product_name || ord.productName || ord.specifications || 'Lathe Item'}</td>
                       <td className="py-3 px-3 font-black font-mono text-charcoal-900">₹{(ord.total_amount || 0).toLocaleString('en-IN')}</td>
                       <td className="py-3 px-3">
                         <span className="bg-emerald-100 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-300">

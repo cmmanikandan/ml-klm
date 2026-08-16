@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Search, DollarSign, CreditCard, Calendar, Filter, ExternalLink } from 'lucide-react';
+import { Shield, Search, DollarSign, CreditCard, Calendar, Filter, ExternalLink, Download, Clock } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { supabase } from '../../lib/supabase';
-import { fetchActiveProducts } from '../../lib/productsStore';
 
 export const AdminPaymentsPage: React.FC = () => {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
+  const [filterMode, setFilterMode] = useState<string>('all');
 
   useEffect(() => {
     fetchLivePayments();
@@ -29,47 +30,23 @@ export const AdminPaymentsPage: React.FC = () => {
       const { data: profilesData } = await supabase.from('profiles').select('*');
       const profileMap = new Map((profilesData || []).map((prof: any) => [prof.id, prof]));
 
-      let rawPayments = dbPayments && dbPayments.length > 0 ? dbPayments : [];
+      let combinedPayments: any[] = [];
+      const seenOrderIds = new Set<string>();
 
-      // If no explicit transactions in payments table, check real orders for advance payments
-      if (rawPayments.length === 0 && allOrders.length > 0) {
-        rawPayments = allOrders
-          .filter((ord: any) => {
-            const total = ord.total_amount || 0;
-            const remaining = ord.remaining_amount || 0;
-            const advance = Math.max(0, total - remaining);
-            return advance > 0 || (ord.advance_amount && ord.advance_amount > 0);
-          })
-          .map((ord: any) => {
-            const total = ord.total_amount || 0;
-            const remaining = ord.remaining_amount || 0;
-            const advance = ord.advance_amount || Math.max(0, total - remaining);
-
-            return {
-              id: `pay_ord_${ord.id}`,
-              order_id: ord.id,
-              order_number: ord.order_number || ord.id,
-              amount: advance,
-              payment_mode: 'UPI / Online Advance',
-              transaction_id: `ADV-${ord.order_number || ord.id}`,
-              user_id: ord.user_id,
-              status: 'completed',
-              created_at: ord.created_at || new Date().toISOString()
-            };
-          });
-      }
-
-      // Hydrate customer name, phone, order number
-      const hydratedPayments = rawPayments.map((p: any) => {
+      // 1. Add records from payments table
+      (dbPayments || []).forEach((p: any) => {
         const ord: any = orderMap.get(p.order_id) || {};
         const prof: any = profileMap.get(p.user_id || ord?.user_id) || {};
+        if (p.order_id) seenOrderIds.add(p.order_id);
 
-        return {
+        combinedPayments.push({
           ...p,
           orderNumber: p.order_number || ord?.order_number || p.order_id,
-          customerName: p.customerName || p.user_name || prof?.full_name || ord?.customerName || ord?.customer_name || 'Customer',
-          customerPhone: p.customerPhone || prof?.phone || ord?.customerPhone || ord?.customer_phone || '+91 96592 86268',
-          paymentMode: p.payment_mode || p.payment_type || 'UPI / Razorpay',
+          customerName: ord?.customer_name || p.customerName || prof?.full_name || 'Customer',
+          customerPhone: ord?.customer_phone || p.customerPhone || prof?.phone || '',
+          productName: ord?.product_name || ord?.specifications || 'Lathe Item',
+          paymentMode: p.payment_mode || 'Online / Advance',
+          status: (p.status === 'completed' || p.status === 'paid') ? 'paid' : 'unpaid',
           formattedDate: p.created_at ? new Date(p.created_at).toLocaleString('en-IN', {
             day: '2-digit',
             month: 'short',
@@ -78,21 +55,56 @@ export const AdminPaymentsPage: React.FC = () => {
             minute: '2-digit',
             hour12: true
           }) : 'Recent'
-        };
+        });
       });
 
-      setPayments(hydratedPayments);
+      // 2. Also incorporate active orders with pending/unpaid amounts if not yet in payments table
+      allOrders.forEach((ord: any) => {
+        if (!seenOrderIds.has(ord.id)) {
+          const prof: any = profileMap.get(ord.user_id) || {};
+          const isPaid = ord.payment_status === 'paid';
+          const isUnpaid = ord.payment_status === 'unpaid' || ord.payment_status === 'pending' || (ord.is_payment_requested && (ord.payment_request_amount || 0) > 0);
+          
+          if (ord.total_amount > 0 || isUnpaid) {
+            combinedPayments.push({
+              id: `ord_pay_${ord.id}`,
+              order_id: ord.id,
+              order_number: ord.order_number || ord.id,
+              orderNumber: ord.order_number || ord.id,
+              customerName: ord.customer_name || prof?.full_name || 'Customer',
+              customerPhone: ord.customer_phone || prof?.phone || '',
+              productName: ord.product_name || ord.specifications || 'Lathe Item',
+              amount: isPaid ? (ord.total_amount || 0) : (ord.payment_request_amount || ord.remaining_amount || ord.total_amount || 0),
+              paymentMode: isPaid ? 'Full Payment' : 'Advance Payment Due',
+              transaction_id: `ORD-${ord.order_number || ord.id}`,
+              status: isPaid ? 'paid' : 'unpaid',
+              created_at: ord.created_at || new Date().toISOString(),
+              formattedDate: ord.created_at ? new Date(ord.created_at).toLocaleString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              }) : 'Recent'
+            });
+          }
+        }
+      });
+
+      setPayments(combinedPayments);
     } catch (e) {
-      console.warn('Payments audit fetch fallback');
+      console.warn('Payments audit fetch fallback', e);
     } finally {
       setLoading(false);
     }
   };
 
-  const [filterMode, setFilterMode] = useState<string>('all');
-
   const filteredPayments = payments.filter((p) => {
-    // 1. Payment mode filter
+    // 1. Status Filter
+    if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+
+    // 2. Payment mode filter
     if (filterMode !== 'all') {
       const mode = (p.paymentMode || '').toLowerCase();
       if (filterMode === 'upi' && !mode.includes('upi') && !mode.includes('online')) return false;
@@ -100,7 +112,7 @@ export const AdminPaymentsPage: React.FC = () => {
       if (filterMode === 'bank' && !mode.includes('bank') && !mode.includes('neft')) return false;
     }
 
-    // 2. Search query filter
+    // 3. Search query filter
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -112,7 +124,8 @@ export const AdminPaymentsPage: React.FC = () => {
     );
   });
 
-  const totalCollected = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  const totalCollected = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + (p.amount || 0), 0);
+  const totalPending = payments.filter(p => p.status === 'unpaid').reduce((sum, p) => sum + (p.amount || 0), 0);
 
   const handleExportPaymentsCSV = () => {
     if (filteredPayments.length === 0) return;
@@ -127,15 +140,14 @@ export const AdminPaymentsPage: React.FC = () => {
       `"${p.paymentMode}"`,
       `"${p.transaction_id || p.id}"`,
       p.amount || 0,
-      "COMPLETED"
+      p.status.toUpperCase()
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Manikandan_Lathe_Payments_Ledger_${new Date().toISOString().slice(0, 10)}.csv`);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Manikandan_Lathe_Payments_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -144,54 +156,73 @@ export const AdminPaymentsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       
-      {/* Header */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-brand-600 font-extrabold text-xs uppercase tracking-wider">
-            <Shield className="w-4 h-4" />
-            <span>AUDIT LEDGER</span>
-          </div>
-          <h1 className="text-2xl font-black text-charcoal-900">Payment & Revenue Audit History</h1>
+          <h1 className="text-2xl font-black text-charcoal-900">Payment Audit Ledger</h1>
           <p className="text-xs text-charcoal-500 font-semibold mt-0.5">
-            Detailed transaction records of UPI QR, Razorpay online, and workshop cash collections
+            Real-time tracking for online advance receipts, cash counter sales, and pending dues
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleExportPaymentsCSV}
-            className="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl text-xs font-extrabold shadow-md transition-colors flex items-center gap-2"
+            className="bg-white hover:bg-warm-hover text-charcoal-800 font-bold px-3.5 py-2 rounded-2xl border border-warm-border text-xs shadow-sm flex items-center gap-1.5 transition-colors"
           >
-            <Filter className="w-4 h-4" />
-            <span>Export CSV Ledger</span>
+            <Download className="w-4 h-4 text-brand-600" />
+            <span>Export CSV</span>
           </button>
+        </div>
+      </div>
 
-          <div className="bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-2xl flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-md">
-              ₹
-            </div>
-            <div>
-              <span className="text-[9px] font-extrabold text-emerald-800 uppercase block">Total Collections</span>
-              <span className="text-sm font-black text-emerald-900 font-mono">₹{totalCollected.toLocaleString('en-IN')}</span>
-            </div>
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white p-5 rounded-3xl border border-warm-border shadow-card flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-wider block">Total Transactions</span>
+            <span className="text-2xl font-black text-charcoal-900 font-mono">{payments.length}</span>
+          </div>
+          <div className="w-11 h-11 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold border border-brand-200">
+            <CreditCard className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-emerald-50/80 p-5 rounded-3xl border border-emerald-200 shadow-card flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider block">Total Paid Collections</span>
+            <span className="text-2xl font-black text-emerald-900 font-mono">₹{totalCollected.toLocaleString('en-IN')}</span>
+          </div>
+          <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-md">
+            ₹
+          </div>
+        </div>
+
+        <div className="bg-rose-50/80 p-5 rounded-3xl border border-rose-200 shadow-card flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] font-black text-rose-800 uppercase tracking-wider block">Pending / Unpaid Dues</span>
+            <span className="text-2xl font-black text-rose-900 font-mono">₹{totalPending.toLocaleString('en-IN')}</span>
+          </div>
+          <div className="w-11 h-11 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-bold shadow-md">
+            <Clock className="w-5 h-5" />
           </div>
         </div>
       </div>
 
       {/* Filter Tabs & Search Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Status Tabs */}
         <div className="flex items-center gap-1.5 bg-warm-bg p-1 rounded-2xl border border-warm-border w-full sm:w-auto">
           {[
-            { id: 'all', label: 'All Modes' },
-            { id: 'upi', label: 'UPI / Online' },
-            { id: 'cash', label: 'Cash' },
-            { id: 'bank', label: 'Bank Transfer' }
+            { id: 'all', label: `All (${payments.length})` },
+            { id: 'paid', label: `Paid (${payments.filter(p => p.status === 'paid').length})` },
+            { id: 'unpaid', label: `Unpaid / Due (${payments.filter(p => p.status === 'unpaid').length})` }
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setFilterMode(tab.id)}
+              onClick={() => setStatusFilter(tab.id as any)}
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                filterMode === tab.id
+                statusFilter === tab.id
                   ? 'bg-brand-600 text-white shadow-sm'
                   : 'text-charcoal-600 hover:text-charcoal-900'
               }`}
@@ -207,7 +238,7 @@ export const AdminPaymentsPage: React.FC = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by order #, customer..."
+            placeholder="Search order #, customer..."
             className="w-full pl-10 pr-4 py-2 text-xs font-bold border border-warm-border rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm"
           />
         </div>
@@ -222,8 +253,8 @@ export const AdminPaymentsPage: React.FC = () => {
         ) : filteredPayments.length === 0 ? (
           <div className="p-12 text-center space-y-2">
             <CreditCard className="w-10 h-10 text-brand-600 mx-auto" />
-            <h3 className="text-base font-bold text-charcoal-800">No payment transactions recorded</h3>
-            <p className="text-xs text-charcoal-500 font-medium">Recorded payment receipts will appear here automatically.</p>
+            <h3 className="text-base font-bold text-charcoal-800">No payment transactions found</h3>
+            <p className="text-xs text-charcoal-500 font-medium">Recorded payments & advance requests will appear here automatically.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -232,10 +263,10 @@ export const AdminPaymentsPage: React.FC = () => {
                 <tr>
                   <th className="py-3.5 px-4">S.No</th>
                   <th className="py-3.5 px-4">Date & Time</th>
-                  <th className="py-3.5 px-4">Order # & Bill</th>
+                  <th className="py-3.5 px-4">Order # & Item</th>
                   <th className="py-3.5 px-4">Customer Name</th>
                   <th className="py-3.5 px-4">Payment Mode & Ref</th>
-                  <th className="py-3.5 px-4">Amount Received</th>
+                  <th className="py-3.5 px-4">Amount (₹)</th>
                   <th className="py-3.5 px-4 text-right">Status</th>
                 </tr>
               </thead>
@@ -243,30 +274,23 @@ export const AdminPaymentsPage: React.FC = () => {
               <tbody className="divide-y divide-warm-muted font-medium">
                 {filteredPayments.map((pay, idx) => (
                   <tr key={pay.id || idx} className="hover:bg-warm-hover/50 transition-colors">
+                    <td className="py-4 px-4 font-black text-charcoal-500 text-xs">#{idx + 1}</td>
+                    <td className="py-4 px-4 font-mono font-bold text-charcoal-800 whitespace-nowrap">{pay.formattedDate}</td>
                     
-                    {/* S.No */}
-                    <td className="py-4 px-4 font-black text-charcoal-500 text-xs">
-                      #{idx + 1}
-                    </td>
-
-                    {/* Transaction Date & Time */}
-                    <td className="py-4 px-4 font-mono font-bold text-charcoal-800 whitespace-nowrap">
-                      {pay.formattedDate}
-                    </td>
-
                     {/* Order # */}
-                    <td className="py-4 px-4 font-mono font-extrabold text-brand-600">
-                      <Link to={`/admin/orders/${pay.order_id}`} className="hover:underline flex items-center gap-1">
+                    <td className="py-4 px-4">
+                      <Link to={`/admin/orders/${pay.order_id}`} className="font-mono font-extrabold text-brand-600 hover:underline flex items-center gap-1">
                         <span>#{pay.orderNumber}</span>
                         <ExternalLink className="w-3 h-3 text-brand-400 shrink-0" />
                       </Link>
+                      <span className="text-[11px] font-bold text-charcoal-500 block truncate max-w-[150px]">{pay.productName}</span>
                     </td>
 
                     {/* Customer Name & Phone */}
                     <td className="py-4 px-4">
                       <span className="font-black text-charcoal-900 block text-xs">{pay.customerName}</span>
                       <a href={`tel:${pay.customerPhone}`} className="text-[11px] text-charcoal-500 font-mono font-bold hover:text-brand-600">
-                        {pay.customerPhone}
+                        {pay.customerPhone || '-'}
                       </a>
                     </td>
 
@@ -279,17 +303,32 @@ export const AdminPaymentsPage: React.FC = () => {
                     </td>
 
                     {/* Amount */}
-                    <td className="py-4 px-4">
-                      <span className="text-sm font-black text-emerald-700 font-mono">
-                        +₹{(pay.amount || 0).toLocaleString('en-IN')}
-                      </span>
+                    <td className="py-4 px-4 font-mono">
+                      {pay.status === 'paid' ? (
+                        <span className="text-sm font-black text-emerald-700">
+                          +₹{(pay.amount || 0).toLocaleString('en-IN')}
+                        </span>
+                      ) : (
+                        <span className="text-sm font-black text-rose-700">
+                          ₹{(pay.amount || 0).toLocaleString('en-IN')}
+                        </span>
+                      )}
                     </td>
 
                     {/* Status */}
                     <td className="py-4 px-4 text-right">
-                      <Badge variant="paid">COMPLETED</Badge>
+                      {pay.status === 'paid' ? (
+                        <span className="bg-emerald-100 text-emerald-900 text-[10px] font-black px-2.5 py-1 rounded-full border border-emerald-300 inline-flex items-center gap-1">
+                          <span>✓</span>
+                          <span>PAID</span>
+                        </span>
+                      ) : (
+                        <span className="bg-rose-100 text-rose-800 text-[10px] font-black px-2.5 py-1 rounded-full border border-rose-300 inline-flex items-center gap-1">
+                          <span>⏳</span>
+                          <span>UNPAID / DUE</span>
+                        </span>
+                      )}
                     </td>
-
                   </tr>
                 ))}
               </tbody>
@@ -297,7 +336,6 @@ export const AdminPaymentsPage: React.FC = () => {
           </div>
         )}
       </div>
-
     </div>
   );
 };

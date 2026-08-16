@@ -39,7 +39,19 @@ export const AdminDashboardPage: React.FC = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      setOrders(dbOrders || []);
+      // Hydrate product and customer details
+      const activeProducts = await fetchActiveProducts();
+      const productMap = new Map((activeProducts || []).map(p => [p.id, p]));
+      setProductsCount(activeProducts ? activeProducts.length : 0);
+
+      const hydratedOrders = (dbOrders || []).map((ord: any) => ({
+        ...ord,
+        customerName: ord.customer_name || ord.customerName || 'Customer',
+        customerPhone: ord.customer_phone || ord.customerPhone || '',
+        productName: ord.product_name || ord.productName || ord.specifications || (ord.product_id && productMap.get(ord.product_id)?.name_en) || 'Lathe Item'
+      }));
+
+      setOrders(hydratedOrders);
 
       // 2. Fetch Enquiries strictly from Supabase DB
       const { data: enqData } = await supabase
@@ -48,10 +60,6 @@ export const AdminDashboardPage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       setEnquiries(enqData || []);
-
-      // 3. Fetch Active Products from Product Store (Supabase DB)
-      const activeProducts = await fetchActiveProducts();
-      setProductsCount(activeProducts ? activeProducts.length : 0);
 
       // 4. Fetch Active Categories from Supabase DB
       const { data: catData } = await supabase.from('categories').select('*').eq('is_active', true);

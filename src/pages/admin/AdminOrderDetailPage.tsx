@@ -22,7 +22,6 @@ import {
   Plus,
   Check
 } from 'lucide-react';
-import { FabricationTimeline, FabricationStage } from '../../components/orders/FabricationTimeline';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
@@ -280,32 +279,6 @@ export const AdminOrderDetailPage: React.FC = () => {
     const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
     const updatedLocal = local.map((l: any) => l.id === order.id ? { ...l, status: newStatus } : l);
     localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
-  };
-
-  const handleUpdateFabricationStage = async (stage: FabricationStage) => {
-    if (!order) return;
-    let mappedStatus: OrderStatus = order.status;
-    if (stage === 'accepted') mappedStatus = 'accepted';
-    if (stage === 'material_cut' || stage === 'welding') mappedStatus = 'processing';
-    if (stage === 'painting') mappedStatus = 'processing';
-    if (stage === 'ready') mappedStatus = 'ready';
-    if (stage === 'delivered') mappedStatus = 'delivered';
-
-    const updatedOrder = { ...order, fabrication_stage: stage, status: mappedStatus };
-    setOrder(updatedOrder);
-
-    const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-    const updatedLocal = local.map((l: any) => l.id === order.id ? updatedOrder : l);
-    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
-
-    try {
-      await supabase.from('orders').update({
-        fabrication_stage: stage,
-        status: mappedStatus
-      }).eq('id', order.id);
-    } catch (e) {
-      console.warn('Fabrication stage DB update fallback', e);
-    }
   };
 
   const handleUpdateDeliveryDate = async (date: string) => {
@@ -1056,14 +1029,73 @@ export const AdminOrderDetailPage: React.FC = () => {
             )}
           </div>
 
-          {/* VISUAL WORKSHOP FABRICATION PROGRESS TIMELINE */}
-          <FabricationTimeline 
-            currentStage={order.fabrication_stage} 
-            orderStatus={order.status} 
-            isAdmin={true}
-            onUpdateStage={handleUpdateFabricationStage}
-            updatedAt={order.updated_at}
-          />
+          {/* SINGLE CLEAN ORDER PROGRESS TIMELINE */}
+          <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-charcoal-900 uppercase tracking-wider">Order Progress Timeline</h3>
+              <span className="text-[11px] font-extrabold font-mono text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200">
+                Current: {getStatusConfig(order.status).label}
+              </span>
+            </div>
+
+            <div className="relative py-3">
+              {/* Progress Line */}
+              <div className="absolute left-6 right-6 top-7 h-1 bg-gray-200 z-0" />
+              {(() => {
+                const getStepIndex = (status: OrderStatus) => {
+                  switch (status) {
+                    case 'accepted': return 0;
+                    case 'order_confirmed': return 1;
+                    case 'processing': return 2;
+                    case 'ready': return 3;
+                    case 'delivered': return 4;
+                    default: return 1;
+                  }
+                };
+                const currentIdx = getStepIndex(order.status);
+                const steps = [
+                  { key: 'accepted', label: 'Enquiry Accepted' },
+                  { key: 'order_confirmed', label: 'Order Confirmed' },
+                  { key: 'processing', label: 'Processing / Fabrication' },
+                  { key: 'ready', label: 'Ready for Pickup' },
+                  { key: 'delivered', label: 'Completed & Handed Over' }
+                ];
+                return (
+                  <>
+                    <div
+                      className="absolute left-6 top-7 h-1 bg-brand-600 z-0 transition-all duration-500"
+                      style={{ width: `calc(${((currentIdx / (steps.length - 1)) * 100)}% - 24px)` }}
+                    />
+                    <div className="flex items-start justify-between relative z-10">
+                      {steps.map((step, idx) => {
+                        const isDone = idx <= currentIdx;
+                        return (
+                          <div key={step.key} className="flex-1 flex flex-col items-center text-center px-1">
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all shrink-0 ${
+                                isDone
+                                  ? 'bg-brand-600 text-white ring-4 ring-brand-100 shadow-sm'
+                                  : 'bg-white text-gray-400 border-2 border-gray-300'
+                              }`}
+                            >
+                              {isDone ? '✓' : idx + 1}
+                            </div>
+                            <span
+                              className={`text-[10px] font-extrabold mt-2 leading-tight ${
+                                isDone ? 'text-charcoal-900' : 'text-gray-400'
+                              }`}
+                            >
+                              {step.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
 
           {/* Status Updater Card */}
           <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-3">

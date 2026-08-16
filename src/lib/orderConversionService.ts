@@ -124,11 +124,11 @@ export const convertEnquiryToOrderSafely = async ({
     fabrication_stage: 'accepted',
     expected_delivery_date: deliveryDate,
     total_amount: quotePrice,
-    advance_amount: advanceRequired,
+    advance_amount: 0,
     remaining_amount: quotePrice,
     is_payment_requested: advanceRequired > 0,
     payment_request_amount: advanceRequired,
-    payment_status: 'pending',
+    payment_status: 'unpaid',
     created_at: new Date().toISOString()
   };
 
@@ -142,13 +142,28 @@ export const convertEnquiryToOrderSafely = async ({
       await supabase.from('orders').insert(fallbackRecord);
     }
 
-    // Update enquiry status in Supabase
+    // Insert Unpaid Advance Payment Request Record in Payments Ledger
+    if (advanceRequired > 0) {
+      await supabase.from('payments').insert({
+        id: crypto.randomUUID(),
+        order_id: newOrderUuid,
+        order_number: newOrderNumber,
+        amount: advanceRequired,
+        payment_mode: 'Online Advance Request',
+        notes: `Advance payment requested for ${productName}`,
+        status: 'unpaid',
+        created_at: new Date().toISOString()
+      });
+    }
+
+    // Update enquiry status in Supabase to CONVERTED
     if (isEnquiryUuid) {
       await supabase
         .from('enquiries')
         .update({ status: 'converted', converted_order_id: newOrderUuid })
         .eq('id', enquiryId);
-    } else if (enquiry.enquiry_number) {
+    }
+    if (enquiry.enquiry_number) {
       await supabase
         .from('enquiries')
         .update({ status: 'converted', converted_order_id: newOrderUuid })
@@ -162,9 +177,9 @@ export const convertEnquiryToOrderSafely = async ({
         user_id: newOrderRecord.user_id,
         title_en: `Order #${newOrderNumber} Confirmed!`,
         title_ta: `ஆர்டர் #${newOrderNumber} உறுதிசெய்யப்பட்டது!`,
-        message_en: `Your fabrication request for "${productName}" has been accepted and confirmed.`,
+        message_en: `Your fabrication request for "${productName}" has been accepted and confirmed.${advanceRequired > 0 ? ` Advance payment of ₹${advanceRequired.toLocaleString('en-IN')} requested.` : ''}`,
         message_ta: `"${productName}"க்கான உங்கள் உற்பத்தி கோரிக்கை ஏற்றுக்கொள்ளப்பட்டு உறுதிசெய்யப்பட்டது.`,
-        type: 'order_update',
+        type: advanceRequired > 0 ? 'payment' : 'order_update',
         link: `/orders/${newOrderUuid}`,
         is_read: false,
         created_at: new Date().toISOString()

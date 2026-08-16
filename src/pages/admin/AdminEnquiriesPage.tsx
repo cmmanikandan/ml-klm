@@ -454,24 +454,54 @@ export const AdminEnquiriesPage: React.FC = () => {
         <Modal
           isOpen={Boolean(selectedEnquiry)}
           onClose={() => setSelectedEnquiry(null)}
-          title={`Prepare Quote for Enquiry #${selectedEnquiry.enquiry_number || selectedEnquiry.number}`}
+          title={`Prepare Quote & Convert #${selectedEnquiry.enquiry_number || selectedEnquiry.number || selectedEnquiry.id}`}
           maxWidth="md"
         >
           <div className="space-y-4">
             
+            {/* Customer & Product Context Card */}
+            <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border flex items-center justify-between gap-3 text-xs">
+              <div className="space-y-1">
+                <span className="font-extrabold text-charcoal-900 block">
+                  👤 {selectedEnquiry.customerName || selectedEnquiry.customer_name || 'Customer'}
+                </span>
+                <span className="text-[11px] font-mono text-charcoal-600 block">
+                  📞 {selectedEnquiry.customerPhone || selectedEnquiry.customer_phone || '-'}
+                </span>
+                <span className="text-[11px] font-bold text-brand-600 block">
+                  🛠️ {getProductName(selectedEnquiry)} ({selectedEnquiry.quantity || 1} Unit)
+                </span>
+              </div>
+              <span className="bg-brand-50 text-brand-700 text-[10px] font-black px-2.5 py-1 rounded-xl border border-brand-200 uppercase">
+                {selectedEnquiry.status || 'PENDING'}
+              </span>
+            </div>
+
+            {/* Price & Advance Input Fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-extrabold text-charcoal-800 mb-1">Total Final Quoted Price (₹) *</label>
+                <input
+                  type="number"
+                  value={quotePrice || ''}
+                  onChange={(e) => setQuotePrice(Number(e.target.value))}
+                  placeholder="Enter total quote (e.g. 40000)"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-warm-border focus:ring-2 focus:ring-brand-500 text-sm font-black text-charcoal-900 bg-white"
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-extrabold text-emerald-800 mb-1">Required Advance Amount (₹) *</label>
                 <input
                   type="number"
                   value={advanceRequired || ''}
                   onChange={(e) => setAdvanceRequired(Number(e.target.value))}
-                  placeholder="Enter advance amount (e.g. 2000)"
+                  placeholder="Enter advance (e.g. 5000)"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 focus:ring-2 focus:ring-emerald-500 text-sm font-extrabold text-emerald-700 bg-emerald-50/50"
                 />
               </div>
 
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-charcoal-700 mb-1">Estimated Fabrication Time (Days)</label>
                 <input
                   type="number"
@@ -482,6 +512,16 @@ export const AdminEnquiriesPage: React.FC = () => {
                 />
               </div>
             </div>
+
+            {/* Calculated Remaining Balance Notice */}
+            {quotePrice > 0 && (
+              <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 flex items-center justify-between text-xs font-bold text-amber-900">
+                <span>Remaining Balance upon Delivery:</span>
+                <span className="font-mono font-black text-sm text-charcoal-900">
+                  ₹{Math.max(0, quotePrice - advanceRequired).toLocaleString('en-IN')}
+                </span>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3 pt-3">
               <Button
@@ -496,10 +536,11 @@ export const AdminEnquiriesPage: React.FC = () => {
               <Button
                 onClick={handleConvertToOrder}
                 variant="primary"
+                disabled={isConverting}
                 icon={<CheckCircle2 className="w-4 h-4" />}
                 className="flex-1"
               >
-                Convert to Active Order
+                {isConverting ? 'Converting...' : 'Convert to Active Order'}
               </Button>
             </div>
 
