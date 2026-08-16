@@ -63,7 +63,7 @@ export const HomePage: React.FC = () => {
       if (user?.phone) {
         const userPhoneClean = user.phone.replace(/[^0-9]/g, '');
         const matchedByPhone = allUserOrders.filter((o) => {
-          const ordPhone = (o.customerPhone || o.customer_phone || '').replace(/[^0-9]/g, '');
+          const ordPhone = (o.customerPhone || (o as any).customer_phone || '').replace(/[^0-9]/g, '');
           return ordPhone.includes(userPhoneClean) || userPhoneClean.includes(ordPhone);
         });
         allUserOrders = [...allUserOrders, ...matchedByPhone];
@@ -114,23 +114,23 @@ export const HomePage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         
         {/* Top User Greeting & Workshop Brand Hero Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-charcoal-950 via-charcoal-900 to-slate-900 text-white rounded-3xl p-6 sm:p-7 border border-charcoal-800 shadow-2xl space-y-4">
+        <div className="relative overflow-hidden bg-slate-900 text-white rounded-3xl p-6 sm:p-7 border border-slate-800 shadow-2xl space-y-4">
           <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-brand-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 text-xs font-black text-amber-300 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30 uppercase tracking-widest shadow-sm">
+                <span className="inline-flex items-center gap-1.5 text-xs font-black text-amber-300 bg-amber-500/20 px-3.5 py-1 rounded-full border border-amber-500/40 uppercase tracking-widest shadow-sm">
                   <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
                   <span>{getGreeting()} 👋</span>
                 </span>
-                <span className="text-[10px] font-mono font-bold text-slate-400 bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
+                <span className="text-[10px] font-mono font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
                   KALLIMANDHAYAM
                 </span>
               </div>
 
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-sm">
                 {user?.full_name ? user.full_name : (isTamil ? 'வணக்கம், வாடிக்கையாளரே' : 'Welcome to Workshop')}
               </h1>
 
@@ -144,7 +144,7 @@ export const HomePage: React.FC = () => {
             <div className="shrink-0 flex items-center gap-2">
               <Link
                 to="/products"
-                className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-lg shadow-brand-600/30 transition-all inline-flex items-center gap-2 border border-brand-400/30"
+                className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-black px-5 py-3 rounded-2xl shadow-lg shadow-brand-600/40 transition-all inline-flex items-center gap-2 border border-brand-400/30"
               >
                 <span>{isTamil ? 'பொருட்களைப் பார்' : 'Explore Catalogue'}</span>
                 <ArrowRight className="w-4 h-4" />
