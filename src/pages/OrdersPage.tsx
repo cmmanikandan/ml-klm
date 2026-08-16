@@ -351,7 +351,7 @@ export const OrdersPage: React.FC = () => {
               </div>
             ) : (
               enquiries.map((enq) => {
-                const isAccepted = enq.is_converted || enq.status === 'converted' || enq.status === 'accepted' || Boolean(enq.converted_order_id);
+                const isAccepted = (enq as any).is_converted || enq.status === 'converted' || enq.status === 'accepted' || Boolean(enq.converted_order_id);
                 const orderNum = enq.converted_order_id || 'MNK-ORD-1';
 
                 return (

@@ -110,6 +110,7 @@ export interface Enquiry {
   custom_notes?: string;
   delivery_location?: string;
   status: EnquiryStatus;
+  is_converted?: boolean;
   converted_order_id?: string;
   convertedOrderId?: string;
   order_id?: string;
