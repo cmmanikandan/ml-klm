@@ -577,64 +577,6 @@ export const OrderDetailPage: React.FC = () => {
             </div>
           )}
 
-          {/* ONE-TIME FEEDBACK SECTION */}
-          {order.status === 'delivered' && (
-            <div className="border-t border-warm-muted pt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-extrabold text-charcoal-900">
-                  {isTamil ? 'தயாரிப்பு மதிப்பீடு' : 'Customer Review & Rating'}
-                </h3>
-                {isFeedbackSubmitted && (
-                  <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Review Submitted</span>
-                  </span>
-                )}
-              </div>
-
-              {isFeedbackSubmitted ? (
-                <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl space-y-2 text-center">
-                  <div className="flex items-center justify-center gap-1 text-amber-400">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star key={star} className="w-5 h-5 fill-current" />
-                    ))}
-                  </div>
-                  <h4 className="text-sm font-black text-emerald-900">Thank you for rating your order!</h4>
-                  <p className="text-xs text-emerald-700 font-medium">Your feedback has been recorded by Manikandan Lathe Works.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleFeedbackSubmit} className="bg-warm-bg p-4 rounded-2xl border border-warm-border space-y-3">
-                  <p className="text-xs text-charcoal-600 font-medium">How satisfied are you with the metal fabrication quality?</p>
-                  
-                  <div className="flex items-center gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setRating(star)}
-                        className="p-1 hover:scale-110 transition-transform"
-                      >
-                        <Star className={`w-7 h-7 ${rating >= star ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} />
-                      </button>
-                    ))}
-                  </div>
-
-                  <textarea
-                    rows={2}
-                    placeholder="Write your feedback..."
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-warm-border rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none bg-white"
-                  />
-
-                  <Button type="submit" variant="primary" size="sm" fullWidth icon={<Star className="w-3.5 h-3.5" />}>
-                    Submit Order Review
-                  </Button>
-                </form>
-              )}
-            </div>
-          )}
-
           {/* Workshop Pickup & Contact Information */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-warm-muted">
             <div className="bg-warm-bg p-4 rounded-2xl border border-warm-border space-y-1">

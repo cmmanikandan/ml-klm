@@ -525,6 +525,7 @@ export const AdminOrderDetailPage: React.FC = () => {
       }).eq('id', order.id);
 
       await supabase.from('notifications').insert({
+        id: crypto.randomUUID(),
         user_id: order.user_id || 'customer',
         title_en: 'Order Price & Weight Updated!',
         title_ta: 'ஆர்டர் விலை நிர்ணயிக்கப்பட்டது!',
@@ -532,7 +533,8 @@ export const AdminOrderDetailPage: React.FC = () => {
         message_ta: `வொர்க்ஷாப் நிர்வாகி உங்கள் ஆர்டர் தொகையை நிர்ணயித்துள்ளார்: ₹${grandTotal.toLocaleString('en-IN')}. ஆன்லைனில் செலுத்தவும்.`,
         type: 'order_update',
         link: `/orders/${order.id}`,
-        is_read: false
+        is_read: false,
+        created_at: new Date().toISOString()
       });
     } catch (e) {
       console.warn('DB update fallback for weight calc');
