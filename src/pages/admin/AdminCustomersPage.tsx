@@ -122,16 +122,40 @@ export const AdminCustomersPage: React.FC = () => {
       }
     ];
 
-    let combined = [...dbCustomers, ...localContacts];
+    // Also extract customers who placed orders or enquiries in DB
+    let orderCustomers: Profile[] = [];
+    try {
+      const { data: dbOrders } = await supabase.from('orders').select('*');
+      if (dbOrders && dbOrders.length > 0) {
+        orderCustomers = dbOrders
+          .filter((o: any) => o.customerName || o.customer_name || o.phone)
+          .map((o: any) => ({
+            id: `cust_ord_${o.user_id || o.id}`,
+            full_name: o.customerName || o.customer_name || o.user_name || 'Customer',
+            phone: o.customerPhone || o.customer_phone || o.phone || '',
+            email: o.customerEmail || o.email || `${(o.customerName || 'customer').toLowerCase().replace(/\s+/g, '')}@gmail.com`,
+            city_area: o.delivery_location || o.city_area || 'Kallimandhayam, Dindigul',
+            address: o.customerAddress || o.address || o.delivery_location || 'Kallimandhayam',
+            language: 'ta',
+            role: 'customer',
+            is_profile_completed: true,
+            created_at: o.created_at || new Date().toISOString()
+          }));
+      }
+    } catch (e) {
+      console.warn('Orders customer extract fallback');
+    }
+
+    let combined = [...dbCustomers, ...localContacts, ...orderCustomers];
     if (combined.length === 0) {
       combined = defaultContacts;
     }
 
-    // Deduplicate by ID or Phone
+    // Deduplicate by Name or Phone
     const seen = new Set();
     combined = combined.filter((c) => {
-      const key = c.id || c.phone || c.full_name;
-      if (seen.has(key)) return false;
+      const key = (c.phone || c.full_name || c.id || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
     });

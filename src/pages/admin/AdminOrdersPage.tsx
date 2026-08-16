@@ -100,6 +100,15 @@ export const AdminOrdersPage: React.FC = () => {
         combined = local;
       }
 
+      // Filter out demo mock orders permanently
+      combined = combined.filter((o: any) => {
+        const key = String(o.id || o.order_number || '');
+        if (key.includes('ord-101') || key.includes('ord-102') || key.includes('1785163424023')) {
+          return false;
+        }
+        return true;
+      });
+
       // Hydrate missing customer & product info
       const hydratedOrders = combined.map((ord: any) => {
         const prod = productMap.get(ord.product_id);

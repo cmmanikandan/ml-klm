@@ -40,8 +40,12 @@ export const AdminDashboardPage: React.FC = () => {
       let combinedOrders = [...(dbOrders || []), ...localOrders];
       const seen = new Set();
       combinedOrders = combinedOrders.filter((o: any) => {
-        const key = o.id || o.order_number;
+        const key = String(o.id || o.order_number || '');
         if (!key || seen.has(key)) return false;
+        // Permanently filter out demo mock orders
+        if (key.includes('ord-101') || key.includes('ord-102') || key.includes('1785163424023') || (o.total_amount === 0 && o.customerName === 'Senthil Kumar')) {
+          return false;
+        }
         seen.add(key);
         return true;
       });
