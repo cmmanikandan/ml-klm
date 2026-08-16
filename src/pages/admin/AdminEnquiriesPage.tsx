@@ -191,20 +191,23 @@ export const AdminEnquiriesPage: React.FC = () => {
       setOrderNumberMap(oNumMap);
 
       const checkedEnquiries = (data || []).map((enq: any) => {
-        const linkedId = enq.converted_order_id || orderMap.get(enq.id) || orderMap.get(enq.enquiry_number);
-        if (linkedId || enq.status === 'converted' || enq.status === 'accepted') {
-          const readableNum = oNumMap.get(linkedId) || (linkedId && !linkedId.includes('-') ? linkedId : 'MNK-ORD-2');
-          // If in DB status was still pending, auto-heal to converted in DB
-          if (enq.status === 'pending') {
-            supabase.from('enquiries').update({ status: 'converted', converted_order_id: readableNum }).eq('id', enq.id);
-          }
+        const isConvertedInDb = enq.status === 'converted' || enq.status === 'accepted' || enq.status === 'converted_to_order';
+        const linkedId = enq.converted_order_id ? (oNumMap.get(enq.converted_order_id) || enq.converted_order_id) : '';
+
+        if (isConvertedInDb) {
           return {
             ...enq,
             status: 'converted',
-            converted_order_id: readableNum
+            converted_order_id: linkedId || 'MNK-ORD-2'
           };
         }
-        return enq;
+
+        // Keep strictly pending
+        return {
+          ...enq,
+          status: enq.status || 'pending',
+          converted_order_id: ''
+        };
       });
 
       setEnquiries(checkedEnquiries);

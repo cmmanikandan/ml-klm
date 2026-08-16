@@ -163,14 +163,14 @@ export const OrdersPage: React.FC = () => {
       });
 
       const hydratedEnquiries = matchingEnquiries.map((e: any) => {
-        const linkedOrder = orderMapByEnq.get(e.id) || orderMapByEnq.get(e.enquiry_number) || (e.converted_order_id ? combinedOrders.find(o => o.id === e.converted_order_id || o.order_number === e.converted_order_id) : null);
-        const isConverted = Boolean(linkedOrder) || e.status === 'converted' || e.status === 'accepted';
-        const ordNum = linkedOrder?.order_number || (e.converted_order_id && !e.converted_order_id.includes('-') ? e.converted_order_id : 'MNK-ORD-2');
+        const isDbConverted = e.status === 'converted' || e.status === 'accepted' || e.status === 'converted_to_order';
+        const linkedOrder = e.converted_order_id ? combinedOrders.find(o => o.id === e.converted_order_id || o.order_number === e.converted_order_id) : null;
+        const ordNum = linkedOrder?.order_number || (e.converted_order_id && !e.converted_order_id.includes('-') ? e.converted_order_id : '');
 
         return {
           ...e,
-          status: isConverted ? 'converted' : e.status,
-          converted_order_id: ordNum,
+          status: isDbConverted ? 'converted' : 'pending',
+          converted_order_id: isDbConverted ? (ordNum || 'MNK-ORD-2') : '',
           productName: e.product_name || e.productName || getProductName(e.product_id, 'Fabrication Enquiry'),
         };
       });
