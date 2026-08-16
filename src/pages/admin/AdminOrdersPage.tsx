@@ -100,10 +100,13 @@ export const AdminOrdersPage: React.FC = () => {
         combined = local;
       }
 
-      // Filter out demo mock orders permanently
+      // Filter out demo mock orders AND POS Counter Sales permanently from Online Orders Page
       combined = combined.filter((o: any) => {
         const key = String(o.id || o.order_number || '');
-        if (key.includes('ord-101') || key.includes('ord-102') || key.includes('1785163424023')) {
+        if (key.includes('ord-101') || key.includes('ord-102') || key.includes('1785163424023') || key.includes('POS')) {
+          return false;
+        }
+        if (o.is_pos === true || (o.admin_notes && o.admin_notes.includes('POS'))) {
           return false;
         }
         return true;

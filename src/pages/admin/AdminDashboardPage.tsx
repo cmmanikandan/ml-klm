@@ -84,9 +84,10 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  // Live Metrics & P&L Calculations
-  const onlineOrders = orders.filter((o) => !o.is_pos);
-  const posOrders = orders.filter((o) => o.is_pos);
+  // Live Metrics & POS vs Online Orders Calculations
+  const isPosOrder = (o: any) => o.is_pos === true || (o.admin_notes && o.admin_notes.includes('POS')) || String(o.order_number || '').includes('POS');
+  const onlineOrders = orders.filter((o) => !isPosOrder(o));
+  const posOrders = orders.filter((o) => isPosOrder(o));
 
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
   const posRevenue = posOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
