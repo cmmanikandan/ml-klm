@@ -154,10 +154,26 @@ export const OrdersPage: React.FC = () => {
         return false;
       });
 
-      const hydratedEnquiries = matchingEnquiries.map((e: any) => ({
-        ...e,
-        productName: e.product_name || e.productName || getProductName(e.product_id, 'Fabrication Enquiry'),
-      }));
+      // Cross-check enquiries with orders for live status sync
+      const orderMapByEnq = new Map<string, any>();
+      combinedOrders.forEach(o => {
+        if (o.enquiry_id) orderMapByEnq.set(o.enquiry_id, o);
+        if (o.order_number) orderMapByEnq.set(o.order_number, o);
+        if (o.id) orderMapByEnq.set(o.id, o);
+      });
+
+      const hydratedEnquiries = matchingEnquiries.map((e: any) => {
+        const linkedOrder = orderMapByEnq.get(e.id) || orderMapByEnq.get(e.enquiry_number) || (e.converted_order_id ? combinedOrders.find(o => o.id === e.converted_order_id || o.order_number === e.converted_order_id) : null);
+        const isConverted = Boolean(linkedOrder) || e.status === 'converted' || e.status === 'accepted';
+        const ordNum = linkedOrder?.order_number || (e.converted_order_id && !e.converted_order_id.includes('-') ? e.converted_order_id : 'MNK-ORD-2');
+
+        return {
+          ...e,
+          status: isConverted ? 'converted' : e.status,
+          converted_order_id: ordNum,
+          productName: e.product_name || e.productName || getProductName(e.product_id, 'Fabrication Enquiry'),
+        };
+      });
 
       setEnquiries(hydratedEnquiries);
     } catch (e) {
@@ -304,15 +320,15 @@ export const OrdersPage: React.FC = () => {
                       </h4>
                     </div>
 
-                    <Badge variant={enq.status}>
-                      {(enq.status || 'pending').toUpperCase().replace('_', ' ')}
+                    <Badge variant={enq.status === 'converted' ? 'confirmed' : enq.status}>
+                      {enq.status === 'converted' ? 'CONVERTED TO ORDER' : (enq.status || 'pending').toUpperCase().replace('_', ' ')}
                     </Badge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs text-charcoal-700">
                     <div>
                       <span className="text-charcoal-400 block font-semibold">Qty:</span>
-                      <span className="font-extrabold">{enq.quantity}</span>
+                      <span className="font-extrabold">{enq.quantity || 1} Unit(s)</span>
                     </div>
                     <div>
                       <span className="text-charcoal-400 block font-semibold">Location:</span>
@@ -320,14 +336,14 @@ export const OrdersPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {(enq.status === 'converted' || Boolean(enq.converted_order_id || enq.convertedOrderId || enq.order_id)) && (
+                  {(enq.status === 'converted' || Boolean(enq.converted_order_id)) && (
                     <div className="pt-2 border-t border-warm-border/60">
                       <Link
-                        to={`/orders/${enq.converted_order_id || enq.convertedOrderId || enq.order_id || 'MNK-ORD-6224'}`}
-                        className="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors"
+                        to={`/orders/${enq.converted_order_id || 'MNK-ORD-2'}`}
+                        className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-black text-emerald-800 hover:text-emerald-900 bg-emerald-100/90 hover:bg-emerald-200 py-2.5 px-4 rounded-2xl border border-emerald-300 shadow-sm transition-all"
                       >
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>{isTamil ? 'ஆர்டரைப் பார்க்கவும்' : 'View Shop Order'}</span>
+                        <ShoppingBag className="w-4 h-4 text-emerald-700" />
+                        <span>{isTamil ? `உறுதிசெய்யப்பட்ட ஆர்டர் #${enq.converted_order_id} ஐக் காண்க` : `View Converted Order (#${enq.converted_order_id}) →`}</span>
                       </Link>
                     </div>
                   )}

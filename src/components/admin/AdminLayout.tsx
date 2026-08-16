@@ -76,7 +76,18 @@ export const AdminLayout: React.FC = () => {
         .select('*')
         .in('status', ['pending', 'new']);
 
-      setPendingEnquiriesCount(dbEnquiries ? dbEnquiries.length : 0);
+      const { data: dbOrdersList } = await supabase.from('orders').select('id, order_number, enquiry_id');
+      const orderLinkedSet = new Set<string>();
+      (dbOrdersList || []).forEach((o: any) => {
+        if (o.enquiry_id) orderLinkedSet.add(o.enquiry_id);
+        if (o.order_number) orderLinkedSet.add(o.order_number);
+      });
+
+      const actualPending = (dbEnquiries || []).filter(
+        (e: any) => !orderLinkedSet.has(e.id) && !orderLinkedSet.has(e.enquiry_number) && !e.converted_order_id
+      );
+
+      setPendingEnquiriesCount(actualPending.length);
 
       // 2. Active Orders Count (excluding delivered and cancelled)
       const { data: dbOrders } = await supabase

@@ -19,6 +19,7 @@ export const AdminEnquiriesPage: React.FC = () => {
   const [enquiries, setEnquiries] = useState<any[]>([]);
   const [productMap, setProductMap] = useState<Map<string, any>>(new Map());
   const [profileMap, setProfileMap] = useState<Map<string, any>>(new Map());
+  const [orderNumberMap, setOrderNumberMap] = useState<Map<string, string>>(new Map());
 
   // Selected Enquiry for Quote Modal
   const [selectedEnquiry, setSelectedEnquiry] = useState<any | null>(null);
@@ -158,32 +159,49 @@ export const AdminEnquiriesPage: React.FC = () => {
       // Cross-check with orders table so any converted enquiry is accurately marked as CONVERTED
       const { data: dbOrders } = await supabase.from('orders').select('id, order_number, enquiry_id');
       const orderMap = new Map<string, string>();
+      const oNumMap = new Map<string, string>();
+
       (dbOrders || []).forEach((o: any) => {
-        if (o.enquiry_id) orderMap.set(o.enquiry_id, o.id);
-        if (o.order_number) orderMap.set(o.order_number, o.id);
+        const orderNum = o.order_number || o.id;
+        if (o.enquiry_id) orderMap.set(o.enquiry_id, orderNum);
+        if (o.order_number) orderMap.set(o.order_number, orderNum);
+        if (o.id) {
+          orderMap.set(o.id, orderNum);
+          oNumMap.set(o.id, orderNum);
+        }
+        if (o.order_number) oNumMap.set(o.order_number, orderNum);
       });
 
       try {
         const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
         localOrders.forEach((o: any) => {
-          if (o.enquiry_id) orderMap.set(o.enquiry_id, o.id);
-          if (o.order_number) orderMap.set(o.order_number, o.id);
+          const orderNum = o.order_number || o.id;
+          if (o.enquiry_id) orderMap.set(o.enquiry_id, orderNum);
+          if (o.order_number) orderMap.set(o.order_number, orderNum);
+          if (o.id) {
+            orderMap.set(o.id, orderNum);
+            oNumMap.set(o.id, orderNum);
+          }
+          if (o.order_number) oNumMap.set(o.order_number, orderNum);
         });
       } catch (e) {
         console.warn('Local orders cache check error');
       }
 
+      setOrderNumberMap(oNumMap);
+
       const checkedEnquiries = (data || []).map((enq: any) => {
         const linkedId = enq.converted_order_id || orderMap.get(enq.id) || orderMap.get(enq.enquiry_number);
         if (linkedId || enq.status === 'converted' || enq.status === 'accepted') {
+          const readableNum = oNumMap.get(linkedId) || (linkedId && !linkedId.includes('-') ? linkedId : 'MNK-ORD-2');
           // If in DB status was still pending, auto-heal to converted in DB
           if (enq.status === 'pending') {
-            supabase.from('enquiries').update({ status: 'converted', converted_order_id: linkedId || 'MNK-ORD-2' }).eq('id', enq.id);
+            supabase.from('enquiries').update({ status: 'converted', converted_order_id: readableNum }).eq('id', enq.id);
           }
           return {
             ...enq,
             status: 'converted',
-            converted_order_id: linkedId || enq.converted_order_id
+            converted_order_id: readableNum
           };
         }
         return enq;
