@@ -98,8 +98,8 @@ export const OrderDetailPage: React.FC = () => {
     { key: 'accepted', label_en: 'Enquiry Accepted', label_ta: 'விசாரணை ஏற்கப்பட்டது' },
     { key: 'order_confirmed', label_en: 'Order Confirmed', label_ta: 'ஆர்டர் உறுதி செய்யப்பட்டது' },
     { key: 'processing', label_en: 'Processing / Fabrication', label_ta: 'தயாரிப்பில் உள்ளது' },
-    { key: 'ready', label_en: 'Ready for Delivery', label_ta: 'டெலிவரிக்கு தயார்' },
-    { key: 'delivered', label_en: 'Delivered', label_ta: 'டெலிவரி செய்யப்பட்டது' },
+    { key: 'ready', label_en: 'Ready for Shop Pickup', label_ta: 'கடையில் பெற தயார்' },
+    { key: 'delivered', label_en: 'Completed & Handed Over', label_ta: 'நிறைவடைந்து ஒப்படைக்கப்பட்டது' },
   ];
 
   const getStepIdx = (st?: OrderStatus) => {
@@ -331,36 +331,39 @@ export const OrderDetailPage: React.FC = () => {
               Order Progress Timeline
             </span>
 
-            <div className="relative flex items-center justify-between py-2">
-              <div className="absolute left-0 right-0 top-3.5 h-1 bg-gray-200 z-0" />
+            <div className="relative py-3">
+              {/* Horizontal Progress Line Centered Across All 5 Step Circles */}
+              <div className="absolute left-6 right-6 top-7 h-1 bg-gray-200 z-0" />
               <div
-                className="absolute left-0 top-3.5 h-1 bg-brand-600 z-0 transition-all duration-500"
-                style={{ width: `${(currentStepIdx / (timelineSteps.length - 1)) * 100}%` }}
+                className="absolute left-6 top-7 h-1 bg-brand-600 z-0 transition-all duration-500"
+                style={{ width: `calc(${((currentStepIdx / (timelineSteps.length - 1)) * 100)}% - 24px)` }}
               />
 
-              {timelineSteps.map((step, idx) => {
-                const isDone = idx <= currentStepIdx;
-                return (
-                  <div key={step.key} className="relative z-10 flex flex-col items-center text-center">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
-                        isDone
-                          ? 'bg-brand-600 text-white ring-4 ring-brand-100 shadow-sm'
-                          : 'bg-gray-100 text-gray-400 border-2 border-gray-300'
-                      }`}
-                    >
-                      {isDone ? '✓' : idx + 1}
+              <div className="flex items-start justify-between relative z-10">
+                {timelineSteps.map((step, idx) => {
+                  const isDone = idx <= currentStepIdx;
+                  return (
+                    <div key={step.key} className="flex-1 flex flex-col items-center text-center px-1">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all shrink-0 ${
+                          isDone
+                            ? 'bg-brand-600 text-white ring-4 ring-brand-100 shadow-sm'
+                            : 'bg-white text-gray-400 border-2 border-gray-300'
+                        }`}
+                      >
+                        {isDone ? '✓' : idx + 1}
+                      </div>
+                      <span
+                        className={`text-[10px] font-extrabold mt-2 leading-tight ${
+                          isDone ? 'text-charcoal-900' : 'text-gray-400'
+                        }`}
+                      >
+                        {isTamil ? step.label_ta : step.label_en}
+                      </span>
                     </div>
-                    <span
-                      className={`text-[10px] font-bold mt-1.5 max-w-[64px] line-clamp-2 ${
-                        isDone ? 'text-charcoal-900' : 'text-gray-400'
-                      }`}
-                    >
-                      {isTamil ? step.label_ta : step.label_en}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
 
