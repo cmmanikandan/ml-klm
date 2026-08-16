@@ -554,9 +554,9 @@ export const AdminOrderDetailPage: React.FC = () => {
                     setShowGeneratedQr(false);
                     setShowPaymentModal(true);
                   }}
-                  className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold px-4 py-2 rounded-2xl text-xs shadow-md transition-colors flex items-center gap-1.5"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-4 py-2 rounded-2xl text-xs shadow-md transition-colors flex items-center gap-1.5"
                 >
-                  <DollarSign className="w-4 h-4 text-amber-200" />
+                  <DollarSign className="w-4 h-4 text-blue-200" />
                   <span>Collect Advance (₹{advanceDue.toLocaleString('en-IN')})</span>
                 </button>
               );
@@ -571,9 +571,9 @@ export const AdminOrderDetailPage: React.FC = () => {
                     setShowGeneratedQr(false);
                     setShowPaymentModal(true);
                   }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-4 py-2 rounded-2xl text-xs shadow-md transition-colors flex items-center gap-1.5"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-4 py-2 rounded-2xl text-xs shadow-md transition-colors flex items-center gap-1.5"
                 >
-                  <DollarSign className="w-4 h-4 text-emerald-300" />
+                  <DollarSign className="w-4 h-4 text-blue-200" />
                   <span>Collect Balance (₹{balanceDue.toLocaleString('en-IN')})</span>
                 </button>
               );
@@ -587,7 +587,7 @@ export const AdminOrderDetailPage: React.FC = () => {
                   setShowGeneratedQr(false);
                   setShowPaymentModal(true);
                 }}
-                className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-4 py-2 rounded-2xl text-xs shadow-md transition-colors flex items-center gap-1.5"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-4 py-2 rounded-2xl text-xs shadow-md transition-colors flex items-center gap-1.5"
               >
                 <DollarSign className="w-4 h-4" />
                 <span>Collect Payment</span>
@@ -922,7 +922,7 @@ export const AdminOrderDetailPage: React.FC = () => {
                         fullWidth
                         icon={<CheckCircle2 className="w-4 h-4" />}
                       >
-                        Save Calculation & Request Customer Payment
+                        Save Calculation
                       </Button>
                     </div>
                   );
@@ -1038,7 +1038,7 @@ export const AdminOrderDetailPage: React.FC = () => {
                                   setShowGeneratedQr(false);
                                   setShowPaymentModal(true);
                                 }}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
                               >
                                 Collect Advance
                               </button>
@@ -1072,9 +1072,9 @@ export const AdminOrderDetailPage: React.FC = () => {
                                   setShowGeneratedQr(false);
                                   setShowPaymentModal(true);
                                 }}
-                                className="bg-brand-600 hover:bg-brand-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
                               >
-                                Collect Payment
+                                Collect Balance
                               </button>
                             </td>
                           </tr>

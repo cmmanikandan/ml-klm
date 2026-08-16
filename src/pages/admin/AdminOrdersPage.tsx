@@ -223,18 +223,44 @@ export const AdminOrdersPage: React.FC = () => {
   };
 
   const handleDeleteOrder = async (orderId: string) => {
-    const updatedOrders = orders.filter((o) => o.id !== orderId);
+    const targetOrder = orders.find((o) => o.id === orderId);
+    const enquiryId = targetOrder?.enquiry_id || targetOrder?.enquiryId || orderId;
+    const orderNum = targetOrder?.order_number || targetOrder?.orderNumber || orderId;
+
+    const updatedOrders = orders.filter(
+      (o) => o.id !== orderId && o.order_number !== orderNum && o.enquiry_id !== enquiryId
+    );
     setOrders(updatedOrders);
 
+    const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocal = local.filter(
+      (l: any) => l.id !== orderId && l.order_number !== orderNum && l.enquiry_id !== enquiryId
+    );
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
+
+    const localEnquiries = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+    const updatedLocalEnquiries = localEnquiries.filter(
+      (e: any) => e.id !== enquiryId && e.id !== orderId && e.enquiry_number !== orderNum
+    );
+    localStorage.setItem('ml_enquiries', JSON.stringify(updatedLocalEnquiries));
+
     try {
-      await supabase.from('orders').delete().eq('id', orderId);
+      await supabase
+        .from('orders')
+        .delete()
+        .or(`id.eq.${orderId},order_number.eq.${orderNum},enquiry_id.eq.${enquiryId}`);
     } catch (e) {
-      console.warn('Order DB delete fallback');
+      console.warn('Order DB delete fallback', e);
     }
 
-    const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-    const updatedLocal = local.filter((l: any) => l.id !== orderId);
-    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
+    try {
+      await supabase
+        .from('enquiries')
+        .delete()
+        .or(`id.eq.${enquiryId},id.eq.${orderId}`);
+    } catch (e) {
+      console.warn('Enquiries DB delete fallback', e);
+    }
 
     setOrderToDelete(null);
     if (selectedOrder?.id === orderId) setSelectedOrder(null);
@@ -347,17 +373,30 @@ export const AdminOrdersPage: React.FC = () => {
           {['all', 'accepted', 'order_confirmed', 'processing', 'ready', 'delivered'].map((statusKey) => {
             const isActive = filterStatus === statusKey;
             const conf = getStatusConfig(statusKey);
+            const count = statusKey === 'all'
+              ? orders.length
+              : orders.filter((o) => (o.status || 'pending').toLowerCase() === statusKey).length;
+
             return (
               <button
                 key={statusKey}
                 onClick={() => setFilterStatus(statusKey)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border flex items-center gap-1.5 ${
                   isActive
                     ? (statusKey === 'all' ? 'bg-brand-600 text-white border-brand-600 shadow-sm' : conf.activeBtnClass)
                     : 'bg-white border-warm-border text-charcoal-700 hover:bg-warm-hover'
                 }`}
               >
-                {statusKey === 'all' ? 'All Orders' : conf.label}
+                <span>{statusKey === 'all' ? 'All Orders' : conf.label}</span>
+                <span
+                  className={`text-[10px] font-mono font-extrabold px-1.5 py-0.2 rounded-full ${
+                    isActive
+                      ? 'bg-white/20 text-white'
+                      : 'bg-warm-bg text-charcoal-600 border border-warm-border'
+                  }`}
+                >
+                  {count}
+                </span>
               </button>
             );
           })}
