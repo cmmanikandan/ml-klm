@@ -554,6 +554,183 @@ export const AdminOrderDetailPage: React.FC = () => {
     });
   };
 
+  // One-Click Direct Cash Collection for Advance or Pending Request
+  const handleQuickCollectCash = async (amount: number, noteDesc?: string) => {
+    if (!order || amount <= 0) return;
+    const currentRemaining = order.remaining_amount || 0;
+    const updatedRemaining = Math.max(0, currentRemaining - amount);
+    const newStatus = updatedRemaining === 0 ? 'paid' : 'partially_paid';
+
+    const updatedOrder = {
+      ...order,
+      remaining_amount: updatedRemaining,
+      advance_amount: (order.advance_amount || 0) + amount,
+      payment_status: newStatus as PaymentStatus,
+      is_payment_requested: false,
+      payment_request_amount: 0
+    };
+
+    setOrder(updatedOrder);
+
+    const localPayId = `pay_cash_${Date.now()}`;
+    const newPayRecord = {
+      id: localPayId,
+      order_id: order.id,
+      order_number: order.order_number || order.id,
+      user_id: order.user_id || '',
+      amount: amount,
+      payment_mode: 'Cash',
+      notes: noteDesc || `Cash payment received at workshop counter`,
+      status: 'completed',
+      created_at: new Date().toISOString()
+    };
+
+    setPaymentsHistory((prev) => [newPayRecord, ...prev.filter((p: any) => p.status !== 'pending')]);
+
+    const localPay = JSON.parse(localStorage.getItem('ml_payments') || '[]');
+    localStorage.setItem(
+      'ml_payments',
+      JSON.stringify([newPayRecord, ...localPay.filter((p: any) => p.order_id !== order.id || p.status !== 'pending')])
+    );
+
+    const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    localStorage.setItem('ml_orders', JSON.stringify(localOrders.map((o) => (o.id === order.id ? updatedOrder : o))));
+
+    try {
+      await supabase
+        .from('orders')
+        .update({
+          remaining_amount: updatedRemaining,
+          advance_amount: updatedOrder.advance_amount,
+          payment_status: newStatus,
+          is_payment_requested: false,
+          payment_request_amount: 0
+        })
+        .eq('id', order.id);
+
+      await supabase
+        .from('payments')
+        .delete()
+        .eq('order_id', order.id)
+        .eq('status', 'pending');
+
+      const { id: _localId, ...dbPayRecord } = newPayRecord;
+      await supabase.from('payments').insert(dbPayRecord);
+    } catch (e) {
+      console.warn('Quick cash DB insert fallback', e);
+    }
+
+    setNotifyModal({
+      isOpen: true,
+      title: 'Cash Payment Recorded',
+      message: `₹${amount.toLocaleString('en-IN')} Cash payment collected successfully! Remaining due: ₹${updatedRemaining.toLocaleString('en-IN')}`,
+      type: 'success'
+    });
+  };
+
+  // Send WhatsApp Payment Request Reminder to Customer
+  const handleSendPaymentReminderWhatsApp = (amount: number) => {
+    if (!order) return;
+    const phone = order.customerPhone || order.customer_phone || '';
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const payUrl = `${window.location.origin}/orders/${order.id}`;
+    const text = `🔔 *Manikandan Lathe Payment Request*\n\nDear ${order.customerName || 'Customer'},\nAn advance/payment of *₹${amount.toLocaleString('en-IN')}* has been requested for your Order *#${order.order_number || order.id}*.\n\n💳 Pay securely online via Razorpay / UPI:\n${payUrl}\n\nThank you!\n*Manikandan Lathe Works*`;
+    window.open(`https://wa.me/${cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`}?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  // Save Fixed Price, Discount & Advance Setting
+  const handleSaveFixedPricing = async () => {
+    if (!order) return;
+    const qty = order.quantity || 1;
+    const subtotal = fixedUnitPrice * qty;
+    const grandTotal = Math.max(0, subtotal - fixedDiscount + fixedExtraCharges);
+    const advanceReq = Math.max(0, fixedAdvanceReq || 0);
+    const currentPaid = paymentsHistory
+      .filter((p) => p.status === 'completed' || p.status === 'paid')
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const remainingDue = Math.max(0, grandTotal - currentPaid);
+
+    const updatedOrder: any = {
+      ...order,
+      total_amount: grandTotal,
+      remaining_amount: remainingDue,
+      advance_amount: advanceReq,
+      discount_amount: fixedDiscount,
+      discount_notes: fixedDiscountNotes,
+      extra_charges_amount: fixedExtraCharges,
+      pricing_type: 'fixed',
+      is_payment_requested: advanceReq > 0 ? true : order.is_payment_requested,
+      payment_request_amount: advanceReq > 0 ? advanceReq : order.payment_request_amount,
+      payment_status: currentPaid >= grandTotal ? 'paid' : currentPaid > 0 ? 'partially_paid' : 'pending'
+    };
+
+    setOrder(updatedOrder);
+
+    // If advance is set (> 0) and not yet recorded as paid, add a pending payment request record
+    if (advanceReq > 0 && currentPaid < advanceReq) {
+      const advPayId = `pay_req_adv_${Date.now()}`;
+      const newAdvPayRecord = {
+        id: advPayId,
+        order_id: order.id,
+        order_number: order.order_number || order.id,
+        user_id: order.user_id || '',
+        amount: advanceReq,
+        payment_mode: 'Advance Payment Request',
+        notes: `Required advance payment of ₹${advanceReq.toLocaleString('en-IN')}`,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      };
+
+      setPaymentsHistory((prev) => [newAdvPayRecord, ...prev.filter((p: any) => p.status !== 'pending')]);
+
+      const localPay = JSON.parse(localStorage.getItem('ml_payments') || '[]');
+      localStorage.setItem(
+        'ml_payments',
+        JSON.stringify([newAdvPayRecord, ...localPay.filter((p: any) => p.order_id !== order.id || p.status !== 'pending')])
+      );
+
+      try {
+        const { id: _localId, ...dbPayRecord } = newAdvPayRecord;
+        await supabase.from('payments').insert(dbPayRecord);
+      } catch (e) {
+        console.warn('Advance payment request DB insert fallback', e);
+      }
+    }
+
+    // Save order updates to local storage
+    const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocal = localOrders.map((o) => (o.id === order.id ? updatedOrder : o));
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
+
+    // Save order updates to Supabase
+    try {
+      await supabase
+        .from('orders')
+        .update({
+          total_amount: grandTotal,
+          remaining_amount: remainingDue,
+          advance_amount: advanceReq,
+          discount_amount: fixedDiscount,
+          discount_notes: fixedDiscountNotes,
+          extra_charges_amount: fixedExtraCharges,
+          pricing_type: 'fixed',
+          is_payment_requested: updatedOrder.is_payment_requested,
+          payment_request_amount: updatedOrder.payment_request_amount,
+          payment_status: updatedOrder.payment_status
+        })
+        .eq('id', order.id);
+    } catch (e) {
+      console.warn('Fixed pricing DB update fallback', e);
+    }
+
+    setNotifyModal({
+      isOpen: true,
+      title: 'Fixed Pricing & Advance Saved',
+      message: `Order price set to ₹${grandTotal.toLocaleString('en-IN')}${advanceReq > 0 ? ` with ₹${advanceReq.toLocaleString('en-IN')} Advance Requirement recorded in Payment History!` : '.'}`,
+      type: 'success'
+    });
+  };
+
   // Calculation Helper Methods
   const handleAddPart = () => {
     setCalcParts([...calcParts, { id: `part_${Date.now()}`, name: `Part ${calcParts.length + 1}`, weight_kg: 0 }]);
@@ -1562,17 +1739,39 @@ export const AdminOrderDetailPage: React.FC = () => {
                               </span>
                             </td>
                             <td className="py-3 px-3 text-center">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCustomPayAmount(remainingBalance);
-                                  setShowGeneratedQr(false);
-                                  setShowPaymentModal(true);
-                                }}
-                                className="bg-brand-600 hover:bg-brand-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
-                              >
-                                Request / Collect
-                              </button>
+                              <div className="flex flex-wrap items-center justify-center gap-1.5 min-w-[200px]">
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickCollectCash(remainingBalance, `Cash payment received for #${order.order_number}`)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
+                                  title="Record Cash Payment"
+                                >
+                                  <span>💵 Cash</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCustomPayAmount(remainingBalance);
+                                    setShowGeneratedQr(true);
+                                    setShowPaymentModal(true);
+                                  }}
+                                  className="bg-brand-600 hover:bg-brand-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
+                                  title="Collect via UPI QR or Card"
+                                >
+                                  <span>📱 UPI QR</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendPaymentReminderWhatsApp(remainingBalance)}
+                                  className="bg-teal-600 hover:bg-teal-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
+                                  title="Send Payment Link via WhatsApp"
+                                >
+                                  <MessageSquare className="w-3 h-3" />
+                                  <span>WhatsApp</span>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         )}
@@ -1589,7 +1788,7 @@ export const AdminOrderDetailPage: React.FC = () => {
                                   {pay.created_at ? new Date(pay.created_at).toLocaleString('en-IN') : 'Recent Request'}
                                 </td>
                                 <td className="py-3 px-3 font-bold text-charcoal-900">
-                                  {pay.payment_mode || 'Payment Request Sent to Customer'}
+                                  {pay.payment_mode || 'Advance Payment Request'}
                                   <span className="block text-[10px] text-rose-600 font-semibold">Waiting for customer online / cash payment</span>
                                 </td>
                                 <td className="py-3 px-3 font-black text-rose-700 font-mono text-sm">
@@ -1604,17 +1803,42 @@ export const AdminOrderDetailPage: React.FC = () => {
                                   </span>
                                 </td>
                                 <td className="py-3 px-3 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setCustomPayAmount(Number(pay.amount) || remainingBalance);
-                                      setShowGeneratedQr(false);
-                                      setShowPaymentModal(true);
-                                    }}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3.5 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors"
-                                  >
-                                    Mark as Paid
-                                  </button>
+                                  <div className="flex flex-wrap items-center justify-center gap-1.5 min-w-[200px]">
+                                    {/* Quick Cash Receive */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuickCollectCash(Number(pay.amount) || remainingBalance, `Cash advance payment received for #${order.order_number}`)}
+                                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
+                                      title="Record as Cash Received"
+                                    >
+                                      <span>💵 Cash</span>
+                                    </button>
+
+                                    {/* Quick UPI QR Modal */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setCustomPayAmount(Number(pay.amount) || remainingBalance);
+                                        setShowGeneratedQr(true);
+                                        setShowPaymentModal(true);
+                                      }}
+                                      className="bg-brand-600 hover:bg-brand-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
+                                      title="Collect via Shop UPI QR"
+                                    >
+                                      <span>📱 UPI QR</span>
+                                    </button>
+
+                                    {/* Send WhatsApp Link */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSendPaymentReminderWhatsApp(Number(pay.amount) || remainingBalance)}
+                                      className="bg-teal-600 hover:bg-teal-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
+                                      title="Send WhatsApp Payment Link to Customer"
+                                    >
+                                      <MessageSquare className="w-3 h-3" />
+                                      <span>WhatsApp</span>
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
