@@ -75,6 +75,9 @@ export const OrdersPage: React.FC = () => {
       const userPhone = user?.phone || '';
       const cleanPhoneDigits = userPhone.replace(/\D/g, '');
       const last10Digits = cleanPhoneDigits.slice(-10);
+      const userEmailClean = (user?.email || '').trim().toLowerCase();
+      const userNameClean = (user?.full_name || '').trim().toLowerCase();
+      const isGuest = !user?.id && !user?.email && !user?.phone;
 
       // 3. Fetch enquiries from Supabase DB first
       const { data: allDbEnquiries } = await supabase
@@ -90,16 +93,14 @@ export const OrdersPage: React.FC = () => {
         }
       });
 
-      const matchingEnquiries = combinedEnquiries.filter((enq: any) => {
-        if (user?.email?.includes('admin') || user?.id?.includes('admin')) return true;
-        if (user?.id && enq.user_id === user.id) return true;
+      const matchingEnquiries = isGuest ? [] : combinedEnquiries.filter((enq: any) => {
+        if (user?.id && enq.user_id && enq.user_id === user.id) return true;
+        if (userEmailClean && (enq.customer_email === userEmailClean || enq.user_id === userEmailClean)) return true;
         if (last10Digits && enq.customer_phone) {
           const enqPhoneDigits = String(enq.customer_phone).replace(/\D/g, '');
-          if (enqPhoneDigits.includes(last10Digits) || last10Digits.includes(enqPhoneDigits)) return true;
+          if (enqPhoneDigits.length >= 10 && enqPhoneDigits.slice(-10) === last10Digits) return true;
         }
-        const userName = user?.full_name || '';
-        if (userName && enq.customer_name && userName.trim().toLowerCase() === enq.customer_name.trim().toLowerCase()) return true;
-        if (combinedEnquiries.length <= 5) return true;
+        if (userNameClean && userNameClean !== 'customer' && enq.customer_name && userNameClean === enq.customer_name.trim().toLowerCase()) return true;
         return false;
       });
 
@@ -117,26 +118,25 @@ export const OrdersPage: React.FC = () => {
         }
       });
 
-      // Filter orders belonging to the customer (including orders converted from customer's enquiries)
-      const matchingOrders = combinedOrders.filter((ord: any) => {
-        // If user is admin, show all orders for review
-        if (user?.email?.includes('admin') || user?.id?.includes('admin')) return true;
-
-        if (user?.id && ord.user_id === user.id) return true;
-        if (user?.email && (ord.user_id === user.email || ord.customer_email === user.email)) return true;
+      // Filter orders belonging strictly to the customer account
+      const matchingOrders = isGuest ? [] : combinedOrders.filter((ord: any) => {
+        if (user?.id && ord.user_id && ord.user_id === user.id) return true;
+        if (userEmailClean && (ord.user_id === userEmailClean || ord.customer_email === userEmailClean)) return true;
         
         // Match by phone number digits
-        if (last10Digits && ord.customer_phone) {
-          const orderPhoneDigits = String(ord.customer_phone).replace(/\D/g, '');
-          if (orderPhoneDigits.includes(last10Digits) || last10Digits.includes(orderPhoneDigits)) {
+        if (last10Digits && (ord.customer_phone || ord.customerPhone)) {
+          const orderPhoneDigits = String(ord.customer_phone || ord.customerPhone).replace(/\D/g, '');
+          if (orderPhoneDigits.length >= 10 && orderPhoneDigits.slice(-10) === last10Digits) {
             return true;
           }
         }
 
         // Match by name
-        const userName = user?.full_name || '';
-        if (userName && ord.customer_name && userName.trim().toLowerCase() === ord.customer_name.trim().toLowerCase()) {
-          return true;
+        if (userNameClean && userNameClean !== 'customer' && (ord.customer_name || ord.customerName)) {
+          const ordCustName = String(ord.customer_name || ord.customerName).trim().toLowerCase();
+          if (ordCustName === userNameClean) {
+            return true;
+          }
         }
 
         // Match if converted from an enquiry belonging to this customer
@@ -147,9 +147,6 @@ export const OrdersPage: React.FC = () => {
           e.converted_order_id === ord.order_number
         );
         if (isFromUserEnquiry) return true;
-
-        // Fallback: If only 1 or 2 test orders in system, display them
-        if (combinedOrders.length <= 5) return true;
 
         return false;
       });

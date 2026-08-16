@@ -58,26 +58,24 @@ export const HomePage: React.FC = () => {
       });
 
       const userPhoneClean = (user?.phone || '').replace(/\D/g, '').slice(-10);
+      const userEmailClean = (user?.email || '').trim().toLowerCase();
       const userNameClean = (user?.full_name || '').trim().toLowerCase();
+      const isGuest = !user?.id && !user?.email && !user?.phone;
 
-      // Filter orders belonging to this customer
-      const matchingOrders = combinedOrders.filter((ord: any) => {
-        if (user?.email?.includes('admin') || user?.id?.includes('admin')) return true;
+      // Filter orders belonging strictly to this customer account
+      const matchingOrders = isGuest ? [] : combinedOrders.filter((ord: any) => {
         if (user?.id && ord.user_id === user.id) return true;
-        if (user?.email && (ord.user_id === user.email || ord.customer_email === user.email)) return true;
+        if (userEmailClean && (ord.user_id === userEmailClean || ord.customer_email === userEmailClean)) return true;
 
         if (userPhoneClean && (ord.customer_phone || ord.customerPhone)) {
           const ordPhoneClean = String(ord.customer_phone || ord.customerPhone).replace(/\D/g, '');
-          if (ordPhoneClean.includes(userPhoneClean) || userPhoneClean.includes(ordPhoneClean)) return true;
+          if (ordPhoneClean.length >= 10 && ordPhoneClean.slice(-10) === userPhoneClean) return true;
         }
 
-        if (userNameClean && (ord.customer_name || ord.customerName)) {
+        if (userNameClean && userNameClean !== 'customer' && (ord.customer_name || ord.customerName)) {
           const ordCustName = String(ord.customer_name || ord.customerName).trim().toLowerCase();
           if (ordCustName === userNameClean) return true;
         }
-
-        // Fallback for first few orders in system
-        if (combinedOrders.length <= 5) return true;
 
         return false;
       });
