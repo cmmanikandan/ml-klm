@@ -96,7 +96,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       <main className="flex-1">{children}</main>
 
-      {!isAdmin && !isAuthPage && <FloatingWhatsApp />}
+
 
       {/* MobileNav bottom bar for customer portal pages */}
       {!isAdmin && !isAuthPage && !isPublicPage && !isGuestProductBrowse && !isProductDetailPage && <MobileNav />}
