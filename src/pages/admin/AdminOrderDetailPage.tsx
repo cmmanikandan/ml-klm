@@ -161,16 +161,18 @@ export const AdminOrderDetailPage: React.FC = () => {
         const total = hydrated.total_amount || 0;
         const remaining = hydrated.remaining_amount || 0;
         const advancePaid = Math.max(0, total - remaining);
+        const reqAdvance = hydrated.advance_amount || hydrated.payment_request_amount || 0;
 
-        if (combined.length === 0 && advancePaid > 0) {
+        if (combined.length === 0 && (advancePaid > 0 || (reqAdvance > 0 && (hydrated.payment_status === 'paid' || hydrated.payment_status === 'partially_paid')))) {
+          const advAmt = advancePaid > 0 ? advancePaid : reqAdvance;
           combined = [
             {
               id: `pay_adv_${hydrated.id}`,
               order_id: hydrated.id,
               order_number: hydrated.order_number || hydrated.id,
-              amount: advancePaid,
-              payment_mode: 'UPI / Online Advance',
-              notes: 'Order advance payment',
+              amount: advAmt,
+              payment_mode: 'Advance Payment',
+              notes: 'Order advance payment collected for fabrication',
               created_at: hydrated.created_at || new Date().toISOString(),
               status: 'completed'
             }
@@ -311,6 +313,22 @@ export const AdminOrderDetailPage: React.FC = () => {
     const updatedLocal = localOrders.map((o) => (o.id === order.id ? updatedOrder : o));
     localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
 
+    const newPayRecord = {
+      id: `pay_${Date.now()}`,
+      order_id: order.id,
+      order_number: order.order_number || order.id,
+      amount: customPayAmount,
+      payment_mode: mode,
+      notes: customPayNotes || `${mode} payment collected at shop counter`,
+      status: 'completed',
+      created_at: new Date().toISOString()
+    };
+    
+    setPaymentsHistory((prev) => [newPayRecord, ...prev]);
+
+    const localPay = JSON.parse(localStorage.getItem('ml_payments') || '[]');
+    localStorage.setItem('ml_payments', JSON.stringify([newPayRecord, ...localPay]));
+
     try {
       await supabase
         .from('orders')
@@ -322,14 +340,7 @@ export const AdminOrderDetailPage: React.FC = () => {
         })
         .eq('id', order.id);
 
-      await supabase.from('payments').insert({
-        id: `pay_${Date.now()}`,
-        order_id: order.id,
-        amount: customPayAmount,
-        payment_mode: mode,
-        notes: customPayNotes,
-        status: 'completed'
-      });
+      await supabase.from('payments').insert(newPayRecord);
     } catch (e) {
       console.warn('Payment DB insert fallback');
     }
@@ -346,7 +357,7 @@ export const AdminOrderDetailPage: React.FC = () => {
 
   // Calculation Helper Methods
   const handleAddPart = () => {
-    setCalcParts([...calcParts, { id: `part_${Date.now()}`, name: `Part ${calcParts.length + 1}`, weight_kg: 10 }]);
+    setCalcParts([...calcParts, { id: `part_${Date.now()}`, name: `Part ${calcParts.length + 1}`, weight_kg: 0 }]);
   };
 
   const handleUpdatePart = (partId: string, field: 'name' | 'weight_kg', val: any) => {
