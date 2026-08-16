@@ -147,14 +147,37 @@ export const AdminEnquiriesPage: React.FC = () => {
   });
 
   const handleUpdateStatus = async (id: string, status: string) => {
-    const updated = enquiries.map((e) => (e.id === id ? { ...e, status } : e));
+    const targetEnquiry = enquiries.find((e) => e.id === id);
+    let convertedOrderId = targetEnquiry?.converted_order_id;
+    let finalStatus = status;
+
+    if (status === 'accepted' && targetEnquiry) {
+      try {
+        const result = await convertEnquiryToOrderSafely({
+          enquiry: targetEnquiry,
+          quotePrice: targetEnquiry.quote_price || 0,
+          advanceRequired: targetEnquiry.advance_amount || 0,
+          estimatedDays: 7
+        });
+        if (result.order) {
+          convertedOrderId = result.order.id;
+          finalStatus = 'converted';
+        }
+      } catch (err) {
+        console.error('Auto convert enquiry to order error:', err);
+      }
+    }
+
+    const updated = enquiries.map((e) => (e.id === id ? { ...e, status: finalStatus, converted_order_id: convertedOrderId } : e));
     setEnquiries(updated);
-    localStorage.setItem('ml_enquiries', JSON.stringify(updated));
 
     try {
-      await supabase.from('enquiries').update({ status }).eq('id', id);
+      await supabase.from('enquiries').update({ 
+        status: finalStatus, 
+        converted_order_id: convertedOrderId 
+      }).eq('id', id);
     } catch (e) {
-      console.warn('Enquiry status update fallback');
+      console.warn('Enquiry status update fallback', e);
     }
   };
 

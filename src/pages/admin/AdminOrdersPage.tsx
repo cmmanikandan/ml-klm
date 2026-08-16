@@ -26,6 +26,7 @@ import { NotificationModal } from '../../components/common/NotificationModal';
 import { OrderStatus } from '../../types';
 import { DEFAULT_SHOP_INFO, INITIAL_PRODUCTS, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
+import { convertEnquiryToOrderSafely } from '../../lib/orderConversionService';
 import { getStatusConfig } from '../../lib/statusConfig';
 import { InvoicePreviewModal } from '../../components/invoice/InvoicePreviewModal';
 import { 
@@ -118,6 +119,35 @@ export const AdminOrdersPage: React.FC = () => {
         }
         return true;
       });
+
+      // 4. Auto-sync: Check for accepted/converted enquiries that don't have an order row yet
+      try {
+        const { data: acceptedEnqs } = await supabase
+          .from('enquiries')
+          .select('*')
+          .in('status', ['accepted', 'converted']);
+
+        if (acceptedEnqs && acceptedEnqs.length > 0) {
+          for (const enq of acceptedEnqs) {
+            const alreadyHasOrder = list.some(
+              (o: any) => o.enquiry_id === enq.id || o.order_number === enq.enquiry_number || (enq.converted_order_id && o.id === enq.converted_order_id)
+            );
+            if (!alreadyHasOrder) {
+              const res = await convertEnquiryToOrderSafely({
+                enquiry: enq,
+                quotePrice: enq.quote_price || 0,
+                advanceRequired: enq.advance_amount || 0,
+                estimatedDays: 7
+              });
+              if (res.order) {
+                list.unshift(res.order);
+              }
+            }
+          }
+        }
+      } catch (syncErr) {
+        console.warn('Auto-sync accepted enquiries to orders error:', syncErr);
+      }
 
       // Hydrate missing customer & product info cleanly from DB lookups
       const hydratedOrders = list.map((ord: any) => {
