@@ -245,38 +245,7 @@ export const ProductDetailPage: React.FC = () => {
           <p className="text-xs sm:text-sm text-charcoal-600 leading-relaxed font-medium">{description}</p>
         </div>
 
-        {/* Product Specification Card */}
-        {(product.materials || product.available_sizes || product.specifications) && (
-          <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-4">
-            <h3 className="text-sm font-black text-charcoal-900 flex items-center gap-2 uppercase tracking-wider">
-              <Wrench className="w-4 h-4 text-brand-600" />
-              <span>Technical Specifications</span>
-            </h3>
 
-            <div className="divide-y divide-warm-muted border-t border-warm-muted pt-2 text-xs">
-              {product.materials && (
-                <div className="py-2.5 flex justify-between">
-                  <span className="font-bold text-charcoal-500">Material Grade</span>
-                  <span className="font-extrabold text-charcoal-900">{product.materials}</span>
-                </div>
-              )}
-              {product.available_sizes && (
-                <div className="py-2.5 flex justify-between">
-                  <span className="font-bold text-charcoal-500">Available Sizes</span>
-                  <span className="font-extrabold text-charcoal-900">{product.available_sizes}</span>
-                </div>
-              )}
-              {product.specifications && Object.entries(product.specifications).map(([key, val]) => (
-                val && String(val).trim() ? (
-                  <div key={key} className="py-2.5 flex justify-between">
-                    <span className="font-bold text-charcoal-500 capitalize">{key.replace('_', ' ')}</span>
-                    <span className="font-extrabold text-charcoal-900">{String(val)}</span>
-                  </div>
-                ) : null
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Shop Quality Assurances */}
         <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card grid grid-cols-1 sm:grid-cols-2 gap-4">

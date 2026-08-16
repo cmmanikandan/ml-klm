@@ -433,69 +433,7 @@ export const AdminProductEditPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Specs & Sizes */}
-        <div className="space-y-3 pt-2">
-          <label className="block text-xs font-extrabold text-charcoal-900 uppercase tracking-wider">
-            Technical Specifications (Shown on Product Detail Page)
-          </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">Material Grade / Type</label>
-              <input
-                type="text"
-                value={materials}
-                onChange={(e) => setMaterials(e.target.value)}
-                placeholder="e.g. Mild Steel / Iron Pipe"
-                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">Available Sizes / Dimensions</label>
-              <input
-                type="text"
-                value={availableSizes}
-                onChange={(e) => setAvailableSizes(e.target.value)}
-                placeholder="e.g. 12ft x 6ft, Standard Size"
-                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">Metal Gauge / Thickness</label>
-              <input
-                type="text"
-                value={gauge}
-                onChange={(e) => setGauge(e.target.value)}
-                placeholder="e.g. 14 Gauge Pipe, 2mm Sheet"
-                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">Surface Finish</label>
-              <input
-                type="text"
-                value={finish}
-                onChange={(e) => setFinish(e.target.value)}
-                placeholder="e.g. Anti-Rust Primer Coat"
-                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">Warranty Period</label>
-              <input
-                type="text"
-                value={warranty}
-                onChange={(e) => setWarranty(e.target.value)}
-                placeholder="e.g. 5 Years Structural Warranty"
-                className="w-full px-3.5 py-2.5 text-sm font-bold border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-          </div>
-        </div>
 
         {/* Product Badges & Flags */}
         <div className="space-y-3 pt-4 border-t border-warm-muted">
