@@ -223,8 +223,8 @@ export const AdminOrderDetailPage: React.FC = () => {
         setPricingMode(isWeightType ? 'weight' : 'fixed');
 
         const qty = hydrated.quantity || 1;
-        const total = Number(hydrated.total_amount) || 0;
-        const baseUnit = total > 0 ? Math.round(total / qty) : (prod?.admin_price || prod?.base_price || 40000);
+        const orderTotalAmount = Number(hydrated.total_amount) || 0;
+        const baseUnit = orderTotalAmount > 0 ? Math.round(orderTotalAmount / qty) : ((prod as any)?.admin_price || (prod as any)?.base_price || prod?.approx_price_min || 40000);
         setFixedUnitPrice(baseUnit);
         setFixedDiscount(Number(hydrated.discount_amount) || 0);
         setFixedDiscountNotes(hydrated.discount_notes || '');
