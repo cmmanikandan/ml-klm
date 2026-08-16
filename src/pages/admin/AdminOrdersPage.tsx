@@ -365,9 +365,14 @@ export const AdminOrdersPage: React.FC = () => {
                       <Link to={`/admin/orders/${ord.id}`} className="cursor-pointer hover:underline">
                         #{ord.order_number || ord.id}
                       </Link>
-                      <span className="block text-[10px] text-charcoal-400 font-sans font-semibold mt-0.5">
-                        {ord.created_at ? new Date(ord.created_at).toLocaleDateString() : 'Today'}
-                      </span>
+                      <div className="flex flex-col gap-0.5 mt-0.5">
+                        <span className="inline-block w-fit text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {ord.is_pos || (ord.admin_notes && ord.admin_notes.includes('POS')) || String(ord.order_number || '').includes('POS') ? 'MODE: POS' : 'MODE: ONLINE'}
+                        </span>
+                        <span className="text-[10px] text-charcoal-400 font-sans font-semibold">
+                          {ord.created_at ? new Date(ord.created_at).toLocaleDateString() : 'Today'}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Customer Name & Contact */}

@@ -48,7 +48,7 @@ export const ThermalReceiptDocument: React.FC<ThermalReceiptDocumentProps> = ({ 
         </div>
         <div className="flex justify-between text-[10px] text-gray-700">
           <span>DATE: {orderDate}</span>
-          <span>MODE: POS</span>
+          <span className="font-black">MODE: {order.is_pos || (order.admin_notes && order.admin_notes.includes('POS')) || String(order.order_number || '').includes('POS') ? 'POS' : 'ONLINE'}</span>
         </div>
         <div className="pt-1">
           <span className="font-bold">CUST: </span>
@@ -138,8 +138,7 @@ export const ThermalReceiptDocument: React.FC<ThermalReceiptDocumentProps> = ({ 
       {/* FOOTER */}
       <div className="pt-3 text-center space-y-1">
         <p className="text-[10px] font-black uppercase">THANK YOU FOR YOUR VISIT!</p>
-        <p className="text-[9px]">Quality Steel Works & Fabrication</p>
-        <p className="text-[8px] text-gray-500 pt-1">Computer Generated 3" POS Receipt</p>
+        <p className="text-[9px]">MANIKANDAN LATHE • Kallimandhayam - 624616</p>
       </div>
     </div>
   );

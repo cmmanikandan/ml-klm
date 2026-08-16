@@ -66,7 +66,10 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
             <p className="text-xs text-slate-600 font-bold mt-0.5">
               Date: {orderDate}
             </p>
-            <div className="mt-1.5">
+            <div className="mt-1.5 flex items-center justify-end gap-1.5">
+              <span className="inline-block text-[10px] font-black tracking-wider uppercase px-2.5 py-0.5 rounded-full border bg-slate-100 text-slate-800 border-slate-300">
+                MODE: {order.is_pos || (order.admin_notes && order.admin_notes.includes('POS')) || String(order.order_number || '').includes('POS') ? 'POS SALE' : 'ONLINE ORDER'}
+              </span>
               <span className={`inline-block text-[10px] font-black tracking-wider uppercase px-3 py-0.5 rounded-full border ${statusBadgeBg}`}>
                 {statusStampText}
               </span>
@@ -272,8 +275,8 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
           </div>
         </div>
 
-        <div className="text-center text-[9px] text-slate-400 font-semibold border-t border-slate-100 pt-1.5">
-          Computer Generated Tax Invoice • Kallimandhayam - 624616, Dindigul District, Tamil Nadu
+        <div className="text-center text-[9px] text-slate-500 font-bold border-t border-slate-100 pt-1.5 uppercase">
+          Tax Invoice Document • MANIKANDAN LATHE WORKS, Kallimandhayam - 624616, Dindigul District, Tamil Nadu
         </div>
       </div>
     </div>
