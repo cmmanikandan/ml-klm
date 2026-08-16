@@ -17,53 +17,31 @@ export const fetchUserNotifications = async (userId?: string): Promise<AppNotifi
   let dbNotifs: AppNotification[] = [];
   try {
     if (userId) {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .or(`user_id.eq.${userId},user_id.eq.all,user_id.eq.guest`)
+        .order('created_at', { ascending: false });
+
+      if (data && !error) {
+        dbNotifs = data;
+      }
+    } else {
       const { data } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', userId)
+        .or(`user_id.eq.all,user_id.eq.guest`)
         .order('created_at', { ascending: false });
 
-      if (data && data.length > 0) {
-        dbNotifs = data;
-      }
+      if (data) dbNotifs = data;
     }
   } catch (e) {
     console.warn('DB notifications fetch error', e);
   }
 
-  // Local storage notifications
-  const localNotifs: AppNotification[] = JSON.parse(localStorage.getItem('ml_notifications') || '[]');
-  const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_notification_ids') || '[]');
-
-  let combined = [...dbNotifs, ...localNotifs];
-
-  // Read status overrides from LocalStorage
-  const readIds: string[] = JSON.parse(localStorage.getItem('ml_read_notification_ids') || '[]');
-
-  // Deduplicate and filter out deleted notifications
-  const seen = new Set();
-  combined = combined.filter((n) => {
-    if (deletedIds.includes(n.id)) return false;
-    const key = n.id || `${n.title_en}_${n.created_at}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  // Apply read status overrides
-  combined = combined.map((n) => {
-    if (readIds.includes(n.id)) {
-      return { ...n, is_read: true };
-    }
-    return n;
-  });
-
-  // Sort descending by date
-  combined.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-
-  // If still empty, generate friendly welcome & system notifications
-  if (combined.length === 0 && !localStorage.getItem('ml_notifications_cleared')) {
-    const welcomeNotifs: AppNotification[] = [
+  // If no notifications yet, provide default helpful links
+  if (dbNotifs.length === 0) {
+    return [
       {
         id: 'sys_notif_1',
         user_id: userId || 'guest',
@@ -72,8 +50,8 @@ export const fetchUserNotifications = async (userId?: string): Promise<AppNotifi
         message_en: 'Your trusted partner for custom steel gates, grills, rolling shutters, and lathe works in Kallimandhayam.',
         message_ta: 'கல்லிமந்தயத்தில் தரமான ஸ்டீல் கேட், கிரில் மற்றும் லேத் வேலைகளுக்கு எங்களை தொடர்பு கொள்ளவும்.',
         type: 'welcome',
-        link: '/orders',
-        is_read: readIds.includes('sys_notif_1'),
+        link: '/products',
+        is_read: false,
         created_at: new Date().toISOString()
       },
       {
@@ -85,35 +63,32 @@ export const fetchUserNotifications = async (userId?: string): Promise<AppNotifi
         message_ta: 'உங்கள் ஆர்டர் உற்பத்தி நிலையை ஸ்டீல் கட்டிங் முதல் பெயிண்டிங் வரை நேரடியாக கண்காணிக்கலாம்.',
         type: 'feature',
         link: '/orders',
-        is_read: readIds.includes('sys_notif_2'),
+        is_read: false,
         created_at: new Date(Date.now() - 3600000).toISOString()
       }
     ];
-
-    // Filter out deleted system notifs
-    return welcomeNotifs.filter((n) => !deletedIds.includes(n.id));
   }
 
-  return combined;
+  return dbNotifs;
 };
 
 export const addAppNotification = async (notif: Omit<AppNotification, 'id' | 'created_at' | 'is_read'>) => {
+  const notifUuid = crypto.randomUUID();
   const newNotif: AppNotification = {
     ...notif,
-    id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+    id: notifUuid,
     is_read: false,
     created_at: new Date().toISOString()
   };
 
-  // Save to LocalStorage
-  const localNotifs: AppNotification[] = JSON.parse(localStorage.getItem('ml_notifications') || '[]');
-  localStorage.setItem('ml_notifications', JSON.stringify([newNotif, ...localNotifs]));
-
-  // Try saving to Supabase DB
+  // Save directly to Supabase DB
   try {
-    await supabase.from('notifications').insert(newNotif);
+    const { error } = await supabase.from('notifications').insert(newNotif);
+    if (error) {
+      console.error('Supabase notification insert error:', error.message);
+    }
   } catch (e) {
-    console.warn('Supabase notification insert fallback', e);
+    console.error('Supabase notification insert exception:', e);
   }
 
   return newNotif;

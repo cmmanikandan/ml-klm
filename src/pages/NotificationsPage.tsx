@@ -187,10 +187,20 @@ export const NotificationsPage: React.FC = () => {
                     </p>
 
                     {notif.link && (
-                      <span className="text-[11px] font-extrabold text-brand-600 group-hover:underline inline-flex items-center gap-1 pt-1">
-                        <span>View Order Details</span>
-                        <span>→</span>
-                      </span>
+                      <div className="pt-1.5">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-black text-brand-600 group-hover:text-brand-700 group-hover:underline">
+                          <span>
+                            {notif.type === 'welcome'
+                              ? (isTamil ? 'பொருட்களை பார்க்க' : 'Explore Products')
+                              : notif.type === 'payment'
+                              ? (isTamil ? 'பணம் செலுத்தவும்' : 'Make Payment / View Order')
+                              : notif.type === 'feature'
+                              ? (isTamil ? 'ஆர்டர் நிலை பார்க்க' : 'Track Orders')
+                              : (isTamil ? 'ஆர்டர் விவரங்களை பார்க்க' : 'View Order Details')}
+                          </span>
+                          <span>→</span>
+                        </span>
+                      </div>
                     )}
                   </div>
 

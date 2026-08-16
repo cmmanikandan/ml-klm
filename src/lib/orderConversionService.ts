@@ -154,6 +154,22 @@ export const convertEnquiryToOrderSafely = async ({
         .update({ status: 'converted', converted_order_id: newOrderUuid })
         .eq('enquiry_number', enquiry.enquiry_number);
     }
+
+    // Send live in-app notification to customer
+    if (newOrderRecord.user_id) {
+      await supabase.from('notifications').insert({
+        id: crypto.randomUUID(),
+        user_id: newOrderRecord.user_id,
+        title_en: `Order #${newOrderNumber} Confirmed!`,
+        title_ta: `ஆர்டர் #${newOrderNumber} உறுதிசெய்யப்பட்டது!`,
+        message_en: `Your fabrication request for "${productName}" has been accepted and confirmed.`,
+        message_ta: `"${productName}"க்கான உங்கள் உற்பத்தி கோரிக்கை ஏற்றுக்கொள்ளப்பட்டு உறுதிசெய்யப்பட்டது.`,
+        type: 'order_update',
+        link: `/orders/${newOrderUuid}`,
+        is_read: false,
+        created_at: new Date().toISOString()
+      });
+    }
   } catch (e) {
     console.error('Order conversion DB insert exception:', e);
   }
