@@ -47,11 +47,25 @@ export const OrdersPage: React.FC = () => {
 
       let combinedOrders = [...(dbOrders || []), ...userLocal];
 
+      const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
+      const deletedSet = new Set(deletedIds);
+
+      combinedOrders = combinedOrders.filter((o: any) => {
+        const idStr = String(o.id || '');
+        const numStr = String(o.order_number || '');
+        const enqStr = String(o.enquiry_id || '');
+        return !deletedSet.has(idStr) && !deletedSet.has(numStr) && !deletedSet.has(enqStr);
+      });
+
       // Auto-synthesize order records for accepted/converted enquiries if missing
       const { data: dbEnqs } = await supabase.from('enquiries').select('*').or(`user_id.eq.${user.id},user_id.eq.demo-user-123`);
       const allUserEnqs = [...(dbEnqs || []), ...localEnquiries.filter((e) => !e.user_id || e.user_id === user.id || e.user_id === 'demo-user-123')];
 
       for (const enq of allUserEnqs) {
+        const enqIdStr = String(enq.id || '');
+        const enqNumStr = String(enq.enquiry_number || '');
+        if (deletedSet.has(enqIdStr) || deletedSet.has(enqNumStr) || enq.status === 'deleted') continue;
+
         const normSt = String(enq.status || '').toLowerCase();
         if (normSt === 'accepted' || normSt === 'converted') {
           const enqId = enq.id;

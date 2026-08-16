@@ -243,16 +243,43 @@ export const AdminOrderDetailPage: React.FC = () => {
 
   const handleDeleteOrder = async () => {
     if (!order) return;
+    const orderId = String(order.id);
+    const enquiryId = String(order.enquiry_id || order.enquiryId || orderId);
+    const orderNum = String(order.order_number || order.orderNumber || orderId);
+
+    // Track deleted IDs in LocalStorage ml_deleted_ids
+    const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
+    const updatedDeletedIds = Array.from(new Set([...deletedIds, orderId, enquiryId, orderNum]));
+    localStorage.setItem('ml_deleted_ids', JSON.stringify(updatedDeletedIds));
 
     try {
-      await supabase.from('orders').delete().eq('id', order.id);
+      await supabase
+        .from('orders')
+        .delete()
+        .or(`id.eq.${orderId},order_number.eq.${orderNum},enquiry_id.eq.${enquiryId}`);
+      await supabase
+        .from('enquiries')
+        .delete()
+        .or(`id.eq.${enquiryId},id.eq.${orderId}`);
+      await supabase
+        .from('enquiries')
+        .update({ status: 'deleted' })
+        .or(`id.eq.${enquiryId},id.eq.${orderId}`);
     } catch (e) {
-      console.warn('Order DB delete fallback');
+      console.warn('Order DB delete fallback', e);
     }
 
-    const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-    const updatedLocal = local.filter((l: any) => l.id !== order.id);
-    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
+    const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const updatedLocalOrders = localOrders.filter(
+      (l: any) => String(l.id) !== orderId && String(l.order_number) !== orderNum && String(l.enquiry_id) !== enquiryId
+    );
+    localStorage.setItem('ml_orders', JSON.stringify(updatedLocalOrders));
+
+    const localEnquiries = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+    const updatedLocalEnquiries = localEnquiries.filter(
+      (e: any) => String(e.id) !== enquiryId && String(e.id) !== orderId && String(e.enquiry_number) !== orderNum
+    );
+    localStorage.setItem('ml_enquiries', JSON.stringify(updatedLocalEnquiries));
 
     setOrderToDelete(null);
     navigate('/admin/orders');

@@ -94,12 +94,27 @@ export const AdminOrdersPage: React.FC = () => {
       const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
       let combined: any[] = [...(dbOrders || []), ...local];
 
+      const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
+      const deletedSet = new Set(deletedIds);
+
+      // Filter out permanently deleted orders
+      combined = combined.filter((o: any) => {
+        const idStr = String(o.id || '');
+        const numStr = String(o.order_number || '');
+        const enqStr = String(o.enquiry_id || '');
+        return !deletedSet.has(idStr) && !deletedSet.has(numStr) && !deletedSet.has(enqStr);
+      });
+
       // Auto-synthesize order records for accepted/converted enquiries if missing
       const localEnquiries: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
       const { data: dbEnquiries } = await supabase.from('enquiries').select('*');
       const allEnqs = [...(dbEnquiries || []), ...localEnquiries];
 
       for (const enq of allEnqs) {
+        const enqIdStr = String(enq.id || '');
+        const enqNumStr = String(enq.enquiry_number || '');
+        if (deletedSet.has(enqIdStr) || deletedSet.has(enqNumStr) || enq.status === 'deleted') continue;
+
         const normSt = String(enq.status || '').toLowerCase();
         if (normSt === 'accepted' || normSt === 'converted') {
           const enqId = enq.id;
@@ -227,6 +242,12 @@ export const AdminOrdersPage: React.FC = () => {
     const enquiryId = targetOrder?.enquiry_id || targetOrder?.enquiryId || orderId;
     const orderNum = targetOrder?.order_number || targetOrder?.orderNumber || orderId;
 
+    // Track deleted IDs in LocalStorage ml_deleted_ids
+    const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
+    const idsToAdd = [String(orderId), String(enquiryId), String(orderNum)].filter(Boolean);
+    const updatedDeletedIds = Array.from(new Set([...deletedIds, ...idsToAdd]));
+    localStorage.setItem('ml_deleted_ids', JSON.stringify(updatedDeletedIds));
+
     const updatedOrders = orders.filter(
       (o) => o.id !== orderId && o.order_number !== orderNum && o.enquiry_id !== enquiryId
     );
@@ -257,6 +278,10 @@ export const AdminOrdersPage: React.FC = () => {
       await supabase
         .from('enquiries')
         .delete()
+        .or(`id.eq.${enquiryId},id.eq.${orderId}`);
+      await supabase
+        .from('enquiries')
+        .update({ status: 'deleted' })
         .or(`id.eq.${enquiryId},id.eq.${orderId}`);
     } catch (e) {
       console.warn('Enquiries DB delete fallback', e);

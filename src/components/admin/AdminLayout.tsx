@@ -51,29 +51,69 @@ export const AdminLayout: React.FC = () => {
 
   const fetchCounts = async () => {
     try {
-      // 1. Pending Enquiries Count (Strictly status === 'pending')
+      const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
+      const deletedSet = new Set(deletedIds);
+
+      // 1. Pending Enquiries Count (Strictly status === 'pending' || 'new')
       const { data: enqData } = await supabase.from('enquiries').select('id, enquiry_number, status');
       const localEnq: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
       const rawEnquiries = (enqData && enqData.length > 0) ? enqData : localEnq;
 
       const pendingEnquiries = rawEnquiries.filter((e: any) => {
+        const idStr = String(e.id || '');
+        const numStr = String(e.enquiry_number || e.number || '');
         const st = (e.status || 'pending').toLowerCase();
-        return st === 'pending';
+        if (deletedSet.has(idStr) || deletedSet.has(numStr) || st === 'deleted') return false;
+        return st === 'pending' || st === 'new';
       });
 
       setPendingEnquiriesCount(pendingEnquiries.length);
 
-      // 2. Active Orders Count (excl. delivered and cancelled)
-      const { data: dbOrders } = await supabase.from('orders').select('id, order_number, status');
+      // 2. Active Orders Count (matching AdminOrdersPage exact logic)
+      const { data: dbOrders } = await supabase.from('orders').select('*');
       const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      const rawOrders = (dbOrders && dbOrders.length > 0) ? dbOrders : localOrders;
+      let combined = [...(dbOrders || []), ...localOrders];
 
-      const activeOrders = rawOrders.filter((o: any) => {
-        const st = (o.status || '').toLowerCase();
-        return st !== 'delivered' && st !== 'cancelled';
+      const { data: dbEnqs } = await supabase.from('enquiries').select('*');
+      const allEnqs = [...(dbEnqs || []), ...localEnq];
+
+      for (const enq of allEnqs) {
+        const enqIdStr = String(enq.id || '');
+        const enqNumStr = String(enq.enquiry_number || '');
+        if (deletedSet.has(enqIdStr) || deletedSet.has(enqNumStr) || enq.status === 'deleted') continue;
+
+        const normSt = String(enq.status || '').toLowerCase();
+        if (normSt === 'accepted' || normSt === 'converted') {
+          const enqId = enq.id;
+          const matchExisting = combined.find(
+            (o) => o.enquiry_id === enqId || o.id === enqId || o.order_number === enqId || (enq.converted_order_id && (o.id === enq.converted_order_id || o.order_number === enq.converted_order_id))
+          );
+          if (!matchExisting) {
+            combined.push({ id: enq.converted_order_id || enq.enquiry_number || enq.id, order_number: enq.enquiry_number || enq.id, status: 'accepted' });
+          }
+        }
+      }
+
+      // Filter deleted & POS
+      combined = combined.filter((o: any) => {
+        const idStr = String(o.id || '');
+        const numStr = String(o.order_number || '');
+        const enqStr = String(o.enquiry_id || '');
+        if (deletedSet.has(idStr) || deletedSet.has(numStr) || deletedSet.has(enqStr)) return false;
+        if (idStr.includes('ord-101') || idStr.includes('ord-102') || idStr.includes('1785163424023') || idStr.includes('POS')) return false;
+        if (o.is_pos === true || (o.admin_notes && o.admin_notes.includes('POS'))) return false;
+        return true;
       });
 
-      setActiveOrdersCount(activeOrders.length);
+      const seen = new Set();
+      combined = combined.filter((o: any) => {
+        const key = o.id || o.order_number;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      setActiveOrdersCount(combined.length);
     } catch (e) {
       console.warn('Sidebar count fetch fallback', e);
     }
