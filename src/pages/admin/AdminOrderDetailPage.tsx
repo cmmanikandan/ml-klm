@@ -20,7 +20,8 @@ import {
   QrCode,
   Send,
   Plus,
-  Check
+  Check,
+  RefreshCw
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
@@ -83,6 +84,7 @@ export const AdminOrderDetailPage: React.FC = () => {
   const [fixedDiscountNotes, setFixedDiscountNotes] = useState<string>('');
   const [fixedExtraCharges, setFixedExtraCharges] = useState<number>(0);
   const [fixedAdvanceReq, setFixedAdvanceReq] = useState<number>(0);
+  const [isSyncingPayments, setIsSyncingPayments] = useState<boolean>(false);
 
   // Realtime subscription ref
   const realtimeChannelRef = useRef<any>(null);
@@ -100,7 +102,77 @@ export const AdminOrderDetailPage: React.FC = () => {
     };
   }, [id]);
 
-  // Subscribe to realtime order changes after order is loaded
+  // Comprehensive payment transactions fetcher
+  const fetchPaymentsHistoryForOrder = async (ord: any) => {
+    if (!ord) return;
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ord.id);
+      let dbPayments: any[] = [];
+
+      if (isUuid) {
+        const { data: byUuid } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('order_id', ord.id)
+          .order('created_at', { ascending: false });
+        if (byUuid) dbPayments.push(...byUuid);
+      }
+
+      if (ord.order_number) {
+        const { data: byOrderNum } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('order_number', ord.order_number)
+          .order('created_at', { ascending: false });
+        if (byOrderNum) dbPayments.push(...byOrderNum);
+      }
+
+      // Also search local storage
+      const localPayments: any[] = JSON.parse(localStorage.getItem('ml_payments') || '[]');
+      const matchingLocal = localPayments.filter(
+        (p: any) => p.order_id === ord.id || p.order_id === ord.order_number || p.order_number === ord.order_number
+      );
+
+      let combined = [...dbPayments, ...matchingLocal];
+      const seen = new Set();
+      combined = combined.filter((p: any) => {
+        const key = p.id || `${p.amount}_${p.created_at}_${p.status}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Synthesize advance payment if advance paid > 0 but payments table empty
+      const total = Number(ord.total_amount) || 0;
+      const remaining = Number(ord.remaining_amount) || 0;
+      const advancePaid = Math.max(0, total - remaining);
+      const reqAdvance = Number(ord.advance_amount || ord.payment_request_amount || 0);
+
+      if (combined.length === 0 && (advancePaid > 0 || (reqAdvance > 0 && (ord.payment_status === 'paid' || ord.payment_status === 'partially_paid')))) {
+        const advAmt = advancePaid > 0 ? advancePaid : reqAdvance;
+        combined = [
+          {
+            id: `pay_adv_${ord.id}`,
+            order_id: ord.id,
+            order_number: ord.order_number || ord.id,
+            amount: advAmt,
+            payment_mode: 'Advance Payment',
+            notes: 'Order advance payment collected for fabrication',
+            created_at: ord.created_at || new Date().toISOString(),
+            status: 'completed'
+          }
+        ];
+      }
+
+      // Sort newest first
+      combined.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      setPaymentsHistory(combined);
+    } catch (e) {
+      console.warn('Live fetch payments error:', e);
+    }
+  };
+
+  // Subscribe to realtime order and payment changes after order is loaded
   useEffect(() => {
     if (!order?.id) return;
 
@@ -110,7 +182,7 @@ export const AdminOrderDetailPage: React.FC = () => {
     }
 
     const channel = supabase
-      .channel(`admin-order-${order.id}`)
+      .channel(`admin-order-live-${order.id}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -121,9 +193,11 @@ export const AdminOrderDetailPage: React.FC = () => {
         },
         (payload) => {
           if (payload.eventType === 'UPDATE' && payload.new) {
-            setOrder((prev: any) => ({ ...prev, ...payload.new }));
-            // Also sync calculator state from updated weight_calculation
-            const wc = (payload.new as any).weight_calculation;
+            const updated = payload.new as any;
+            setOrder((prev: any) => ({ ...prev, ...updated }));
+            fetchPaymentsHistoryForOrder(updated);
+
+            const wc = updated.weight_calculation;
             if (wc) {
               if (wc.parts && wc.parts.length > 0) setCalcParts(wc.parts);
               if (wc.rate_per_kg) setCalcRatePerKg(wc.rate_per_kg);
@@ -136,25 +210,27 @@ export const AdminOrderDetailPage: React.FC = () => {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
-          table: 'payments',
-          filter: `order_id=eq.${order.id}`
+          table: 'payments'
         },
         (payload) => {
-          if (payload.new) {
-            setPaymentsHistory((prev: any[]) => {
-              // Avoid duplicates
-              if (prev.find((p) => p.id === (payload.new as any).id)) return prev;
-              return [payload.new, ...prev];
-            });
+          const rec: any = payload.new || payload.old;
+          if (rec && (rec.order_id === order.id || rec.order_number === order.order_number || rec.order_id === order.order_number)) {
+            fetchPaymentsHistoryForOrder(order);
           }
         }
       )
       .subscribe();
 
     realtimeChannelRef.current = channel;
-  }, [order?.id]);
+
+    return () => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+      }
+    };
+  }, [order?.id, order?.order_number]);
 
   const fetchOrderDetails = async (orderId: string) => {
     setLoading(true);
@@ -263,58 +339,7 @@ export const AdminOrderDetailPage: React.FC = () => {
         }
 
         // 2. Fetch Payment Transactions History for this Order
-        // NOTE: order_id is UUID — must query by actual order UUID, not order_number text
-        // Also fetch by order_number TEXT column separately for any text-keyed records
-        const [{ data: dbPaymentsByUuid }, { data: dbPaymentsByOrderNum }] = await Promise.all([
-          supabase
-            .from('payments')
-            .select('*')
-            .eq('order_id', ordRecord.id)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('payments')
-            .select('*')
-            .eq('order_number', hydrated.order_number || '')
-            .order('created_at', { ascending: false })
-        ]);
-        const dbPayments = [...(dbPaymentsByUuid || []), ...(dbPaymentsByOrderNum || [])];
-
-        const localPayments: any[] = JSON.parse(localStorage.getItem('ml_payments') || '[]');
-        const matchingLocal = localPayments.filter(
-          (p: any) => p.order_id === orderId || p.order_id === hydrated.order_number || p.order_number === hydrated.order_number
-        );
-
-        let combined = [...(dbPayments || []), ...matchingLocal];
-        const seen = new Set();
-        combined = combined.filter((p: any) => {
-          if (!p.id || seen.has(p.id)) return false;
-          seen.add(p.id);
-          return true;
-        });
-
-        // Synthesize advance payment if advance paid > 0 but payments table empty
-        const total = hydrated.total_amount || 0;
-        const remaining = hydrated.remaining_amount || 0;
-        const advancePaid = Math.max(0, total - remaining);
-        const reqAdvance = hydrated.advance_amount || hydrated.payment_request_amount || 0;
-
-        if (combined.length === 0 && (advancePaid > 0 || (reqAdvance > 0 && (hydrated.payment_status === 'paid' || hydrated.payment_status === 'partially_paid')))) {
-          const advAmt = advancePaid > 0 ? advancePaid : reqAdvance;
-          combined = [
-            {
-              id: `pay_adv_${hydrated.id}`,
-              order_id: hydrated.id,
-              order_number: hydrated.order_number || hydrated.id,
-              amount: advAmt,
-              payment_mode: 'Advance Payment',
-              notes: 'Order advance payment collected for fabrication',
-              created_at: hydrated.created_at || new Date().toISOString(),
-              status: 'completed'
-            }
-          ];
-        }
-
-        setPaymentsHistory(combined);
+        await fetchPaymentsHistoryForOrder(hydrated);
       }
     } catch (e) {
       console.warn('Order detail fetch fallback');
@@ -1844,14 +1869,47 @@ export const AdminOrderDetailPage: React.FC = () => {
 
           {/* Payment History Audit Table */}
           <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-charcoal-900 flex items-center gap-2 uppercase tracking-wider">
-                <History className="w-4 h-4 text-brand-600" />
-                <span>Payment Transactions History</span>
-              </h3>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                {paymentsHistory.length} Record(s)
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-warm-muted pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600 border border-brand-200">
+                  <History className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-black text-charcoal-900 uppercase tracking-wider">
+                      Payment Transactions History
+                    </h3>
+                    <span className="relative flex h-2 w-2" title="Realtime Live Sync Connected">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-charcoal-500 font-semibold">
+                    Realtime ledger of online payments, workshop counter cash, UPI receipts & advance requests
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  disabled={isSyncingPayments}
+                  onClick={async () => {
+                    setIsSyncingPayments(true);
+                    if (order) await fetchPaymentsHistoryForOrder(order);
+                    setTimeout(() => setIsSyncingPayments(false), 600);
+                  }}
+                  className="bg-warm-bg hover:bg-warm-hover text-charcoal-700 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-warm-border transition-colors flex items-center gap-1.5"
+                  title="Sync transactions live from database"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-brand-600 ${isSyncingPayments ? 'animate-spin' : ''}`} />
+                  <span>{isSyncingPayments ? 'Syncing...' : 'Sync Live'}</span>
+                </button>
+
+                <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                  {paymentsHistory.length} Record(s)
+                </span>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
