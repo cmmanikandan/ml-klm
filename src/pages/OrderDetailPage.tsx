@@ -439,21 +439,15 @@ export const OrderDetailPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <div className="pt-1">
                     <Button
                       onClick={handlePayNow}
                       variant="primary"
+                      fullWidth
                       icon={<CreditCard className="w-4 h-4" />}
+                      className="py-3.5 text-sm font-black rounded-2xl shadow-lg bg-brand-600 hover:bg-brand-700"
                     >
-                      {isTamil ? 'ஆன்லைன் மூலம் செலுத்துக (Razorpay)' : 'Pay Now via Razorpay (Card/NetBanking)'}
-                    </Button>
-
-                    <Button
-                      onClick={() => setShowQrModal(true)}
-                      variant="secondary"
-                      icon={<QrCode className="w-4 h-4 text-emerald-600" />}
-                    >
-                      {isTamil ? 'GPay / PhonePe QR ஸ்கேன் செய்க' : 'Scan GPay / PhonePe UPI QR'}
+                      {isTamil ? 'ஆன்லைன் மூலம் பாதுகாப்பாக செலுத்துக (Razorpay)' : 'Pay Securely via Razorpay (UPI / Card / NetBanking)'}
                     </Button>
                   </div>
 
