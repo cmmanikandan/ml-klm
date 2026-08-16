@@ -145,13 +145,26 @@ export const AdminDashboardPage: React.FC = () => {
   const onlineOrders = orders.filter((o) => !isPosOrder(o));
   const posOrders = orders.filter((o) => isPosOrder(o));
 
-  // Strict Filter: ONLY UNHANDLED NEW ENQUIRIES (After accept or reject, DO NOT SHOW)
+  // Cross-check all orders to ensure any enquiry that already has an order is NEVER counted as pending
+  const linkedOrderIds = new Set<string>();
+  orders.forEach((o: any) => {
+    if (o.enquiry_id) linkedOrderIds.add(String(o.enquiry_id).toLowerCase());
+    if (o.order_number) linkedOrderIds.add(String(o.order_number).toLowerCase());
+    if (o.id) linkedOrderIds.add(String(o.id).toLowerCase());
+  });
+
+  // Strict Filter: ONLY UNHANDLED NEW ENQUIRIES (After accept, convert or reject, DO NOT SHOW)
   const isNewEnquiry = (e: any) => {
     const st = String(e.status || 'pending').toLowerCase().trim();
     if (st === 'accepted' || st === 'converted' || st === 'converted_to_order' || st === 'rejected') {
       return false;
     }
     if (e.converted_order_id) {
+      return false;
+    }
+    const eId = String(e.id || '').toLowerCase();
+    const eNum = String(e.enquiry_number || '').toLowerCase();
+    if ((eId && linkedOrderIds.has(eId)) || (eNum && linkedOrderIds.has(eNum))) {
       return false;
     }
     return st === 'pending' || st === 'new';
