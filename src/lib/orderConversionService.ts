@@ -184,14 +184,15 @@ export const convertEnquiryToOrderSafely = async ({
     if (isEnquiryUuid) {
       await supabase
         .from('enquiries')
-        .update({ status: 'converted', converted_order_id: newOrderUuid })
+        .update({ status: 'converted', converted_order_id: newOrderNumber })
         .eq('id', enquiryId);
     }
-    if (enquiry.enquiry_number) {
+    const enqNum = enquiry.enquiry_number || enquiry.number || enquiryId;
+    if (enqNum) {
       await supabase
         .from('enquiries')
-        .update({ status: 'converted', converted_order_id: newOrderUuid })
-        .eq('enquiry_number', enquiry.enquiry_number);
+        .update({ status: 'converted', converted_order_id: newOrderNumber })
+        .eq('enquiry_number', enqNum);
     }
 
     // Send live in-app notification to customer
@@ -204,7 +205,7 @@ export const convertEnquiryToOrderSafely = async ({
         message_en: `Your fabrication request for "${productName}" has been accepted and confirmed.${advanceRequired > 0 ? ` Advance payment of ₹${advanceRequired.toLocaleString('en-IN')} requested.` : ''}`,
         message_ta: `"${productName}"க்கான உங்கள் உற்பத்தி கோரிக்கை ஏற்றுக்கொள்ளப்பட்டு உறுதிசெய்யப்பட்டது.`,
         type: advanceRequired > 0 ? 'payment' : 'order_update',
-        link: `/orders/${newOrderUuid}`,
+        link: `/orders/${newOrderNumber}`,
         is_read: false,
         created_at: new Date().toISOString()
       });

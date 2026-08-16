@@ -157,48 +157,55 @@ export const AdminEnquiriesPage: React.FC = () => {
       if (error) throw error;
 
       // Cross-check with orders table so any converted enquiry is accurately marked as CONVERTED
-      const { data: dbOrders } = await supabase.from('orders').select('id, order_number, enquiry_id');
-      const orderMap = new Map<string, string>();
+      const { data: dbOrders } = await supabase.from('orders').select('*');
+      const orderLinkedEnquiries = new Map<string, any>();
       const oNumMap = new Map<string, string>();
 
       (dbOrders || []).forEach((o: any) => {
         const orderNum = o.order_number || o.id;
-        if (o.enquiry_id) orderMap.set(o.enquiry_id, orderNum);
-        if (o.order_number) orderMap.set(o.order_number, orderNum);
+        if (o.enquiry_id) orderLinkedEnquiries.set(o.enquiry_id, o);
         if (o.id) {
-          orderMap.set(o.id, orderNum);
+          orderLinkedEnquiries.set(o.id, o);
           oNumMap.set(o.id, orderNum);
         }
-        if (o.order_number) oNumMap.set(o.order_number, orderNum);
+        if (o.order_number) {
+          orderLinkedEnquiries.set(o.order_number, o);
+          oNumMap.set(o.order_number, orderNum);
+        }
+        if (o.customer_name && o.product_name) {
+          orderLinkedEnquiries.set(`${o.customer_name.trim().toLowerCase()}_${o.product_name.trim().toLowerCase()}`, o);
+        }
       });
-
-      try {
-        const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-        localOrders.forEach((o: any) => {
-          const orderNum = o.order_number || o.id;
-          if (o.enquiry_id) orderMap.set(o.enquiry_id, orderNum);
-          if (o.order_number) orderMap.set(o.order_number, orderNum);
-          if (o.id) {
-            orderMap.set(o.id, orderNum);
-            oNumMap.set(o.id, orderNum);
-          }
-          if (o.order_number) oNumMap.set(o.order_number, orderNum);
-        });
-      } catch (e) {
-        console.warn('Local orders cache check error');
-      }
 
       setOrderNumberMap(oNumMap);
 
       const checkedEnquiries = (data || []).map((enq: any) => {
-        const isConvertedInDb = enq.status === 'converted' || enq.status === 'accepted' || enq.status === 'converted_to_order';
-        const linkedId = enq.converted_order_id ? (oNumMap.get(enq.converted_order_id) || enq.converted_order_id) : '';
+        const pName = getProductName(enq).toLowerCase();
+        const cName = (enq.customer_name || enq.customerName || '').toLowerCase();
+        const key = `${cName}_${pName}`;
+        const matchedOrder = enq.converted_order_id 
+          ? (dbOrders || []).find((o: any) => o.id === enq.converted_order_id || o.order_number === enq.converted_order_id)
+          : (orderLinkedEnquiries.get(enq.id) || orderLinkedEnquiries.get(enq.enquiry_number) || orderLinkedEnquiries.get(key));
+
+        const isConvertedInDb = enq.status === 'converted' || enq.status === 'accepted' || enq.status === 'converted_to_order' || Boolean(matchedOrder);
+        const readableNum = matchedOrder?.order_number || enq.converted_order_id || 'MNK-ORD-1';
 
         if (isConvertedInDb) {
+          // If in DB status was still pending, sync to DB
+          if (enq.status === 'pending') {
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enq.id);
+            if (isUuid) {
+              supabase.from('enquiries').update({ status: 'converted', converted_order_id: readableNum }).eq('id', enq.id);
+            }
+            if (enq.enquiry_number) {
+              supabase.from('enquiries').update({ status: 'converted', converted_order_id: readableNum }).eq('enquiry_number', enq.enquiry_number);
+            }
+          }
+
           return {
             ...enq,
             status: 'converted',
-            converted_order_id: linkedId || 'MNK-ORD-2'
+            converted_order_id: readableNum
           };
         }
 
@@ -225,7 +232,7 @@ export const AdminEnquiriesPage: React.FC = () => {
     if (filter === 'pending') {
       if (normStatus !== 'PENDING') return false;
     } else if (filter === 'accepted') {
-      if (normStatus !== 'ACCEPTED') return false;
+      if (normStatus !== 'ACCEPTED' && normStatus !== 'CONVERTED') return false;
     } else if (filter === 'rejected') {
       if (normStatus !== 'REJECTED') return false;
     } else if (filter === 'converted') {
@@ -246,20 +253,24 @@ export const AdminEnquiriesPage: React.FC = () => {
   });
 
   const handleUpdateStatus = async (id: string, status: string) => {
-    const targetEnquiry = enquiries.find((e) => e.id === id);
+    const targetEnquiry = enquiries.find((e) => e.id === id || e.enquiry_number === id);
     let convertedOrderId = targetEnquiry?.converted_order_id;
     let finalStatus = status;
 
     if (status === 'accepted' && targetEnquiry) {
       try {
+        let initialPrice = 0;
+        const prod = productMap.get(targetEnquiry.product_id) || INITIAL_PRODUCTS.find(p => p.name_en.toLowerCase() === getProductName(targetEnquiry).toLowerCase());
+        if (prod?.admin_price) initialPrice = prod.admin_price * (targetEnquiry.quantity || 1);
+
         const result = await convertEnquiryToOrderSafely({
           enquiry: targetEnquiry,
-          quotePrice: targetEnquiry.quote_price || 0,
+          quotePrice: targetEnquiry.quote_price || initialPrice || 40000,
           advanceRequired: targetEnquiry.advance_amount || 0,
           estimatedDays: 7
         });
         if (result.order) {
-          convertedOrderId = result.order.id;
+          convertedOrderId = result.order.order_number || result.order.id;
           finalStatus = 'converted';
         }
       } catch (err) {
@@ -267,14 +278,24 @@ export const AdminEnquiriesPage: React.FC = () => {
       }
     }
 
-    const updated = enquiries.map((e) => (e.id === id ? { ...e, status: finalStatus, converted_order_id: convertedOrderId } : e));
+    const updated = enquiries.map((e) => (e.id === id || e.enquiry_number === id ? { ...e, status: finalStatus, converted_order_id: convertedOrderId } : e));
     setEnquiries(updated);
 
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     try {
-      await supabase.from('enquiries').update({ 
-        status: finalStatus, 
-        converted_order_id: convertedOrderId 
-      }).eq('id', id);
+      if (isUuid) {
+        await supabase.from('enquiries').update({ 
+          status: finalStatus, 
+          converted_order_id: convertedOrderId 
+        }).eq('id', id);
+      }
+      const enqNum = targetEnquiry?.enquiry_number || id;
+      if (enqNum) {
+        await supabase.from('enquiries').update({ 
+          status: finalStatus, 
+          converted_order_id: convertedOrderId 
+        }).eq('enquiry_number', enqNum);
+      }
     } catch (e) {
       console.warn('Enquiry status update fallback', e);
     }
