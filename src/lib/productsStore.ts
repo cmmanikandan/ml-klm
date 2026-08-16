@@ -31,10 +31,12 @@ export const fetchActiveProducts = async (): Promise<Product[]> => {
   const deletedStr = localStorage.getItem(DELETED_IDS_KEY);
   const deletedIds: string[] = deletedStr ? JSON.parse(deletedStr) : [];
 
-  // Merge map by product ID
+  // Merge: DB wins over localStorage so edits propagate to all devices
   const map = new Map<string, Product>();
-  dbProducts.forEach((p) => map.set(p.id, p));
+  // Load local first (lower priority)
   localProducts.forEach((p) => map.set(p.id, p));
+  // DB overwrites local (higher priority — source of truth)
+  dbProducts.forEach((p) => map.set(p.id, p));
 
   // Filter out deleted product IDs
   return Array.from(map.values()).filter((p) => !deletedIds.includes(p.id) && p.is_active !== false);
@@ -74,6 +76,7 @@ export const saveProductToStore = async (product: Product): Promise<boolean> => 
   }
 
   // 2. Format clean Payload strictly for Supabase PostgreSQL schema
+  // NOTE: category_name is NOT a DB column — do NOT include it or upsert will fail
   const dbPayload: any = {
     id: validProductId,
     name_en: normalizedProduct.name_en,
@@ -97,27 +100,27 @@ export const saveProductToStore = async (product: Product): Promise<boolean> => 
     updated_at: new Date().toISOString()
   };
 
+  // Only include category_id if it is a valid UUID (DB FK constraint)
   if (normalizedProduct.category_id && UUID_REGEX.test(normalizedProduct.category_id)) {
     dbPayload.category_id = normalizedProduct.category_id;
   }
 
-  if (normalizedProduct.category_name) {
-    dbPayload.category_name = normalizedProduct.category_name;
-  }
-
-  // 3. Persist to Supabase Database with automatic FK Fallback
+  // 3. Persist to Supabase Database — DB is the source of truth for all devices
   try {
-    const { error } = await supabase.from('products').upsert(dbPayload);
+    const { error } = await supabase.from('products').upsert(dbPayload, { onConflict: 'id' });
     if (error) {
-      // If foreign key constraint on category fails, strip category_id & category_name and retry!
+      console.warn('Supabase product upsert error:', error.message);
+      // If FK constraint on category_id fails, retry without it
       if (error.message.includes('foreign key') || error.message.includes('category')) {
         delete dbPayload.category_id;
-        delete dbPayload.category_name;
-        await supabase.from('products').upsert(dbPayload);
+        const { error: retryError } = await supabase.from('products').upsert(dbPayload, { onConflict: 'id' });
+        if (retryError) {
+          console.error('Supabase product upsert retry error:', retryError.message);
+        }
       }
     }
   } catch (e) {
-    console.warn('Supabase product upsert local fallback active');
+    console.warn('Supabase product upsert exception — saved to local only:', e);
   }
 
   return true;

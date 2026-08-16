@@ -78,9 +78,12 @@ export const AdminProductEditPage: React.FC = () => {
     const liveCats = await fetchActiveCategories();
     if (liveCats.length > 0) {
       setCategories(liveCats);
-      setCategorySlug(liveCats[0].slug);
-      setCategoryId(liveCats[0].id);
-      setCategoryName(liveCats[0].name_en);
+      // Only set default category for NEW products, not edits (edit loader sets its own)
+      if (!isEdit) {
+        setCategorySlug(liveCats[0].slug);
+        setCategoryId(liveCats[0].id);
+        setCategoryName(liveCats[0].name_en);
+      }
     }
   };
 
@@ -94,6 +97,19 @@ export const AdminProductEditPage: React.FC = () => {
       setDescTa(existing.description_ta || '');
       setCategoryId(existing.category_id || '');
       setCategoryName(existing.category_name || 'General');
+
+      // Pre-select correct category slug from category_id
+      const liveCats = await fetchActiveCategories();
+      if (liveCats.length > 0) {
+        setCategories(liveCats);
+        const matchedCat = liveCats.find((c) => c.id === existing.category_id);
+        if (matchedCat) {
+          setCategorySlug(matchedCat.slug);
+          setCategoryId(matchedCat.id);
+          setCategoryName(matchedCat.name_en);
+        }
+      }
+
       setMaterials(existing.materials || '');
       setAvailableSizes(existing.available_sizes || '');
       if (existing.specifications) {
