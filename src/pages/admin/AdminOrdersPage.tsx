@@ -161,17 +161,44 @@ export const AdminOrdersPage: React.FC = () => {
         console.warn('Auto-sync accepted enquiries to orders error:', syncErr);
       }
 
-      // Hydrate missing customer & product info cleanly from DB lookups
+      // Hydrate missing customer & product info cleanly from DB lookups and auto-heal 0-amount orders
       const hydratedOrders = list.map((ord: any) => {
-        const prod = productMap.get(ord.product_id);
+        let prod = ord.product_id ? productMap.get(ord.product_id) : null;
+        let pName = ord.product_name || ord.productName || prod?.name_en || 'Custom Lathe Fabricated Item';
+        
+        if (!prod) {
+          const lower = pName.toLowerCase();
+          for (const [_, p] of productMap.entries()) {
+            if (p.name_en?.toLowerCase() === lower || lower.includes(p.name_en?.toLowerCase())) {
+              prod = p;
+              break;
+            }
+          }
+        }
+        if (!prod) {
+          prod = INITIAL_PRODUCTS.find(p => p.name_en.toLowerCase() === pName.toLowerCase());
+        }
+
         const prof = profileMap.get(ord.user_id);
+
+        let total = ord.total_amount || 0;
+        if (total === 0 && prod?.admin_price && prod.admin_price > 0) {
+          total = prod.admin_price * (ord.quantity || 1);
+          // Auto-heal in background
+          supabase.from('orders').update({ total_amount: total, remaining_amount: total }).eq('id', ord.id);
+        }
+
+        const advance = ord.advance_amount || 0;
+        const remaining = (ord.remaining_amount != null && ord.remaining_amount > 0) ? ord.remaining_amount : Math.max(0, total - advance);
 
         return {
           ...ord,
+          total_amount: total,
+          remaining_amount: remaining,
           customerName: ord.customer_name || ord.customerName || prof?.full_name || 'Customer',
           customerPhone: ord.customer_phone || ord.customerPhone || prof?.phone || '+91 96592 86268',
           customerAddress: ord.customer_address || ord.customerAddress || ord.delivery_location || prof?.address || prof?.city_area || 'Kallimandhayam, Dindigul',
-          productName: ord.product_name || ord.productName || prod?.name_en || 'Custom Lathe Fabricated Item',
+          productName: pName,
           productImage: ord.product_image || ord.productImage || prod?.primary_image || (prod?.images && prod.images[0]) || '',
           productId: ord.product_id || prod?.id
         };

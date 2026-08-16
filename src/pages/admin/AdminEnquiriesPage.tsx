@@ -154,7 +154,42 @@ export const AdminEnquiriesPage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setEnquiries(data || []);
+
+      // Cross-check with orders table so any converted enquiry is accurately marked as CONVERTED
+      const { data: dbOrders } = await supabase.from('orders').select('id, order_number, enquiry_id');
+      const orderMap = new Map<string, string>();
+      (dbOrders || []).forEach((o: any) => {
+        if (o.enquiry_id) orderMap.set(o.enquiry_id, o.id);
+        if (o.order_number) orderMap.set(o.order_number, o.id);
+      });
+
+      try {
+        const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+        localOrders.forEach((o: any) => {
+          if (o.enquiry_id) orderMap.set(o.enquiry_id, o.id);
+          if (o.order_number) orderMap.set(o.order_number, o.id);
+        });
+      } catch (e) {
+        console.warn('Local orders cache check error');
+      }
+
+      const checkedEnquiries = (data || []).map((enq: any) => {
+        const linkedId = enq.converted_order_id || orderMap.get(enq.id) || orderMap.get(enq.enquiry_number);
+        if (linkedId || enq.status === 'converted' || enq.status === 'accepted') {
+          // If in DB status was still pending, auto-heal to converted in DB
+          if (enq.status === 'pending') {
+            supabase.from('enquiries').update({ status: 'converted', converted_order_id: linkedId || 'MNK-ORD-2' }).eq('id', enq.id);
+          }
+          return {
+            ...enq,
+            status: 'converted',
+            converted_order_id: linkedId || enq.converted_order_id
+          };
+        }
+        return enq;
+      });
+
+      setEnquiries(checkedEnquiries);
     } catch (e) {
       console.warn('Live enquiries DB fetch error', e);
       setEnquiries([]);
