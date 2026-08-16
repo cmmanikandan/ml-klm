@@ -249,8 +249,8 @@ export const HomePage: React.FC = () => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {displayProducts.map((product) => (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {displayProducts.slice(0, 4).map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
@@ -259,12 +259,14 @@ export const HomePage: React.FC = () => {
         {/* Recently Viewed Products */}
         {recentlyViewedProducts.length > 0 && (
           <div className="space-y-3 pt-4 border-t border-warm-muted">
-            <h2 className="text-base font-black text-charcoal-900 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-brand-600" />
-              <span>{t('recently_viewed')}</span>
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-black text-charcoal-900 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-brand-600" />
+                <span>{t('recently_viewed')}</span>
+              </h2>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {recentlyViewedProducts.slice(0, 4).map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

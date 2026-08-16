@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, Bell, User, Globe, Home, Package, ShoppingBag, Heart } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { useWishlist } from '../../context/WishlistContext';
+import { fetchUserNotifications } from '../../lib/notificationsStore';
 
 export const Navbar: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -14,6 +15,20 @@ export const Navbar: React.FC = () => {
   const location = useLocation();
 
   const isTamil = language === 'ta';
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+
+  useEffect(() => {
+    loadNotifCount();
+  }, [user?.id, location.pathname]);
+
+  const loadNotifCount = async () => {
+    try {
+      const notifs = await fetchUserNotifications(user?.id);
+      setUnreadNotifCount(notifs.filter((n) => !n.is_read).length);
+    } catch (e) {
+      console.warn('Navbar notification count error', e);
+    }
+  };
 
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'ta' : 'en');
@@ -101,7 +116,13 @@ export const Navbar: React.FC = () => {
               aria-label="Notifications"
             >
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-600 rounded-full"></span>
+              {unreadNotifCount > 0 ? (
+                <span className="absolute -top-0.5 -right-0.5 bg-brand-600 text-white text-[10px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  {unreadNotifCount}
+                </span>
+              ) : (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-charcoal-300 rounded-full"></span>
+              )}
             </button>
 
             {/* User Profile Link / My Account */}
