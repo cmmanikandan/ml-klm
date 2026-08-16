@@ -981,195 +981,102 @@ export const AdminOrderDetailPage: React.FC = () => {
 
                 return (
                   <div className="space-y-4">
-                    {/* 1. Base Price Breakdown Row */}
-                    <div className="bg-warm-bg/70 p-4 rounded-2xl border border-warm-border grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                    {/* Primary Inputs Row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-warm-bg/70 p-3.5 rounded-2xl border border-warm-border">
                       <div>
-                        <label className="text-[11px] font-extrabold text-charcoal-500 uppercase tracking-wider block mb-1">
-                          Base Unit Price (₹)
+                        <label className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block mb-1">
+                          Unit Price (₹)
                         </label>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal-400 font-bold text-sm">₹</span>
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-charcoal-400 font-bold text-xs">₹</span>
                           <input
                             type="number"
                             value={fixedUnitPrice}
                             onChange={(e) => setFixedUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                            className="w-full pl-7 pr-3 py-2 text-sm font-black font-mono border border-warm-border rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                            className="w-full pl-6 pr-2 py-2 text-sm font-black font-mono border border-warm-border rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-brand-500"
                           />
                         </div>
                       </div>
 
-                      <div className="sm:border-l sm:border-r border-warm-border sm:px-4">
-                        <span className="text-[11px] font-extrabold text-charcoal-500 uppercase tracking-wider block mb-1">
+                      <div>
+                        <label className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block mb-1">
                           Quantity
-                        </span>
+                        </label>
                         <div className="py-2 px-3 bg-white rounded-xl border border-warm-border text-sm font-black font-mono text-charcoal-800">
                           {qty} Unit(s)
                         </div>
                       </div>
 
                       <div>
-                        <span className="text-[11px] font-extrabold text-charcoal-500 uppercase tracking-wider block mb-1">
-                          Base Subtotal
-                        </span>
-                        <div className="py-2 px-3 bg-white rounded-xl border border-warm-border text-base font-black font-mono text-charcoal-900">
-                          ₹{subtotal.toLocaleString('en-IN')}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 2. Discount & Concession Row */}
-                    <div className="bg-warm-bg/70 p-4 rounded-2xl border border-warm-border space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <span className="text-xs font-black text-charcoal-800 uppercase tracking-wider flex items-center gap-1.5">
-                          <span>🎁</span> Discount & Special Concession
-                        </span>
-                        {fixedDiscount > 0 && (
-                          <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
-                            - ₹{fixedDiscount.toLocaleString('en-IN')} Discount Applied
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-wider block mb-1">
-                            Discount Amount (₹)
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-sm">- ₹</span>
-                            <input
-                              type="number"
-                              value={fixedDiscount || ''}
-                              onChange={(e) => setFixedDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
-                              placeholder="0"
-                              className="w-full pl-9 pr-3 py-2 text-sm font-black font-mono border border-warm-border rounded-xl bg-white text-rose-600 focus:ring-2 focus:ring-rose-500"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-wider block mb-1">
-                            Concession Reason (Optional)
-                          </label>
+                        <label className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block mb-1">
+                          Discount (₹)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs">-₹</span>
                           <input
-                            type="text"
-                            value={fixedDiscountNotes}
-                            onChange={(e) => setFixedDiscountNotes(e.target.value)}
-                            placeholder="e.g. Regular customer discount / Festive offer"
-                            className="w-full px-3 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white text-charcoal-800 focus:ring-2 focus:ring-brand-500"
+                            type="number"
+                            value={fixedDiscount || ''}
+                            onChange={(e) => setFixedDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                            placeholder="0"
+                            className="w-full pl-7 pr-2 py-2 text-sm font-black font-mono border border-warm-border rounded-xl bg-white text-rose-600 focus:ring-2 focus:ring-rose-500"
                           />
                         </div>
                       </div>
 
-                      {/* Quick Presets */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                        <span className="text-[10px] font-extrabold text-charcoal-400 uppercase mr-1">Quick Apply:</span>
-                        {[
-                          { label: '₹500', val: 500 },
-                          { label: '₹1,000', val: 1000 },
-                          { label: '₹2,000', val: 2000 },
-                          { label: '5%', val: Math.round(subtotal * 0.05) },
-                          { label: '10%', val: Math.round(subtotal * 0.10) }
-                        ].map((preset) => (
-                          <button
-                            key={preset.label}
-                            type="button"
-                            onClick={() => setFixedDiscount(preset.val)}
-                            className="bg-white hover:bg-rose-50 text-charcoal-700 hover:text-rose-700 border border-warm-border hover:border-rose-200 text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all shadow-xs"
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                        {fixedDiscount > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => { setFixedDiscount(0); setFixedDiscountNotes(''); }}
-                            className="text-[11px] font-bold text-rose-600 hover:underline ml-1"
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 3. Extra Expenses (Fitting / Transport) */}
-                    <div className="bg-warm-bg/70 p-4 rounded-2xl border border-warm-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
-                        <span className="text-xs font-black text-charcoal-800 uppercase tracking-wider block">
-                          Extra On-Site Fitting / Transport (₹)
-                        </span>
-                        <span className="text-[11px] text-charcoal-500 font-medium">
-                          Add-on charges for custom installation or delivery
-                        </span>
-                      </div>
-
-                      <div className="w-full sm:w-48 relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal-400 font-bold text-sm">+ ₹</span>
-                        <input
-                          type="number"
-                          value={fixedExtraCharges || ''}
-                          onChange={(e) => setFixedExtraCharges(Math.max(0, parseFloat(e.target.value) || 0))}
-                          placeholder="0"
-                          className="w-full pl-9 pr-3 py-2 text-sm font-black font-mono border border-warm-border rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-brand-500 text-right"
-                        />
+                        <label className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block mb-1">
+                          Extra Charges (₹)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-charcoal-400 font-bold text-xs">+₹</span>
+                          <input
+                            type="number"
+                            value={fixedExtraCharges || ''}
+                            onChange={(e) => setFixedExtraCharges(Math.max(0, parseFloat(e.target.value) || 0))}
+                            placeholder="0"
+                            className="w-full pl-7 pr-2 py-2 text-sm font-black font-mono border border-warm-border rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-brand-500"
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    {/* 4. Sleek Summary Card */}
-                    <div className="bg-charcoal-900 text-white p-5 rounded-2xl shadow-lg space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-charcoal-800 pb-3.5">
+                    {/* Summary Bar & Save Button */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-warm-bg p-3.5 rounded-2xl border border-warm-border">
+                      <div className="flex flex-wrap items-center gap-4">
                         <div>
-                          <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">
-                            Final Net Order Amount
-                          </span>
-                          <span className="text-xs text-charcoal-300 font-medium">
-                            Subtotal ₹{subtotal.toLocaleString('en-IN')} {fixedDiscount > 0 && `— Discount ₹${fixedDiscount.toLocaleString('en-IN')}`} {fixedExtraCharges > 0 && `+ Extra ₹${fixedExtraCharges.toLocaleString('en-IN')}`}
-                          </span>
+                          <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-wider block">Final Order Total</span>
+                          <span className="text-xl font-black font-mono text-emerald-700">₹{grandTotal.toLocaleString('en-IN')}</span>
                         </div>
-                        <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-400">
-                          ₹{grandTotal.toLocaleString('en-IN')}
-                        </span>
-                      </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                        <div>
-                          <label className="text-[10px] font-extrabold text-charcoal-300 uppercase tracking-widest block mb-1">
-                            Set Required Advance (₹)
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal-500 font-bold text-sm">₹</span>
+                        <div className="border-l border-warm-border pl-4">
+                          <label className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block mb-0.5">Required Advance (₹)</label>
+                          <div className="relative w-32">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-charcoal-400 font-bold text-xs">₹</span>
                             <input
                               type="number"
                               value={fixedAdvanceReq || ''}
                               onChange={(e) => setFixedAdvanceReq(Math.max(0, parseFloat(e.target.value) || 0))}
-                              placeholder="e.g. 10000"
-                              className="w-full pl-7 pr-3 py-2 text-sm font-black font-mono rounded-xl bg-charcoal-800 text-white border border-charcoal-700 focus:ring-2 focus:ring-brand-500"
+                              placeholder="0"
+                              className="w-full pl-6 pr-2 py-1 text-xs font-black font-mono border border-warm-border rounded-lg bg-white text-charcoal-900 focus:ring-1 focus:ring-brand-500"
                             />
                           </div>
                         </div>
 
-                        <div className="text-left sm:text-right bg-charcoal-800/80 p-3 rounded-xl border border-charcoal-700">
-                          <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">
-                            Remaining Balance Due
-                          </span>
-                          <span className="text-lg font-black font-mono text-amber-300">
-                            ₹{remainingDue.toLocaleString('en-IN')}
-                          </span>
+                        <div className="border-l border-warm-border pl-4 hidden md:block">
+                          <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-wider block">Remaining Due</span>
+                          <span className="text-sm font-black font-mono text-amber-700">₹{remainingDue.toLocaleString('en-IN')}</span>
                         </div>
                       </div>
-                    </div>
 
-                    {/* 5. Primary Action Button */}
-                    <Button
-                      type="button"
-                      onClick={handleSaveFixedPricing}
-                      variant="primary"
-                      fullWidth
-                      icon={<CheckCircle2 className="w-4 h-4" />}
-                      className="py-3.5 text-sm font-black rounded-2xl shadow-md bg-brand-600 hover:bg-brand-700"
-                    >
-                      Save & Apply Price to Order
-                    </Button>
+                      <button
+                        type="button"
+                        onClick={handleSaveFixedPricing}
+                        className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-black px-6 py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 shrink-0"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Save Price</span>
+                      </button>
+                    </div>
                   </div>
                 );
               })()}
@@ -1510,54 +1417,57 @@ export const AdminOrderDetailPage: React.FC = () => {
                 const nextStep = currentIdx < steps.length - 1 ? steps[currentIdx + 1] : null;
 
                 return (
-                  <div className="space-y-6">
-                    {/* Connecting Line Track - centered directly across node centers */}
-                    <div className="absolute left-[10%] right-[10%] top-[18px] h-1.5 bg-gray-200 rounded-full z-0">
-                      {/* Active Progress Fill */}
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-500 via-brand-500 to-emerald-500 rounded-full transition-all duration-500"
-                        style={{ width: `${(currentIdx / (steps.length - 1)) * 100}%` }}
-                      />
-                    </div>
+                  <div className="space-y-6 pt-2">
+                    {/* Milestone Nodes with Centered Track Line */}
+                    <div className="relative">
+                      {/* Connecting Line Track - precisely at vertical center (18px) of the 36px circles */}
+                      <div className="absolute left-[10%] right-[10%] top-[18px] -translate-y-1/2 h-1.5 bg-gray-200 rounded-full z-0">
+                        {/* Active Progress Fill */}
+                        <div
+                          className="h-full bg-gradient-to-r from-amber-500 via-brand-500 to-emerald-500 rounded-full transition-all duration-500"
+                          style={{ width: `${(currentIdx / (steps.length - 1)) * 100}%` }}
+                        />
+                      </div>
 
-                    {/* Milestone Nodes */}
-                    <div className="flex items-start justify-between relative z-10">
-                      {steps.map((step, idx) => {
-                        const isDone = idx < currentIdx;
-                        const isCurrent = idx === currentIdx;
+                      {/* Milestone Nodes */}
+                      <div className="flex items-start justify-between relative z-10">
+                        {steps.map((step, idx) => {
+                          const isDone = idx < currentIdx;
+                          const isCurrent = idx === currentIdx;
 
-                        return (
-                          <div 
-                            key={step.key} 
-                            onClick={() => handleUpdateStatus(step.key)}
-                            className="flex-1 flex flex-col items-center text-center px-1 cursor-pointer group"
-                            title={`Click to set as "${step.label}"`}
-                          >
-                            <div
-                              className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition-all shrink-0 ${
-                                isCurrent
-                                  ? 'bg-brand-600 text-white ring-4 ring-brand-200 shadow-md scale-110'
-                                  : isDone
-                                  ? 'bg-emerald-600 text-white shadow-sm group-hover:scale-105'
-                                  : 'bg-white text-gray-400 border-2 border-gray-300 group-hover:border-brand-400'
-                              }`}
+                          return (
+                            <div 
+                              key={step.key} 
+                              onClick={() => handleUpdateStatus(step.key)}
+                              className="flex-1 flex flex-col items-center text-center px-1 cursor-pointer group"
+                              title={`Click to set as "${step.label}"`}
                             >
-                              {isDone ? '✓' : isCurrent ? '✓' : idx + 1}
+                              <div
+                                className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition-all shrink-0 ${
+                                  isCurrent
+                                    ? 'bg-brand-600 text-white ring-4 ring-brand-200 shadow-md scale-110'
+                                    : isDone
+                                    ? 'bg-emerald-600 text-white shadow-sm group-hover:scale-105'
+                                    : 'bg-white text-gray-400 border-2 border-gray-300 group-hover:border-brand-400'
+                                }`}
+                              >
+                                {isDone ? '✓' : isCurrent ? '✓' : idx + 1}
+                              </div>
+
+                              <span
+                                className={`text-[11px] font-black mt-2 leading-tight ${
+                                  isCurrent ? 'text-brand-700' : isDone ? 'text-charcoal-900' : 'text-gray-400'
+                                }`}
+                              >
+                                {step.label}
+                              </span>
+                              <span className="text-[9px] text-charcoal-400 font-medium hidden sm:block mt-0.5">
+                                {step.desc}
+                              </span>
                             </div>
-
-                            <span
-                              className={`text-[11px] font-black mt-2 leading-tight ${
-                                isCurrent ? 'text-brand-700' : isDone ? 'text-charcoal-900' : 'text-gray-400'
-                              }`}
-                            >
-                              {step.label}
-                            </span>
-                            <span className="text-[9px] text-charcoal-400 font-medium hidden sm:block mt-0.5">
-                              {step.desc}
-                            </span>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
 
                     {/* Fast Stage Actions Bar */}

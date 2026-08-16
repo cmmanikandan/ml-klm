@@ -499,9 +499,9 @@ export const OrderDetailPage: React.FC = () => {
               Order Progress Timeline
             </span>
 
-            <div className="relative py-2">
-              {/* Connecting Line Track - centered directly across node centers */}
-              <div className="absolute left-[10%] right-[10%] top-[16px] h-1.5 bg-gray-200 rounded-full z-0">
+            <div className="relative pt-1">
+              {/* Connecting Line Track - precisely centered across 32px node centers */}
+              <div className="absolute left-[10%] right-[10%] top-[16px] -translate-y-1/2 h-1.5 bg-gray-200 rounded-full z-0">
                 {/* Active Progress Fill */}
                 <div
                   className="h-full bg-gradient-to-r from-brand-600 to-emerald-500 rounded-full transition-all duration-500"
