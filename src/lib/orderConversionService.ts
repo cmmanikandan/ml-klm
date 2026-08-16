@@ -100,79 +100,62 @@ export const convertEnquiryToOrderSafely = async ({
   // STEP 2: CREATE SINGLE NEW ORDER RECORD IF NO PREVIOUS CONVERSION EXISTS
   const deliveryDate = new Date(Date.now() + estimatedDays * 86400000).toISOString().slice(0, 10);
   const newOrderNumber = await getNextOrderId();
-  const newOrderId = newOrderNumber;
+  const newOrderUuid = crypto.randomUUID();
 
-  const productName = enquiry.productName || enquiry.product_name || 'Custom Lathe Fabricated Item';
+  const isEnquiryUuid = enquiryId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enquiryId) : false;
+  const isProductUuid = enquiry.product_id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enquiry.product_id) : false;
+
+  const productName = enquiry.product_name || enquiry.productName || 'Custom Lathe Fabricated Item';
 
   const newOrderRecord = {
-    id: newOrderId,
+    id: newOrderUuid,
     order_number: newOrderNumber,
-    enquiry_id: enquiryId,
-    user_id: enquiry.user_id || 'demo-user-123',
-    customerName: enquiry.customerName || enquiry.customer_name || 'Customer',
-    customerPhone: enquiry.customerPhone || enquiry.customer_phone || '+91 96592 86268',
-    customerAddress: enquiry.delivery_location || enquiry.location || enquiry.customerAddress || 'Kallimandhayam',
-    product_id: enquiry.product_id || INITIAL_PRODUCTS[0].id,
-    productName: productName,
+    enquiry_id: isEnquiryUuid ? enquiryId : null,
+    user_id: enquiry.user_id || 'guest_user',
+    customer_name: enquiry.customer_name || enquiry.customerName || 'Customer',
+    customer_phone: enquiry.customer_phone || enquiry.customerPhone || '',
+    customer_address: enquiry.delivery_location || enquiry.location || enquiry.customerAddress || 'Kallimandhayam',
+    product_id: isProductUuid ? enquiry.product_id : null,
+    product_name: productName,
     quantity: enquiry.quantity || 1,
+    specifications: enquiry.size_requirement || enquiry.custom_notes || '',
+    delivery_location: enquiry.delivery_location || enquiry.location || 'Kallimandhayam',
     status: 'order_confirmed',
+    fabrication_stage: 'accepted',
     expected_delivery_date: deliveryDate,
     total_amount: quotePrice,
     advance_amount: advanceRequired,
     remaining_amount: quotePrice,
     is_payment_requested: advanceRequired > 0,
     payment_request_amount: advanceRequired,
-    payment_status: 'unpaid',
+    payment_status: 'pending',
     created_at: new Date().toISOString()
   };
 
-  // Save to LocalStorage ml_orders
-  const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-  localStorage.setItem('ml_orders', JSON.stringify([newOrderRecord, ...localOrders]));
-
-  // Save to LocalStorage ml_enquiries with converted_order_id
-  const localEnq: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-  const updatedLocalEnq = localEnq.map((e: any) =>
-    e.id === enquiryId ? { ...e, status: 'converted', converted_order_id: newOrderId } : e
-  );
-  localStorage.setItem('ml_enquiries', JSON.stringify(updatedLocalEnq));
-
   // Save to Supabase DB — primary source of truth for all devices
   try {
-    const dbPayload = {
-      id: newOrderId,
-      order_number: newOrderNumber,
-      enquiry_id: enquiryId,
-      user_id: enquiry.user_id || 'demo-user-123',
-      // Denormalized customer info — required for cross-device display without joins
-      customer_name: enquiry.customerName || enquiry.customer_name || 'Customer',
-      customer_phone: enquiry.customerPhone || enquiry.customer_phone || '',
-      customer_address: enquiry.delivery_location || enquiry.location || enquiry.customerAddress || 'Kallimandhayam',
-      // Denormalized product info
-      product_id: enquiry.product_id || null,
-      product_name: productName,
-      // Order details
-      quantity: enquiry.quantity || 1,
-      specifications: enquiry.size_requirement || enquiry.custom_notes || '',
-      delivery_location: enquiry.delivery_location || enquiry.location || 'Kallimandhayam',
-      status: 'order_confirmed',
-      expected_delivery_date: deliveryDate,
-      // Pricing
-      total_amount: quotePrice,
-      advance_amount: advanceRequired,
-      remaining_amount: quotePrice,
-      is_payment_requested: advanceRequired > 0,
-      payment_request_amount: advanceRequired,
-      payment_status: 'pending',
-      created_at: new Date().toISOString()
-    };
-    await supabase.from('orders').insert(dbPayload);
-    await supabase
-      .from('enquiries')
-      .update({ status: 'converted', converted_order_id: newOrderId })
-      .eq('id', enquiryId);
+    const { error: orderErr } = await supabase.from('orders').insert(newOrderRecord);
+    if (orderErr) {
+      console.error('Supabase order insert error:', orderErr.message);
+      // Retry without foreign keys if FK constraint fails
+      const fallbackRecord = { ...newOrderRecord, product_id: null, enquiry_id: null };
+      await supabase.from('orders').insert(fallbackRecord);
+    }
+
+    // Update enquiry status in Supabase
+    if (isEnquiryUuid) {
+      await supabase
+        .from('enquiries')
+        .update({ status: 'converted', converted_order_id: newOrderUuid })
+        .eq('id', enquiryId);
+    } else if (enquiry.enquiry_number) {
+      await supabase
+        .from('enquiries')
+        .update({ status: 'converted', converted_order_id: newOrderUuid })
+        .eq('enquiry_number', enquiry.enquiry_number);
+    }
   } catch (e) {
-    console.warn('Order conversion DB insert fallback', e);
+    console.error('Order conversion DB insert exception:', e);
   }
 
   return {

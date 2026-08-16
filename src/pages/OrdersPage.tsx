@@ -71,108 +71,43 @@ export const OrdersPage: React.FC = () => {
         return prod?.primary_image || null;
       };
 
-      // 1. Fetch live orders for logged in user from Supabase DB
+      // 1. Fetch live orders for logged in user from Supabase DB (by UID or phone)
+      const orderFilter = user.phone 
+        ? `user_id.eq.${user.id},customer_phone.eq.${user.phone}`
+        : `user_id.eq.${user.id}`;
+
       const { data: dbOrders } = await supabase
         .from('orders')
         .select('*')
-        .or(`user_id.eq.${user.id},user_id.eq.demo-user-123`)
+        .or(orderFilter)
         .order('created_at', { ascending: false });
 
-      const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      const userLocal = localOrders.filter((o: any) => !o.user_id || o.user_id === user.id || o.user_id === 'demo-user-123');
-
-      let combinedOrders = [...(dbOrders || []), ...userLocal];
-
-      const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
-      const deletedSet = new Set(deletedIds);
-
-      combinedOrders = combinedOrders.filter((o: any) => {
-        const idStr = String(o.id || '');
-        const numStr = String(o.order_number || '');
-        const enqStr = String(o.enquiry_id || '');
-        return !deletedSet.has(idStr) && !deletedSet.has(numStr) && !deletedSet.has(enqStr);
-      });
-
-      // Auto-synthesize order records for accepted/converted enquiries if missing
-      // Fetch enquiries broadly to ensure mobile users see their data
-      const { data: dbEnqs } = await supabase.from('enquiries').select('*').or(`user_id.eq.${user.id},user_id.eq.demo-user-123`);
-      const allUserEnqs = [...(dbEnqs || []), ...localEnquiries.filter((e) => !e.user_id || e.user_id === user.id || e.user_id === 'demo-user-123')];
-
-      for (const enq of allUserEnqs) {
-        const enqIdStr = String(enq.id || '');
-        const enqNumStr = String(enq.enquiry_number || '');
-        if (deletedSet.has(enqIdStr) || deletedSet.has(enqNumStr) || enq.status === 'deleted') continue;
-
-        const normSt = String(enq.status || '').toLowerCase();
-        if (normSt === 'accepted' || normSt === 'converted') {
-          const enqId = enq.id;
-          const matchExisting = combinedOrders.find(
-            (o) => o.enquiry_id === enqId || o.id === enqId || o.order_number === enqId || (enq.converted_order_id && (o.id === enq.converted_order_id || o.order_number === enq.converted_order_id))
-          );
-          if (!matchExisting) {
-            const pName = getProductName(enq.product_id, enq.productName || enq.product_name);
-            const pImg = getProductImage(enq.product_id);
-            const synthesizedOrd: any = {
-              id: enq.converted_order_id || enq.enquiry_number || enq.id,
-              order_number: enq.enquiry_number || enq.id,
-              enquiry_id: enq.id,
-              user_id: enq.user_id || user.id,
-              customerName: enq.customerName || enq.customer_name || user.full_name || 'Customer',
-              customerPhone: enq.customerPhone || enq.customer_phone || user.phone || '+91 96292 86268',
-              customerAddress: enq.delivery_location || enq.location || 'Kallimandhayam',
-              product_id: enq.product_id || 'demo-prod-1',
-              productName: pName,
-              productImage: pImg || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
-              quantity: enq.quantity || 1,
-              status: 'accepted',
-              expected_delivery_date: 'Within 7 Days',
-              total_amount: enq.quote_price || enq.total_amount || 0,
-              advance_amount: enq.advance_amount || 0,
-              remaining_amount: enq.quote_price || enq.total_amount || 0,
-              is_payment_requested: false,
-              payment_request_amount: 0,
-              payment_status: 'unpaid',
-              created_at: enq.created_at || new Date().toISOString()
-            };
-            combinedOrders.push(synthesizedOrd);
-          }
-        }
-      }
-
-      // Hydrate product names into all existing DB orders that lack them
-      combinedOrders = combinedOrders.map((o: any) => ({
+      // Hydrate product names into all existing DB orders
+      const hydratedOrders = (dbOrders || []).map((o: any) => ({
         ...o,
-        productName: o.productName || o.product_name || getProductName(o.product_id, 'Custom Fabrication Item'),
-        productImage: o.productImage || o.product_image || getProductImage(o.product_id) || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
+        productName: o.product_name || o.productName || getProductName(o.product_id, 'Custom Fabrication Item'),
+        productImage: o.product_image || o.productImage || getProductImage(o.product_id) || '',
       }));
 
-      const seen = new Set();
-      combinedOrders = combinedOrders.filter((o: any) => {
-        const idKey = o.id || o.order_number;
-        if (!idKey || seen.has(idKey)) return false;
-        seen.add(idKey);
-        if (o.order_number) seen.add(o.order_number);
-        return true;
-      });
+      setOrders(hydratedOrders);
 
-      setOrders(combinedOrders);
-
-      // 2. Fetch live enquiries strictly from Supabase DB
+      // 2. Fetch live enquiries strictly from Supabase DB (by UID or phone)
       const { data: dbEnquiries } = await supabase
         .from('enquiries')
         .select('*')
-        .eq('user_id', user.id)
+        .or(orderFilter)
         .order('created_at', { ascending: false });
 
       // Hydrate product names into enquiries
-      const hydrated = (dbEnquiries || []).map((e: any) => ({
+      const hydratedEnquiries = (dbEnquiries || []).map((e: any) => ({
         ...e,
         productName: e.product_name || e.productName || getProductName(e.product_id, 'Fabrication Enquiry'),
       }));
 
-      setEnquiries(hydrated);
+      setEnquiries(hydratedEnquiries);
     } catch (e) {
       console.warn('OrdersPage live Supabase DB fetch error:', e);
+      setOrders([]);
       setEnquiries([]);
     } finally {
       setLoading(false);
