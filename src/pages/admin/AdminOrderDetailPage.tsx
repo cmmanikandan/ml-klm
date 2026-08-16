@@ -554,6 +554,73 @@ export const AdminOrderDetailPage: React.FC = () => {
     });
   };
 
+  // Delete Payment Transaction Record & Recalculate Balance
+  const handleDeletePayment = async (payToDelete: any) => {
+    if (!order || !payToDelete) return;
+    const targetId = payToDelete.id;
+
+    // Filter out the deleted payment from state
+    const updatedHistory = paymentsHistory.filter((p) => (p.id ? p.id !== targetId : p !== payToDelete));
+    setPaymentsHistory(updatedHistory);
+
+    // Calculate new total paid from remaining completed payments
+    const completedPayments = updatedHistory.filter((p) => p.status === 'completed' || p.status === 'paid');
+    const newPaid = completedPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const orderTotal = Number(order.total_amount || 0);
+    const newRemaining = Math.max(0, orderTotal - newPaid);
+    const newStatus: PaymentStatus = newRemaining === 0 && orderTotal > 0 ? 'paid' : newPaid > 0 ? 'partially_paid' : 'pending';
+
+    const updatedOrder = {
+      ...order,
+      remaining_amount: newRemaining,
+      advance_amount: Math.min(newPaid, orderTotal),
+      payment_status: newStatus
+    };
+    setOrder(updatedOrder);
+
+    // Sync localStorage
+    const localPay = JSON.parse(localStorage.getItem('ml_payments') || '[]');
+    localStorage.setItem(
+      'ml_payments',
+      JSON.stringify(localPay.filter((p: any) => (p.id ? p.id !== targetId : true)))
+    );
+
+    const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    localStorage.setItem('ml_orders', JSON.stringify(localOrders.map((o) => (o.id === order.id ? updatedOrder : o))));
+
+    // Delete from Supabase payments table
+    try {
+      if (targetId && !targetId.startsWith('pay_')) {
+        await supabase.from('payments').delete().eq('id', targetId);
+      } else {
+        await supabase
+          .from('payments')
+          .delete()
+          .eq('order_id', order.id)
+          .eq('amount', payToDelete.amount);
+      }
+
+      // Update order remaining balance and status in DB
+      await supabase
+        .from('orders')
+        .update({
+          remaining_amount: newRemaining,
+          advance_amount: updatedOrder.advance_amount,
+          payment_status: newStatus
+        })
+        .eq('id', order.id);
+    } catch (e) {
+      console.warn('Payment record delete DB fallback', e);
+    }
+
+    setNotifyModal({
+      isOpen: true,
+      title: 'Payment Record Deleted',
+      message: `Payment entry of ₹${Number(payToDelete.amount || 0).toLocaleString('en-IN')} removed. Remaining due updated to ₹${newRemaining.toLocaleString('en-IN')}.`,
+      type: 'info'
+    });
+  };
+
   // One-Click Direct Cash Collection for Advance or Pending Request
   const handleQuickCollectCash = async (amount: number, noteDesc?: string) => {
     if (!order || amount <= 0) return;
@@ -1672,39 +1739,18 @@ export const AdminOrderDetailPage: React.FC = () => {
                               </span>
                             </td>
                             <td className="py-3 px-3 text-center">
-                              <div className="flex flex-wrap items-center justify-center gap-1.5 min-w-[200px]">
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickCollectCash(remainingBalance, `Cash payment received for #${order.order_number}`)}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
-                                  title="Record Cash Payment"
-                                >
-                                  <span>💵 Cash</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setCustomPayAmount(remainingBalance);
-                                    setShowGeneratedQr(true);
-                                    setShowPaymentModal(true);
-                                  }}
-                                  className="bg-brand-600 hover:bg-brand-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
-                                  title="Collect via UPI QR or Card"
-                                >
-                                  <span>📱 UPI QR</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendPaymentReminderWhatsApp(remainingBalance)}
-                                  className="bg-teal-600 hover:bg-teal-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
-                                  title="Send Payment Link via WhatsApp"
-                                >
-                                  <MessageSquare className="w-3 h-3" />
-                                  <span>WhatsApp</span>
-                                </button>
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCustomPayAmount(remainingBalance);
+                                  setShowGeneratedQr(false);
+                                  setShowPaymentModal(true);
+                                }}
+                                className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-3.5 py-1.5 rounded-xl text-xs shadow-sm transition-colors inline-flex items-center gap-1.5"
+                              >
+                                <DollarSign className="w-3.5 h-3.5" />
+                                <span>Collect Payment (₹{remainingBalance.toLocaleString('en-IN')})</span>
+                              </button>
                             </td>
                           </tr>
                         )}
@@ -1736,40 +1782,27 @@ export const AdminOrderDetailPage: React.FC = () => {
                                   </span>
                                 </td>
                                 <td className="py-3 px-3 text-center">
-                                  <div className="flex flex-wrap items-center justify-center gap-1.5 min-w-[200px]">
-                                    {/* Quick Cash Receive */}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleQuickCollectCash(Number(pay.amount) || remainingBalance, `Cash advance payment received for #${order.order_number}`)}
-                                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
-                                      title="Record as Cash Received"
-                                    >
-                                      <span>💵 Cash</span>
-                                    </button>
-
-                                    {/* Quick UPI QR Modal */}
+                                  <div className="flex items-center justify-center gap-2">
                                     <button
                                       type="button"
                                       onClick={() => {
                                         setCustomPayAmount(Number(pay.amount) || remainingBalance);
-                                        setShowGeneratedQr(true);
+                                        setShowGeneratedQr(false);
                                         setShowPaymentModal(true);
                                       }}
-                                      className="bg-brand-600 hover:bg-brand-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
-                                      title="Collect via Shop UPI QR"
+                                      className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-3.5 py-1.5 rounded-xl text-xs shadow-sm transition-colors inline-flex items-center gap-1.5"
                                     >
-                                      <span>📱 UPI QR</span>
+                                      <DollarSign className="w-3.5 h-3.5" />
+                                      <span>Collect Payment (₹{(Number(pay.amount) || remainingBalance).toLocaleString('en-IN')})</span>
                                     </button>
 
-                                    {/* Send WhatsApp Link */}
                                     <button
                                       type="button"
-                                      onClick={() => handleSendPaymentReminderWhatsApp(Number(pay.amount) || remainingBalance)}
-                                      className="bg-teal-600 hover:bg-teal-700 text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-xs transition-colors flex items-center gap-1"
-                                      title="Send WhatsApp Payment Link to Customer"
+                                      onClick={() => handleDeletePayment(pay)}
+                                      className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-100 rounded-lg transition-colors"
+                                      title="Delete payment request"
                                     >
-                                      <MessageSquare className="w-3 h-3" />
-                                      <span>WhatsApp</span>
+                                      <Trash2 className="w-4 h-4" />
                                     </button>
                                   </div>
                                 </td>
@@ -1791,7 +1824,19 @@ export const AdminOrderDetailPage: React.FC = () => {
                                   PAID
                                 </span>
                               </td>
-                              <td className="py-3 px-3 text-center font-bold text-emerald-600 text-[11px]">✓ Received</td>
+                              <td className="py-3 px-3 text-center">
+                                <div className="flex items-center justify-center gap-2.5">
+                                  <span className="font-bold text-emerald-600 text-xs">✓ Received</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeletePayment(pay)}
+                                    className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                    title="Delete payment record"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
                           );
                         })}
