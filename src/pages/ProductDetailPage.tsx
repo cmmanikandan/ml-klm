@@ -121,12 +121,13 @@ export const ProductDetailPage: React.FC = () => {
     }
   };
 
-  const images = product.images && product.images.length > 0 
+  const fallbackImage = 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&auto=format&fit=crop&q=80';
+  const images = product.images && product.images.length > 0 && product.images[0] 
     ? product.images 
-    : [product.primary_image || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80'];
+    : [product.primary_image || fallbackImage];
 
   return (
-    <div className="min-h-screen bg-warm-bg pb-28 md:pb-12 pt-4">
+    <div className="min-h-screen bg-warm-bg pb-36 lg:pb-32 pt-4">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         
         {/* Top Header Navigation */}
@@ -163,8 +164,11 @@ export const ProductDetailPage: React.FC = () => {
         <div className="bg-white rounded-3xl p-4 sm:p-6 border border-warm-border shadow-card space-y-4">
           <div className="relative aspect-square sm:aspect-video rounded-2xl overflow-hidden bg-warm-bg border border-warm-border">
             <img
-              src={images[selectedImageIndex] || images[0]}
+              src={images[selectedImageIndex] || images[0] || fallbackImage}
               alt={title}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = fallbackImage;
+              }}
               className="w-full h-full object-cover"
             />
           </div>
@@ -189,15 +193,50 @@ export const ProductDetailPage: React.FC = () => {
 
         {/* Product Basic Info Card */}
         <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-brand-600 uppercase tracking-widest bg-brand-50 px-3 py-1 rounded-full border border-brand-200">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-black text-brand-600 uppercase tracking-widest bg-brand-50 px-3.5 py-1 rounded-full border border-brand-200">
               {categoryName}
             </span>
 
             {product.is_best_selling && (
-              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full">
-                <Sparkles className="w-3 h-3" />
-                <span>Popular Design</span>
+              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-extrabold px-3 py-1 rounded-full border border-amber-200">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{isTamil ? 'சிறந்த விற்பனை தயாரிப்பு' : 'Best Selling Design'}</span>
+              </span>
+            )}
+
+            {product.is_new && (
+              <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-xs font-extrabold px-3 py-1 rounded-full border border-emerald-200">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{isTamil ? 'புதிய தயாரிப்பு' : 'New Design'}</span>
+              </span>
+            )}
+
+            {product.is_featured && (
+              <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-full border border-purple-200">
+                <ThumbsUp className="w-3.5 h-3.5" />
+                <span>{isTamil ? 'சிறப்பு தயாரிப்பு' : 'Featured Product'}</span>
+              </span>
+            )}
+
+            {product.is_popular && (
+              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-extrabold px-3 py-1 rounded-full border border-blue-200">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{isTamil ? 'பிரபலமான டிசைன்' : 'Popular Design'}</span>
+              </span>
+            )}
+
+            {product.is_custom_fabrication && (
+              <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-800 text-xs font-extrabold px-3 py-1 rounded-full border border-orange-200">
+                <Wrench className="w-3.5 h-3.5" />
+                <span>{isTamil ? 'கஸ்டம் அளவு ஏற்றுக்கொள்ளப்படும்' : 'Custom Dimensions Accepted'}</span>
+              </span>
+            )}
+
+            {product.is_in_stock && (
+              <span className="inline-flex items-center gap-1 bg-teal-100 text-teal-800 text-xs font-extrabold px-3 py-1 rounded-full border border-teal-200">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>{isTamil ? 'இருப்பில் உள்ளது' : 'In Stock'}</span>
               </span>
             )}
           </div>
