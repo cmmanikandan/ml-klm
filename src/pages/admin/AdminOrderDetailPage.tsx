@@ -926,25 +926,27 @@ export const AdminOrderDetailPage: React.FC = () => {
           {/* PRICING SECTION: FIXED PRICE & DISCOUNT MANAGER OR WEIGHT CALCULATOR */}
           {pricingMode === 'fixed' ? (
             /* ========================================================================= */
-            /* CASE A: FIXED PRODUCT PRICE & DISCOUNT MANAGER                            */
+            /* CASE A: CLEAN & SIMPLE FIXED PRODUCT PRICE & DISCOUNT MANAGER            */
             /* ========================================================================= */
-            <div className="bg-white rounded-3xl p-6 border-2 border-emerald-500/40 shadow-card space-y-5">
+            <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-5">
               
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-warm-muted pb-3 gap-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-2xl">🏷️</span>
+              {/* Card Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-warm-muted pb-4 gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-brand-50 flex items-center justify-center text-xl shrink-0 border border-brand-200">
+                    🏷️
+                  </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-black text-charcoal-900 uppercase tracking-wider">
-                        Fixed Product Pricing & Discount
+                      <h3 className="text-base font-black text-charcoal-900 tracking-tight">
+                        Order Pricing & Discount
                       </h3>
-                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300">
-                        FIXED PRICING
+                      <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        Fixed Price
                       </span>
                     </div>
-                    <p className="text-[11px] text-charcoal-500 font-semibold">
-                      Configure base product unit price, custom discount, extra expenses & set required advance
+                    <p className="text-xs text-charcoal-500 font-medium">
+                      Set base product price, apply discount concessions, and specify required advance
                     </p>
                   </div>
                 </div>
@@ -953,10 +955,10 @@ export const AdminOrderDetailPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setPricingMode('weight')}
-                    className="bg-warm-bg hover:bg-warm-hover text-charcoal-700 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-warm-border transition-colors flex items-center gap-1.5"
+                    className="bg-warm-bg hover:bg-warm-hover text-charcoal-700 text-xs font-extrabold px-3.5 py-2 rounded-xl border border-warm-border transition-colors flex items-center gap-1.5"
                     title="Switch to weight-based itemized calculation"
                   >
-                    <span>⚖️ Switch to Weight Calc</span>
+                    <span>⚖️ Switch to Weight Mode</span>
                   </button>
                 </div>
               </div>
@@ -972,87 +974,89 @@ export const AdminOrderDetailPage: React.FC = () => {
 
                 return (
                   <div className="space-y-4">
-                    {/* Base Price & Quantity Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border space-y-1">
-                        <label className="text-[10px] font-black text-charcoal-500 uppercase tracking-widest block">
-                          BASE UNIT PRICE (₹)
+                    {/* 1. Base Price Breakdown Row */}
+                    <div className="bg-warm-bg/70 p-4 rounded-2xl border border-warm-border grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                      <div>
+                        <label className="text-[11px] font-extrabold text-charcoal-500 uppercase tracking-wider block mb-1">
+                          Base Unit Price (₹)
                         </label>
-                        <input
-                          type="number"
-                          value={fixedUnitPrice}
-                          onChange={(e) => setFixedUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                          className="w-full px-3 py-1.5 text-base font-black font-mono border border-warm-border rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-emerald-500"
-                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal-400 font-bold text-sm">₹</span>
+                          <input
+                            type="number"
+                            value={fixedUnitPrice}
+                            onChange={(e) => setFixedUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                            className="w-full pl-7 pr-3 py-2 text-sm font-black font-mono border border-warm-border rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                          />
+                        </div>
                       </div>
 
-                      <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border space-y-1 text-center sm:text-left">
-                        <span className="text-[10px] font-black text-charcoal-500 uppercase tracking-widest block">
-                          ORDER QUANTITY
+                      <div className="sm:border-l sm:border-r border-warm-border sm:px-4">
+                        <span className="text-[11px] font-extrabold text-charcoal-500 uppercase tracking-wider block mb-1">
+                          Quantity
                         </span>
-                        <span className="text-base font-black font-mono text-charcoal-900 block py-1.5">
+                        <div className="py-2 px-3 bg-white rounded-xl border border-warm-border text-sm font-black font-mono text-charcoal-800">
                           {qty} Unit(s)
-                        </span>
+                        </div>
                       </div>
 
-                      <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border space-y-1 text-right">
-                        <span className="text-[10px] font-black text-charcoal-500 uppercase tracking-widest block">
-                          BASE SUBTOTAL
+                      <div>
+                        <span className="text-[11px] font-extrabold text-charcoal-500 uppercase tracking-wider block mb-1">
+                          Base Subtotal
                         </span>
-                        <span className="text-base font-black font-mono text-charcoal-900 block py-1.5">
+                        <div className="py-2 px-3 bg-white rounded-xl border border-warm-border text-base font-black font-mono text-charcoal-900">
                           ₹{subtotal.toLocaleString('en-IN')}
-                        </span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* DISCOUNT & CONCESSION FEATURE */}
-                    <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-200 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">🎁</span>
-                          <label className="text-xs font-black text-rose-900 uppercase tracking-wider">
-                            Apply Discount & Concession
-                          </label>
-                        </div>
-                        <span className="text-[11px] font-bold text-rose-700">
-                          {fixedDiscount > 0 ? `- ₹${fixedDiscount.toLocaleString('en-IN')} OFF` : 'No discount applied'}
+                    {/* 2. Discount & Concession Row */}
+                    <div className="bg-warm-bg/70 p-4 rounded-2xl border border-warm-border space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="text-xs font-black text-charcoal-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <span>🎁</span> Discount & Special Concession
                         </span>
+                        {fixedDiscount > 0 && (
+                          <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
+                            - ₹{fixedDiscount.toLocaleString('en-IN')} Discount Applied
+                          </span>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[10px] font-black text-rose-800 uppercase tracking-widest block mb-1">
-                            DISCOUNT AMOUNT (₹)
+                          <label className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-wider block mb-1">
+                            Discount Amount (₹)
                           </label>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-black text-rose-600 font-mono">- ₹</span>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-sm">- ₹</span>
                             <input
                               type="number"
                               value={fixedDiscount || ''}
                               onChange={(e) => setFixedDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
                               placeholder="0"
-                              className="w-full px-3 py-1.5 text-sm font-black font-mono border border-rose-300 rounded-xl bg-white text-rose-700 focus:ring-2 focus:ring-rose-500"
+                              className="w-full pl-9 pr-3 py-2 text-sm font-black font-mono border border-warm-border rounded-xl bg-white text-rose-600 focus:ring-2 focus:ring-rose-500"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="text-[10px] font-black text-rose-800 uppercase tracking-widest block mb-1">
-                            DISCOUNT REASON / NOTES
+                          <label className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-wider block mb-1">
+                            Concession Reason (Optional)
                           </label>
                           <input
                             type="text"
                             value={fixedDiscountNotes}
                             onChange={(e) => setFixedDiscountNotes(e.target.value)}
-                            placeholder="e.g. Special customer discount / Festive concession"
-                            className="w-full px-3 py-1.5 text-xs font-bold border border-rose-300 rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-rose-500"
+                            placeholder="e.g. Regular customer discount / Festive offer"
+                            className="w-full px-3 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white text-charcoal-800 focus:ring-2 focus:ring-brand-500"
                           />
                         </div>
                       </div>
 
-                      {/* Quick Discount Preset Chips */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span className="text-[10px] font-black text-rose-800 uppercase mr-1">Quick Presets:</span>
+                      {/* Quick Presets */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        <span className="text-[10px] font-extrabold text-charcoal-400 uppercase mr-1">Quick Apply:</span>
                         {[
                           { label: '₹500', val: 500 },
                           { label: '₹1,000', val: 1000 },
@@ -1064,7 +1068,7 @@ export const AdminOrderDetailPage: React.FC = () => {
                             key={preset.label}
                             type="button"
                             onClick={() => setFixedDiscount(preset.val)}
-                            className="bg-white hover:bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-black px-2.5 py-1 rounded-lg transition-colors"
+                            className="bg-white hover:bg-rose-50 text-charcoal-700 hover:text-rose-700 border border-warm-border hover:border-rose-200 text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all shadow-xs"
                           >
                             {preset.label}
                           </button>
@@ -1073,7 +1077,7 @@ export const AdminOrderDetailPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => { setFixedDiscount(0); setFixedDiscountNotes(''); }}
-                            className="text-[10px] font-bold text-rose-600 hover:underline ml-1"
+                            className="text-[11px] font-bold text-rose-600 hover:underline ml-1"
                           >
                             Clear
                           </button>
@@ -1081,79 +1085,83 @@ export const AdminOrderDetailPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Extra Charges (Fitting / Delivery) */}
-                    <div className="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    {/* 3. Extra Expenses (Fitting / Transport) */}
+                    <div className="bg-warm-bg/70 p-4 rounded-2xl border border-warm-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
-                        <span className="text-xs font-black text-amber-900 uppercase tracking-wider block">
+                        <span className="text-xs font-black text-charcoal-800 uppercase tracking-wider block">
                           Extra On-Site Fitting / Transport (₹)
                         </span>
-                        <span className="text-[11px] text-amber-700 font-semibold">
-                          Optional add-ons or special transport expenses
+                        <span className="text-[11px] text-charcoal-500 font-medium">
+                          Add-on charges for custom installation or delivery
                         </span>
                       </div>
 
-                      <div className="w-full sm:w-48">
+                      <div className="w-full sm:w-48 relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal-400 font-bold text-sm">+ ₹</span>
                         <input
                           type="number"
                           value={fixedExtraCharges || ''}
                           onChange={(e) => setFixedExtraCharges(Math.max(0, parseFloat(e.target.value) || 0))}
                           placeholder="0"
-                          className="w-full px-3 py-1.5 text-sm font-black font-mono border border-amber-300 rounded-xl bg-white text-amber-900 focus:ring-2 focus:ring-amber-500 text-right"
+                          className="w-full pl-9 pr-3 py-2 text-sm font-black font-mono border border-warm-border rounded-xl bg-white text-charcoal-900 focus:ring-2 focus:ring-brand-500 text-right"
                         />
                       </div>
                     </div>
 
-                    {/* GRAND TOTAL & ADVANCE SUMMARY BAR */}
-                    <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 sm:p-5 rounded-2xl shadow-md space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-400/60 pb-3">
+                    {/* 4. Sleek Summary Card */}
+                    <div className="bg-charcoal-900 text-white p-5 rounded-2xl shadow-lg space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-charcoal-800 pb-3.5">
                         <div>
-                          <span className="text-[10px] font-black uppercase tracking-widest block text-emerald-100">
-                            FINAL CALCULATED ORDER TOTAL
+                          <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">
+                            Final Net Order Amount
                           </span>
-                          <span className="text-xs text-emerald-200">
-                            Base: ₹{subtotal.toLocaleString('en-IN')} {fixedDiscount > 0 && `— Discount: -₹${fixedDiscount.toLocaleString('en-IN')}`} {fixedExtraCharges > 0 && `+ Extra: ₹${fixedExtraCharges.toLocaleString('en-IN')}`}
+                          <span className="text-xs text-charcoal-300 font-medium">
+                            Subtotal ₹{subtotal.toLocaleString('en-IN')} {fixedDiscount > 0 && `— Discount ₹${fixedDiscount.toLocaleString('en-IN')}`} {fixedExtraCharges > 0 && `+ Extra ₹${fixedExtraCharges.toLocaleString('en-IN')}`}
                           </span>
                         </div>
-                        <span className="text-2xl sm:text-3xl font-black font-mono">
+                        <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-400">
                           ₹{grandTotal.toLocaleString('en-IN')}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center pt-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
                         <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest block text-emerald-100 mb-1">
-                            SET REQUIRED ADVANCE AMOUNT (₹)
+                          <label className="text-[10px] font-extrabold text-charcoal-300 uppercase tracking-widest block mb-1">
+                            Set Required Advance (₹)
                           </label>
-                          <input
-                            type="number"
-                            value={fixedAdvanceReq || ''}
-                            onChange={(e) => setFixedAdvanceReq(Math.max(0, parseFloat(e.target.value) || 0))}
-                            placeholder="e.g. 10000"
-                            className="w-full px-3 py-1.5 text-sm font-black font-mono rounded-xl bg-white text-charcoal-900"
-                          />
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal-500 font-bold text-sm">₹</span>
+                            <input
+                              type="number"
+                              value={fixedAdvanceReq || ''}
+                              onChange={(e) => setFixedAdvanceReq(Math.max(0, parseFloat(e.target.value) || 0))}
+                              placeholder="e.g. 10000"
+                              className="w-full pl-7 pr-3 py-2 text-sm font-black font-mono rounded-xl bg-charcoal-800 text-white border border-charcoal-700 focus:ring-2 focus:ring-brand-500"
+                            />
+                          </div>
                         </div>
 
-                        <div className="text-right">
-                          <span className="text-[10px] font-black uppercase tracking-widest block text-emerald-100">
-                            REMAINING BALANCE DUE
+                        <div className="text-left sm:text-right bg-charcoal-800/80 p-3 rounded-xl border border-charcoal-700">
+                          <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block">
+                            Remaining Balance Due
                           </span>
-                          <span className="text-xl font-black font-mono">
+                          <span className="text-lg font-black font-mono text-amber-300">
                             ₹{remainingDue.toLocaleString('en-IN')}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Save Button */}
+                    {/* 5. Primary Action Button */}
                     <Button
                       type="button"
                       onClick={handleSaveFixedPricing}
                       variant="primary"
                       fullWidth
                       icon={<CheckCircle2 className="w-4 h-4" />}
-                      className="py-3 text-sm font-black rounded-2xl shadow-lg bg-emerald-600 hover:bg-emerald-700"
+                      className="py-3.5 text-sm font-black rounded-2xl shadow-md bg-brand-600 hover:bg-brand-700"
                     >
-                      Save & Update Fixed Order Price
+                      Save & Apply Price to Order
                     </Button>
                   </div>
                 );
