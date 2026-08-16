@@ -205,6 +205,7 @@ export const AdminOrderDetailPage: React.FC = () => {
 
       if (ordRecord) {
         const prod = productMap.get(ordRecord.product_id);
+        const prof = profileMap.get(ordRecord.user_id);
         const defaultUnitPrice = prod?.admin_price || 40000;
         const qty = ordRecord.quantity || 1;
         const computedTotal = (Number(ordRecord.total_amount) > 0) ? Number(ordRecord.total_amount) : (defaultUnitPrice * qty);
