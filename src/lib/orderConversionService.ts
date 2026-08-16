@@ -132,13 +132,37 @@ export const convertEnquiryToOrderSafely = async ({
     created_at: new Date().toISOString()
   };
 
+  // Save to LocalStorage as instant optimistic cache
+  try {
+    const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    const filteredLocal = localOrders.filter((o: any) => o.id !== newOrderUuid && o.order_number !== newOrderNumber);
+    localStorage.setItem('ml_orders', JSON.stringify([newOrderRecord, ...filteredLocal]));
+  } catch (e) {
+    console.warn('Local storage cache write error');
+  }
+
   // Save to Supabase DB — primary source of truth for all devices
   try {
     const { error: orderErr } = await supabase.from('orders').insert(newOrderRecord);
     if (orderErr) {
-      console.error('Supabase order insert error:', orderErr.message);
-      // Retry without foreign keys if FK constraint fails
-      const fallbackRecord = { ...newOrderRecord, product_id: null, enquiry_id: null };
+      console.warn('Supabase order full insert warning:', orderErr.message);
+      // Retry with minimal clean payload without FKs
+      const fallbackRecord = {
+        id: newOrderUuid,
+        order_number: newOrderNumber,
+        user_id: newOrderRecord.user_id,
+        customer_name: newOrderRecord.customer_name,
+        customer_phone: newOrderRecord.customer_phone,
+        product_name: newOrderRecord.product_name,
+        quantity: newOrderRecord.quantity,
+        status: 'order_confirmed',
+        fabrication_stage: 'accepted',
+        total_amount: quotePrice,
+        advance_amount: 0,
+        remaining_amount: quotePrice,
+        payment_status: 'unpaid',
+        created_at: new Date().toISOString()
+      };
       await supabase.from('orders').insert(fallbackRecord);
     }
 

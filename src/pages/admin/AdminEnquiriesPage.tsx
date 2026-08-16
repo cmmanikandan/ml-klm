@@ -79,7 +79,50 @@ export const AdminEnquiriesPage: React.FC = () => {
       const found = productMap.get(enq.product_id) || INITIAL_PRODUCTS.find((p) => p.id === enq.product_id);
       if (found) return found.name_en;
     }
-    return 'Compound Wall Gate';
+    return 'Custom Metal Product';
+  };
+
+  const handleOpenQuoteModal = (enq: any) => {
+    setSelectedEnquiry(enq);
+    
+    // Find matching product by ID or Name
+    const pName = getProductName(enq).toLowerCase();
+    let prod = enq.product_id ? productMap.get(enq.product_id) : null;
+    
+    if (!prod) {
+      for (const [_, p] of productMap.entries()) {
+        if (p.name_en?.toLowerCase() === pName || pName.includes(p.name_en?.toLowerCase())) {
+          prod = p;
+          break;
+        }
+      }
+    }
+
+    if (!prod) {
+      prod = INITIAL_PRODUCTS.find(p => 
+        p.id === enq.product_id || 
+        p.name_en.toLowerCase() === pName ||
+        pName.includes(p.name_en.toLowerCase())
+      );
+    }
+
+    const qty = enq.quantity || 1;
+    let initialPrice = 0;
+
+    // 1. If product is fixed price or has admin_price, pre-fill it
+    if (prod && prod.admin_price && prod.admin_price > 0) {
+      initialPrice = prod.admin_price * qty;
+    } else if (enq.quote_price && enq.quote_price > 0) {
+      initialPrice = enq.quote_price;
+    } else if (enq.total_amount && enq.total_amount > 0) {
+      initialPrice = enq.total_amount;
+    }
+
+    const initialAdvance = enq.advance_amount || (initialPrice > 0 ? (enq.advance_required || Math.round(initialPrice * 0.1) || 2000) : 0);
+
+    setQuotePrice(initialPrice);
+    setAdvanceRequired(initialAdvance);
+    setEstimatedDays(enq.estimated_days || 7);
   };
 
   const getCustomerName = (enq: any): string => {
@@ -419,7 +462,7 @@ export const AdminEnquiriesPage: React.FC = () => {
 
                       {showQuoteAndConvert && (
                         <Button
-                          onClick={() => setSelectedEnquiry(enq)}
+                          onClick={() => handleOpenQuoteModal(enq)}
                           disabled={isConverting && convertingId === enq.id}
                           variant="primary"
                           size="sm"

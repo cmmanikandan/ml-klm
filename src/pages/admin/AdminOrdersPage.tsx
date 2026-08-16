@@ -120,6 +120,18 @@ export const AdminOrdersPage: React.FC = () => {
         return true;
       });
 
+      // Merge local orders cache so converted orders are instantly visible across all navigation
+      try {
+        const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+        localOrders.forEach((loc: any) => {
+          if (loc.is_pos !== true && !list.some((o: any) => o.id === loc.id || o.order_number === loc.order_number)) {
+            list.push(loc);
+          }
+        });
+      } catch (e) {
+        console.warn('Local orders cache merge error');
+      }
+
       // 4. Auto-sync: Check for accepted/converted enquiries that don't have an order row yet
       try {
         const { data: acceptedEnqs } = await supabase
