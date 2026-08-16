@@ -254,7 +254,7 @@ export const OrderDetailPage: React.FC = () => {
     <div className="min-h-screen bg-warm-bg pb-24 md:pb-12 pt-4">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         
-        {/* Back Button Bar */}
+        {/* Back Button & Share Order Bar */}
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate('/orders')}
@@ -265,7 +265,16 @@ export const OrderDetailPage: React.FC = () => {
           </button>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-black text-brand-600 bg-white px-3 py-2 rounded-full border border-warm-border">
+            <button
+              onClick={handleShareOrder}
+              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-full text-xs font-black shadow-sm transition-colors"
+              title="Share Order & Invoice"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>{isTamil ? 'பகிரவும்' : 'Share Order'}</span>
+            </button>
+
+            <span className="text-xs font-mono font-black text-brand-600 bg-white px-3 py-1.5 rounded-full border border-warm-border">
               #{order.order_number}
             </span>
           </div>

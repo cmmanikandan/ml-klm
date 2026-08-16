@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, Sparkles } from 'lucide-react';
+import { Heart, Sparkles, Share2 } from 'lucide-react';
 import { Product } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { useWishlist } from '../../context/WishlistContext';
@@ -35,6 +35,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     navigate(`/products/${product.id}`);
   };
 
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const prodUrl = `${window.location.origin}/products/${product.id}`;
+    const text = `🛠️ *${title}*\nManikandan Lathe – Welding Works (Kallimandhayam)\n\n📍 View Product Details: ${prodUrl}`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: title,
+        text: text,
+        url: prodUrl
+      }).catch(() => {});
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+  };
+
   const handleWishlistClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -55,19 +73,30 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       onClick={handleCardClick}
       className="group bg-white rounded-2xl border border-warm-border/80 shadow-card hover:shadow-warm-lg transition-all duration-300 overflow-hidden flex flex-col relative h-full cursor-pointer"
     >
-      {/* Wishlist Button */}
-      <button
-        type="button"
-        onClick={handleWishlistClick}
-        className={`absolute top-2.5 right-2.5 z-10 p-2 rounded-full backdrop-blur-md transition-all shadow-sm ${
-          isWishlisted
-            ? 'bg-rose-500 text-white shadow-rose-500/30'
-            : 'bg-white/80 text-charcoal-600 hover:bg-white hover:text-rose-500'
-        }`}
-        aria-label="Add to Wishlist"
-      >
-        <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current' : ''}`} />
-      </button>
+      {/* Share & Wishlist Action Buttons */}
+      <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={handleShareClick}
+          className="p-1.5 rounded-full bg-white/80 hover:bg-white text-emerald-700 hover:text-emerald-800 backdrop-blur-md shadow-sm transition-all"
+          title="Share Product via WhatsApp"
+        >
+          <Share2 className="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          type="button"
+          onClick={handleWishlistClick}
+          className={`p-1.5 rounded-full backdrop-blur-md transition-all shadow-sm ${
+            isWishlisted
+              ? 'bg-rose-500 text-white shadow-rose-500/30'
+              : 'bg-white/80 text-charcoal-600 hover:bg-white hover:text-rose-500'
+          }`}
+          aria-label="Add to Wishlist"
+        >
+          <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-current' : ''}`} />
+        </button>
+      </div>
 
       {/* Badges */}
       <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 pointer-events-none">

@@ -149,16 +149,28 @@ export const AdminPOSPage: React.FC = () => {
 
   const loadPOSHistory = async () => {
     try {
-      const { data: dbOrders } = await supabase
-        .from('orders')
-        .select('*')
-        .or('is_pos.eq.true,admin_notes.ilike.%POS%')
-        .order('created_at', { ascending: false });
+      let dbOrders: any[] = [];
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (data && !error) {
+          dbOrders = data.filter((o: any) => 
+            o.is_pos === true || 
+            (o.admin_notes && o.admin_notes.includes('POS')) || 
+            String(o.order_number || '').includes('POS')
+          );
+        }
+      } catch (err) {
+        console.warn('Supabase DB POS history query fallback', err);
+      }
 
       const localOrders: any[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      const localPos = localOrders.filter((o: any) => o.is_pos);
+      const localPos = localOrders.filter((o: any) => o.is_pos || (o.admin_notes && o.admin_notes.includes('POS')));
 
-      let combined = [...(dbOrders || []), ...localPos];
+      let combined = [...dbOrders, ...localPos];
       const seen = new Set();
       combined = combined.filter((o: any) => {
         const key = o.id || o.order_number;
@@ -856,7 +868,7 @@ export const AdminPOSPage: React.FC = () => {
                           className={`font-extrabold px-3 py-2 rounded-xl text-[11px] shadow-sm shrink-0 flex items-center gap-1 transition-colors ${btnColorClass}`}
                         >
                           {iconElement}
-                          <span>{pType === 'fixed' ? 'Add Item' : 'Calc'}</span>
+                          <span>{pType === 'fixed' ? '+ Add Item' : pType === 'weight' ? 'Calc Weight' : 'Calc SqFt'}</span>
                         </button>
                       </div>
                     );
