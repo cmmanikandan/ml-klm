@@ -242,51 +242,52 @@ export const AdminOrdersPage: React.FC = () => {
     const enquiryId = targetOrder?.enquiry_id || targetOrder?.enquiryId || orderId;
     const orderNum = targetOrder?.order_number || targetOrder?.orderNumber || orderId;
 
-    // Track deleted IDs in LocalStorage ml_deleted_ids
-    const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
-    const idsToAdd = [String(orderId), String(enquiryId), String(orderNum)].filter(Boolean);
-    const updatedDeletedIds = Array.from(new Set([...deletedIds, ...idsToAdd]));
-    localStorage.setItem('ml_deleted_ids', JSON.stringify(updatedDeletedIds));
-
-    const updatedOrders = orders.filter(
-      (o) => o.id !== orderId && o.order_number !== orderNum && o.enquiry_id !== enquiryId
-    );
-    setOrders(updatedOrders);
-
-    const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-    const updatedLocal = local.filter(
-      (l: any) => l.id !== orderId && l.order_number !== orderNum && l.enquiry_id !== enquiryId
-    );
-    localStorage.setItem('ml_orders', JSON.stringify(updatedLocal));
-
-    const localEnquiries = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-    const updatedLocalEnquiries = localEnquiries.filter(
-      (e: any) => e.id !== enquiryId && e.id !== orderId && e.enquiry_number !== orderNum
-    );
-    localStorage.setItem('ml_enquiries', JSON.stringify(updatedLocalEnquiries));
-
-    try {
-      await supabase
-        .from('orders')
-        .delete()
-        .or(`id.eq.${orderId},order_number.eq.${orderNum},enquiry_id.eq.${enquiryId}`);
-    } catch (e) {
-      console.warn('Order DB delete fallback', e);
-    }
-
-    try {
-      await supabase
-        .from('enquiries')
-        .delete()
-        .or(`id.eq.${enquiryId},id.eq.${orderId}`);
+    // 1. Update enquiry status to 'deleted' in Supabase FIRST (cross-device sync)
+    //    This must happen BEFORE delete so all devices see status='deleted' via DB
+    const enqFilter = [];
+    if (enquiryId && enquiryId !== orderId) enqFilter.push(`id.eq.${enquiryId}`);
+    if (orderId) enqFilter.push(`id.eq.${orderId}`);
+    if (orderNum && orderNum !== orderId) enqFilter.push(`enquiry_number.eq.${orderNum}`);
+    if (enqFilter.length > 0) {
       await supabase
         .from('enquiries')
         .update({ status: 'deleted' })
-        .or(`id.eq.${enquiryId},id.eq.${orderId}`);
-    } catch (e) {
-      console.warn('Enquiries DB delete fallback', e);
+        .or(enqFilter.join(','));
     }
 
+    // 2. Delete orders row from Supabase
+    await supabase
+      .from('orders')
+      .delete()
+      .or(`id.eq.${orderId},order_number.eq.${orderNum}`);
+
+    // 3. Delete enquiry row from Supabase (after status update already saved)
+    if (enqFilter.length > 0) {
+      await supabase
+        .from('enquiries')
+        .delete()
+        .or(enqFilter.join(','));
+    }
+
+    // 4. Track in LocalStorage as secondary safety net
+    const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
+    const idsToAdd = [String(orderId), String(enquiryId), String(orderNum)].filter(Boolean);
+    localStorage.setItem('ml_deleted_ids', JSON.stringify(Array.from(new Set([...deletedIds, ...idsToAdd]))));
+
+    // 5. Remove from LocalStorage caches
+    const local = JSON.parse(localStorage.getItem('ml_orders') || '[]');
+    localStorage.setItem('ml_orders', JSON.stringify(local.filter(
+      (l: any) => l.id !== orderId && l.order_number !== orderNum && l.enquiry_id !== enquiryId
+    )));
+    const localEnquiries = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+    localStorage.setItem('ml_enquiries', JSON.stringify(localEnquiries.filter(
+      (e: any) => e.id !== enquiryId && e.id !== orderId && e.enquiry_number !== orderNum
+    )));
+
+    // 6. Update UI state
+    setOrders(orders.filter(
+      (o) => o.id !== orderId && o.order_number !== orderNum && o.enquiry_id !== enquiryId
+    ));
     setOrderToDelete(null);
     if (selectedOrder?.id === orderId) setSelectedOrder(null);
   };

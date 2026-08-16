@@ -247,39 +247,42 @@ export const AdminOrderDetailPage: React.FC = () => {
     const enquiryId = String(order.enquiry_id || order.enquiryId || orderId);
     const orderNum = String(order.order_number || order.orderNumber || orderId);
 
-    // Track deleted IDs in LocalStorage ml_deleted_ids
+    // 1. Update enquiry status to 'deleted' in Supabase FIRST (cross-device sync)
+    //    Must happen BEFORE delete so all other devices read status='deleted' from DB
+    const enqFilter = [];
+    if (enquiryId && enquiryId !== orderId) enqFilter.push(`id.eq.${enquiryId}`);
+    enqFilter.push(`id.eq.${orderId}`);
+    if (orderNum && orderNum !== orderId) enqFilter.push(`enquiry_number.eq.${orderNum}`);
+    await supabase
+      .from('enquiries')
+      .update({ status: 'deleted' })
+      .or(enqFilter.join(','));
+
+    // 2. Delete orders row from Supabase
+    await supabase
+      .from('orders')
+      .delete()
+      .or(`id.eq.${orderId},order_number.eq.${orderNum}`);
+
+    // 3. Delete enquiry row from Supabase (status already saved above)
+    await supabase
+      .from('enquiries')
+      .delete()
+      .or(enqFilter.join(','));
+
+    // 4. Track in LocalStorage as secondary safety net
     const deletedIds: string[] = JSON.parse(localStorage.getItem('ml_deleted_ids') || '[]');
-    const updatedDeletedIds = Array.from(new Set([...deletedIds, orderId, enquiryId, orderNum]));
-    localStorage.setItem('ml_deleted_ids', JSON.stringify(updatedDeletedIds));
+    localStorage.setItem('ml_deleted_ids', JSON.stringify(Array.from(new Set([...deletedIds, orderId, enquiryId, orderNum]))));
 
-    try {
-      await supabase
-        .from('orders')
-        .delete()
-        .or(`id.eq.${orderId},order_number.eq.${orderNum},enquiry_id.eq.${enquiryId}`);
-      await supabase
-        .from('enquiries')
-        .delete()
-        .or(`id.eq.${enquiryId},id.eq.${orderId}`);
-      await supabase
-        .from('enquiries')
-        .update({ status: 'deleted' })
-        .or(`id.eq.${enquiryId},id.eq.${orderId}`);
-    } catch (e) {
-      console.warn('Order DB delete fallback', e);
-    }
-
+    // 5. Remove from LocalStorage caches
     const localOrders = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-    const updatedLocalOrders = localOrders.filter(
+    localStorage.setItem('ml_orders', JSON.stringify(localOrders.filter(
       (l: any) => String(l.id) !== orderId && String(l.order_number) !== orderNum && String(l.enquiry_id) !== enquiryId
-    );
-    localStorage.setItem('ml_orders', JSON.stringify(updatedLocalOrders));
-
+    )));
     const localEnquiries = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-    const updatedLocalEnquiries = localEnquiries.filter(
+    localStorage.setItem('ml_enquiries', JSON.stringify(localEnquiries.filter(
       (e: any) => String(e.id) !== enquiryId && String(e.id) !== orderId && String(e.enquiry_number) !== orderNum
-    );
-    localStorage.setItem('ml_enquiries', JSON.stringify(updatedLocalEnquiries));
+    )));
 
     setOrderToDelete(null);
     navigate('/admin/orders');
