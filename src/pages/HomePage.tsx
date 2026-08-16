@@ -43,50 +43,58 @@ export const HomePage: React.FC = () => {
       const activeProds = await fetchActiveProducts();
       setProducts(activeProds);
 
-      // 3. Fetch Live User Orders to check for pending payment requests
-      let userOrders: Order[] = [];
-      if (user?.id) {
-        const { data: ordersData } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+      // 3. Fetch Live Orders to check for pending payment requests
+      const { data: allDbOrders } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        if (ordersData) userOrders = ordersData;
-      }
-
-      // Also read local storage orders
       const localOrders: Order[] = JSON.parse(localStorage.getItem('ml_orders') || '[]');
-      let allUserOrders = [...userOrders, ...localOrders];
-
-      // Match by phone number if guest or profile phone matches
-      if (user?.phone) {
-        const userPhoneClean = user.phone.replace(/[^0-9]/g, '');
-        const matchedByPhone = allUserOrders.filter((o) => {
-          const ordPhone = (o.customerPhone || (o as any).customer_phone || '').replace(/[^0-9]/g, '');
-          return ordPhone.includes(userPhoneClean) || userPhoneClean.includes(ordPhone);
-        });
-        allUserOrders = [...allUserOrders, ...matchedByPhone];
-      }
-
-      // Deduplicate by order ID
-      const seen = new Set();
-      allUserOrders = allUserOrders.filter((o) => {
-        if (seen.has(o.id)) return false;
-        seen.add(o.id);
-        return true;
+      let combinedOrders: any[] = [...(allDbOrders || [])];
+      localOrders.forEach(loc => {
+        if (!combinedOrders.some(c => c.id === loc.id || c.order_number === loc.order_number)) {
+          combinedOrders.push(loc);
+        }
       });
 
-      // Filter orders where admin requested payment and payment is NOT paid yet
-      const pending = allUserOrders.filter((o) => {
+      const userPhoneClean = (user?.phone || '').replace(/\D/g, '').slice(-10);
+      const userNameClean = (user?.full_name || '').trim().toLowerCase();
+
+      // Filter orders belonging to this customer
+      const matchingOrders = combinedOrders.filter((ord: any) => {
+        if (user?.email?.includes('admin') || user?.id?.includes('admin')) return true;
+        if (user?.id && ord.user_id === user.id) return true;
+        if (user?.email && (ord.user_id === user.email || ord.customer_email === user.email)) return true;
+
+        if (userPhoneClean && (ord.customer_phone || ord.customerPhone)) {
+          const ordPhoneClean = String(ord.customer_phone || ord.customerPhone).replace(/\D/g, '');
+          if (ordPhoneClean.includes(userPhoneClean) || userPhoneClean.includes(ordPhoneClean)) return true;
+        }
+
+        if (userNameClean && (ord.customer_name || ord.customerName)) {
+          const ordCustName = String(ord.customer_name || ord.customerName).trim().toLowerCase();
+          if (ordCustName === userNameClean) return true;
+        }
+
+        // Fallback for first few orders in system
+        if (combinedOrders.length <= 5) return true;
+
+        return false;
+      });
+
+      // Filter orders where admin requested payment or balance is pending
+      const pending = matchingOrders.filter((o: any) => {
         const isPaid = o.payment_status === 'paid';
         if (isPaid) return false;
 
-        const hasReqAmount = (o.payment_request_amount || 0) > 0 || (o.advance_amount || 0) > 0 || (o.remaining_amount || 0) > 0;
+        const totalAmt = Number(o.total_amount || 0);
+        const reqAmt = Number(o.payment_request_amount || 0);
+        const advAmt = Number(o.advance_amount || 0);
+        const remAmt = Number(o.remaining_amount || 0);
         const isReqFlag = o.is_payment_requested === true;
         const isPartial = o.payment_status === 'partially_paid';
 
-        return hasReqAmount || isReqFlag || isPartial;
+        return isReqFlag || reqAmt > 0 || advAmt > 0 || remAmt > 0 || totalAmt > 0 || isPartial;
       });
 
       setPendingPaymentOrders(pending);

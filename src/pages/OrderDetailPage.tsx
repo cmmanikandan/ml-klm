@@ -559,9 +559,45 @@ export const OrderDetailPage: React.FC = () => {
             }
 
             if (hasFixedOrQuotedPrice) {
+              const isPaymentRequested = Boolean(order.is_payment_requested || (order.payment_request_amount || 0) > 0);
+              const requestedDueAmt = order.payment_request_amount || payAmount;
+
               return (
                 <div className="bg-gradient-to-r from-amber-500/10 via-brand-500/10 to-orange-500/10 p-5 sm:p-6 rounded-3xl border-2 border-brand-300 shadow-md space-y-4">
                   
+                  {/* ADMIN PAYMENT REQUESTED NOTIFICATION BANNER */}
+                  {isPaymentRequested && (
+                    <div className="bg-gradient-to-r from-brand-600 to-orange-600 text-white p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg border border-amber-300/40 animate-pulse-subtle">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl shrink-0">
+                          📢
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black uppercase tracking-wider block">
+                              {isTamil ? 'கட்டண அறிவிப்பு — நிர்வாகி கோரியுள்ளார்' : 'Payment Requested by Workshop Admin'}
+                            </span>
+                            <span className="bg-amber-300 text-charcoal-950 text-[9px] font-black uppercase px-2 py-0.5 rounded-full">
+                              Action Due
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-bold text-amber-100 mt-0.5">
+                            {isTamil 
+                              ? `தயாரிப்பு பணிகளுக்கான கட்டணம்: ₹${requestedDueAmt.toLocaleString('en-IN')}. ஆன்லைனில் பாதுகாப்பாக செலுத்தவும்.` 
+                              : `Workshop admin has requested payment of ₹${requestedDueAmt.toLocaleString('en-IN')} for this order. Click Pay Now below.`}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-[10px] font-extrabold text-amber-200 uppercase tracking-wider block">REQUESTED AMOUNT</span>
+                        <span className="text-xl sm:text-2xl font-black text-white font-mono">
+                          ₹{requestedDueAmt.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Price Summary Breakdown Grid */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-brand-200/80 pb-4">
                     <div>

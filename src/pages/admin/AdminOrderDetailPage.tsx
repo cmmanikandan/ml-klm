@@ -1058,18 +1058,33 @@ export const AdminOrderDetailPage: React.FC = () => {
             )}
           </div>
 
-          {/* SINGLE CLEAN ORDER PROGRESS TIMELINE */}
-          <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-charcoal-900 uppercase tracking-wider">Order Progress Timeline</h3>
-              <span className="text-[11px] font-extrabold font-mono text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200">
-                Current: {getStatusConfig(order.status).label}
-              </span>
+          {/* INTERACTIVE WORKSHOP FABRICATION PROGRESS TRACKER */}
+          <div className="bg-white rounded-3xl p-6 border-2 border-brand-500/30 shadow-card space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-warm-muted pb-3 gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🛠️</span>
+                  <h3 className="text-sm font-black text-charcoal-900 uppercase tracking-wider">
+                    Workshop Fabrication Progress Tracker
+                  </h3>
+                </div>
+                <p className="text-[11px] text-charcoal-500 font-semibold mt-0.5">
+                  Click any stage or use the button below to update fabrication milestone
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Badge variant={order.status}>
+                  {getStatusConfig(order.status).label}
+                </Badge>
+              </div>
             </div>
 
+            {/* Interactive Milestone Timeline */}
             <div className="relative py-3">
-              {/* Progress Line */}
-              <div className="absolute left-6 right-6 top-7 h-1 bg-gray-200 z-0" />
+              {/* Background Grey Line */}
+              <div className="absolute left-6 right-6 top-7 h-1.5 bg-gray-200 rounded-full z-0" />
+              
               {(() => {
                 const getStepIndex = (status: OrderStatus) => {
                   switch (status) {
@@ -1078,90 +1093,104 @@ export const AdminOrderDetailPage: React.FC = () => {
                     case 'processing': return 2;
                     case 'ready': return 3;
                     case 'delivered': return 4;
-                    default: return 1;
+                    default: return 0;
                   }
                 };
                 const currentIdx = getStepIndex(order.status);
-                const steps = [
-                  { key: 'accepted', label: 'Enquiry Accepted' },
-                  { key: 'order_confirmed', label: 'Order Confirmed' },
-                  { key: 'processing', label: 'Processing / Fabrication' },
-                  { key: 'ready', label: 'Ready for Pickup' },
-                  { key: 'delivered', label: 'Completed & Handed Over' }
+                const steps: { key: OrderStatus; label: string; desc: string; icon: string }[] = [
+                  { key: 'accepted', label: '1. Accepted', desc: 'Queued for workshop', icon: '📝' },
+                  { key: 'order_confirmed', label: '2. Confirmed', desc: 'Advance & specs locked', icon: '🔒' },
+                  { key: 'processing', label: '3. Fabrication', desc: 'Lathe turning & welding', icon: '⚡' },
+                  { key: 'ready', label: '4. Ready', desc: 'Quality checked for pickup', icon: '📦' },
+                  { key: 'delivered', label: '5. Delivered', desc: 'Handed over to customer', icon: '✅' }
                 ];
+
+                const nextStep = currentIdx < steps.length - 1 ? steps[currentIdx + 1] : null;
+
                 return (
-                  <>
+                  <div className="space-y-6">
+                    {/* Active Gradient Line */}
                     <div
-                      className="absolute left-6 top-7 h-1 bg-brand-600 z-0 transition-all duration-500"
+                      className="absolute left-6 top-7 h-1.5 bg-gradient-to-r from-amber-500 via-brand-500 to-emerald-500 rounded-full z-0 transition-all duration-500"
                       style={{ width: `calc(${((currentIdx / (steps.length - 1)) * 100)}% - 24px)` }}
                     />
+
+                    {/* Milestone Nodes */}
                     <div className="flex items-start justify-between relative z-10">
                       {steps.map((step, idx) => {
-                        const isDone = idx <= currentIdx;
+                        const isDone = idx < currentIdx;
+                        const isCurrent = idx === currentIdx;
+                        const isUpcoming = idx > currentIdx;
+
                         return (
-                          <div key={step.key} className="flex-1 flex flex-col items-center text-center px-1">
+                          <div 
+                            key={step.key} 
+                            onClick={() => handleUpdateStatus(step.key)}
+                            className="flex-1 flex flex-col items-center text-center px-1 cursor-pointer group"
+                            title={`Click to set as "${step.label}"`}
+                          >
                             <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all shrink-0 ${
-                                isDone
-                                  ? 'bg-brand-600 text-white ring-4 ring-brand-100 shadow-sm'
-                                  : 'bg-white text-gray-400 border-2 border-gray-300'
+                              className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs transition-all shrink-0 ${
+                                isCurrent
+                                  ? 'bg-brand-600 text-white ring-4 ring-brand-200 shadow-md scale-110 animate-pulse'
+                                  : isDone
+                                  ? 'bg-emerald-600 text-white shadow-sm group-hover:scale-105'
+                                  : 'bg-white text-gray-400 border-2 border-gray-300 group-hover:border-brand-400'
                               }`}
                             >
-                              {isDone ? '✓' : idx + 1}
+                              {isDone ? '✓' : isCurrent ? step.icon : idx + 1}
                             </div>
+
                             <span
-                              className={`text-[10px] font-extrabold mt-2 leading-tight ${
-                                isDone ? 'text-charcoal-900' : 'text-gray-400'
+                              className={`text-[11px] font-black mt-2 leading-tight ${
+                                isCurrent ? 'text-brand-700' : isDone ? 'text-charcoal-900' : 'text-gray-400'
                               }`}
                             >
                               {step.label}
+                            </span>
+                            <span className="text-[9px] text-charcoal-400 font-medium hidden sm:block mt-0.5">
+                              {step.desc}
                             </span>
                           </div>
                         );
                       })}
                     </div>
-                  </>
+
+                    {/* Fast Stage Actions Bar */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-warm-muted bg-warm-bg/60 p-3.5 rounded-2xl">
+                      <div className="text-xs font-bold text-charcoal-700">
+                        Current Stage: <span className="font-black text-brand-700">{steps[currentIdx]?.label}</span> — <span className="text-charcoal-500">{steps[currentIdx]?.desc}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        {nextStep && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleUpdateStatus(nextStep.key);
+                              sendStatusUpdateWhatsApp(order, nextStep.label);
+                            }}
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-black py-2 px-4 rounded-xl shadow-md transition-all"
+                          >
+                            <span>Advance to {nextStep.label} →</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => sendStatusUpdateWhatsApp(order, steps[currentIdx]?.label || order.status)}
+                          className="inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black py-2 px-3 rounded-xl shadow-sm transition-all"
+                          title="Notify Customer on WhatsApp"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">WhatsApp Alert</span>
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
                 );
               })()}
-            </div>
-          </div>
-
-          {/* Status Updater Card */}
-          <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-charcoal-900 uppercase tracking-wider">Update Fabrication Status</h3>
-              <span className="text-[11px] font-extrabold font-mono text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200">
-                Current: {getStatusConfig(order.status).label}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-              {(['accepted', 'order_confirmed', 'processing', 'ready', 'delivered'] as OrderStatus[]).map((st) => {
-                const conf = getStatusConfig(st);
-                const isActive = order.status === st;
-                return (
-                  <button
-                    key={st}
-                    onClick={() => handleUpdateStatus(st)}
-                    className={`py-2.5 px-3 rounded-2xl text-xs font-black border transition-all ${
-                      isActive
-                        ? conf.activeBtnClass
-                        : conf.inactiveBtnClass
-                    }`}
-                  >
-                    {conf.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Status Color Legend */}
-            <div className="pt-2 border-t border-warm-muted flex flex-wrap items-center gap-3 text-[11px] font-extrabold text-charcoal-600">
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>Accepted</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-600"></span>Confirmed</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>Processing</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-600"></span>Ready</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-teal-700"></span>Delivered</span>
             </div>
           </div>
 
