@@ -40,7 +40,7 @@ export const sendOrderConfirmationWhatsApp = (order: OrderNotificationData) => {
     `🛠️ *Item:* ${product}\n` +
     `💰 *Total Amount:* ₹${total.toLocaleString('en-IN')}\n` +
     `💳 *Advance Paid:* ₹${advance.toLocaleString('en-IN')}\n` +
-    `📅 *Expected Delivery:* ${order.expected_delivery_date || 'Within 7 Days'}\n\n` +
+    `🏬 *Fulfillment:* Direct Workshop Counter Pickup Only (Kallimandhayam)\n\n` +
     `📄 *Tax Invoice Link:* ${window.location.origin}/invoice/${order.id}\n\n` +
     `தொடர்புக்கு: +91 96592 86268\n` +
     `நன்றி!`
@@ -60,7 +60,7 @@ export const sendStatusUpdateWhatsApp = (order: OrderNotificationData, newStatus
     `வணக்கம் ${customer},\n` +
     `உங்கள் ஆர்டர் #${orderNo} (${product}) நிலை மாற்றப்பட்டுள்ளது:\n\n` +
     `📌 *Current Status:* *${newStatusLabel.toUpperCase()}*\n` +
-    `📅 *Expected Delivery:* ${order.expected_delivery_date || 'As scheduled'}\n\n` +
+    `🏬 *Fulfillment:* Direct Workshop Counter Pickup Only (Kallimandhayam)\n\n` +
     `📄 *View Invoice:* ${window.location.origin}/invoice/${order.id}\n\n` +
     `Call/WhatsApp: +91 96592 86268`
   );

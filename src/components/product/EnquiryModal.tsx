@@ -179,13 +179,19 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pro
             />
           </div>
 
-          {/* Delivery Location */}
+          {/* Direct Shop Counter Pickup Notice */}
+          <div className="bg-amber-50 p-3 rounded-xl border border-amber-300 text-xs font-bold text-amber-900 flex items-center gap-2">
+            <span className="text-base">🏬</span>
+            <span>All Products are Direct Workshop Counter Pickup Only (Kallimandhayam)</span>
+          </div>
+
+          {/* Customer City / Location */}
           <div>
             <label className="block text-xs font-bold text-charcoal-700 mb-1">{t('enquiry_location')} *</label>
             <input
               type="text"
               required
-              placeholder="e.g. Madurai Main / Anna Nagar"
+              placeholder="e.g. Kallimandhayam / Dindigul / Madurai"
               value={deliveryLocation}
               onChange={(e) => setDeliveryLocation(e.target.value)}
               className="w-full px-3.5 py-2.5 text-sm border border-warm-border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"

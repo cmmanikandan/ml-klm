@@ -92,16 +92,10 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
             </h3>
             <p className="text-xs font-black text-slate-900">{order.customerName || order.customer_name || 'Customer'}</p>
             <p className="text-[11px] text-slate-800 font-bold">Phone: {order.customerPhone || order.customer_phone || '+91 96592 86268'}</p>
-            <p className="text-[11px] text-slate-700 font-medium">Location: {order.customerAddress || order.delivery_location || 'Kallimandhayam'}</p>
-            {order.is_pos ? (
-              <p className="text-[11px] text-emerald-700 font-bold mt-0.5">
-                Delivery Status: Immediate Counter Handover (Completed)
-              </p>
-            ) : (
-              <p className="text-[11px] text-slate-600 font-medium mt-0.5">
-                Expected Delivery: {order.expected_delivery_date || 'Within 7 Days'}
-              </p>
-            )}
+            <p className="text-[11px] text-slate-700 font-medium">Customer City: {order.customerAddress || order.delivery_location || 'Kallimandhayam'}</p>
+            <p className="text-[11px] text-emerald-800 font-bold mt-0.5">
+              Fulfillment Mode: Direct Workshop Counter Pickup Only (Kallimandhayam)
+            </p>
           </div>
         </div>
 

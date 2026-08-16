@@ -559,25 +559,25 @@ export const OrderDetailPage: React.FC = () => {
             </div>
           )}
 
-          {/* Delivery & Contact Information */}
+          {/* Workshop Pickup & Contact Information */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-warm-muted">
             <div className="bg-warm-bg p-4 rounded-2xl border border-warm-border space-y-1">
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
                 <MapPin className="w-4 h-4 text-brand-600" />
-                <span>Delivery Address</span>
+                <span>Shop Counter Pickup Location</span>
               </div>
-              <p className="text-xs text-charcoal-600 font-medium">
-                {order.delivery_location || 'Kallimandhayam, Dindigul District'}
+              <p className="text-xs text-charcoal-700 font-bold">
+                Manikandan Lathe Works, K. Keeranur Road, Kallimandhayam
               </p>
             </div>
 
             <div className="bg-warm-bg p-4 rounded-2xl border border-warm-border space-y-1">
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-charcoal-900">
                 <Calendar className="w-4 h-4 text-brand-600" />
-                <span>Expected Delivery</span>
+                <span>Fulfillment Mode</span>
               </div>
-              <p className="text-xs font-bold text-brand-700">
-                {order.expected_delivery_date || 'Within 7 Business Days'}
+              <p className="text-xs font-black text-emerald-700">
+                Direct Workshop Counter Pickup Only
               </p>
             </div>
           </div>
