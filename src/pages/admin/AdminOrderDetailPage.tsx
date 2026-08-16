@@ -838,7 +838,7 @@ export const AdminOrderDetailPage: React.FC = () => {
   const handlePrintA4Invoice = () => {
     if (!order) return;
     const targetId = order.order_number || order.id || 'MNK-ORD-6224';
-    navigate(`/invoice/${targetId}`);
+    navigate(`/admin/invoice/${targetId}`);
   };
 
   if (loading) {

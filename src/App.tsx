@@ -30,6 +30,7 @@ import { HelpPage } from './pages/HelpPage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { InvoicePage } from './pages/InvoicePage';
+import { CustomerInvoicePage } from './pages/CustomerInvoicePage';
 
 // Admin Components & Pages
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -79,7 +80,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   const isAdmin = location.pathname.startsWith('/admin');
-  const isInvoicePage = location.pathname.startsWith('/invoice/');
+  const isInvoicePage = location.pathname.startsWith('/invoice/') || location.pathname.startsWith('/admin/invoice/');
   const isAuthPage = location.pathname === '/login' || location.pathname === '/onboarding';
   
   // Public static pages (Landing, About, Contact)
@@ -185,7 +186,11 @@ export const App: React.FC = () => {
                   <Route path="/wishlist" element={<WishlistPage />} />
                   <Route path="/orders" element={<OrdersPage />} />
                   <Route path="/orders/:id" element={<OrderDetailPage />} />
-                  <Route path="/invoice/:id" element={<InvoicePage />} />
+                  
+                  {/* Customer Public Invoice Preview Link */}
+                  <Route path="/invoice/:id" element={<CustomerInvoicePage />} />
+                  <Route path="/view-invoice/:id" element={<CustomerInvoicePage />} />
+
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/profile/details" element={<ProfileDetailsPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
@@ -193,6 +198,7 @@ export const App: React.FC = () => {
 
                   {/* Separate Admin Routes */}
                   <Route path="/admin/login" element={<AdminLoginPage />} />
+                  <Route path="/admin/invoice/:id" element={<InvoicePage />} />
                   <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="dashboard" element={<AdminDashboardPage />} />

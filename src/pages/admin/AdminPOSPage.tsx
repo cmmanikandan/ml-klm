@@ -1208,7 +1208,7 @@ export const AdminPOSPage: React.FC = () => {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
-                            onClick={() => navigate(`/invoice/${ord.order_number || ord.id}`)}
+                            onClick={() => navigate(`/admin/invoice/${ord.order_number || ord.id}`)}
                             className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-2.5 py-1 rounded-xl text-[11px] shadow-sm transition-colors inline-flex items-center gap-1"
                             title="Print Invoice"
                           >
@@ -1585,7 +1585,7 @@ export const AdminPOSPage: React.FC = () => {
               <Button
                 onClick={() => {
                   const targetId = lastCreatedOrder.order_number || lastCreatedOrder.id;
-                  window.open(`/invoice/${targetId}`, '_blank');
+                  window.open(`/admin/invoice/${targetId}`, '_blank');
                 }}
                 variant="primary"
                 fullWidth

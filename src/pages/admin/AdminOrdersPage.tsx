@@ -397,7 +397,7 @@ export const AdminOrdersPage: React.FC = () => {
   // Standard A4 Paper Format Invoice Preview Direct Page Navigation
   const handlePrintA4Invoice = (order: any) => {
     const targetId = order.order_number || order.id || 'MNK-ORD-6224';
-    navigate(`/invoice/${targetId}`);
+    navigate(`/admin/invoice/${targetId}`);
   };
 
   return (

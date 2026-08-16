@@ -259,7 +259,7 @@ export const AdminDashboardPage: React.FC = () => {
                     </td>
                     <td className="py-3 px-4 text-center">
                       <Link
-                        to={`/invoice/${ord.order_number || ord.id}`}
+                        to={`/admin/invoice/${ord.order_number || ord.id}`}
                         target="_blank"
                         className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-[11px] shadow-sm transition-colors inline-flex items-center gap-1"
                       >
