@@ -61,62 +61,71 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
   const isFullyPaid = remaining === 0 && total > 0 && advancePaid >= total;
   const isPartiallyPaid = advancePaid > 0 && remaining > 0;
   const statusStampText = isFullyPaid ? 'PAID IN FULL' : isPartiallyPaid ? 'PARTIALLY PAID' : 'PAYMENT PENDING';
-  const statusBadgeBg = isFullyPaid ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : isPartiallyPaid ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-red-100 text-red-900 border-red-300';
+  const statusBadgeBg = isFullyPaid ? '#d1fae5' : isPartiallyPaid ? '#fef3c7' : '#fee2e2';
+  const statusBadgeColor = isFullyPaid ? '#065f46' : isPartiallyPaid ? '#92400e' : '#991b1b';
+  const statusBadgeBorder = isFullyPaid ? '#6ee7b7' : isPartiallyPaid ? '#fcd34d' : '#fca5a5';
 
   const orderDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
   const rawInvoiceNo = (order.order_number || order.id || 'MNK-1001').toString();
   const invoiceNo = rawInvoiceNo.startsWith('#') ? rawInvoiceNo : `#${rawInvoiceNo}`;
 
+  const isWeightBased = order.pricing_type === 'weight' ||
+    (order.weight_calculation &&
+     Array.isArray(order.weight_calculation.parts) &&
+     order.weight_calculation.parts.some((p: any) => Number(p.weight_kg) > 0));
+
   return (
     <div
       id={id}
-      className="bg-white text-slate-900 mx-auto relative flex flex-col justify-between box-border shadow-lg overflow-hidden"
       style={{
         width: '210mm',
         minWidth: '210mm',
         maxWidth: '210mm',
-        height: '297mm',
         minHeight: '297mm',
-        maxHeight: '297mm',
         padding: '12mm 14mm',
         boxSizing: 'border-box',
-        fontFamily: "'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif",
-        fontSize: '10.5pt',
-        lineHeight: '1.35',
-        position: 'relative'
+        backgroundColor: '#ffffff',
+        color: '#0f172a',
+        fontFamily: "'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif",
+        fontSize: '14px',
+        lineHeight: '1.4',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between'
       }}
     >
       <div>
         {/* HEADER SECTION: Left Brand & Right Tax Invoice Details */}
-        <div className="flex justify-between items-start border-b-2 border-brand-600 pb-4 mb-4">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2.5px solid #ea580c', paddingBottom: '16px', marginBottom: '16px' }}>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-              MANIKANDAN <span className="text-brand-600">LATHE</span>
+            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.5px' }}>
+              MANIKANDAN <span style={{ color: '#ea580c' }}>LATHE</span>
             </h1>
-            <p className="text-[10px] font-extrabold text-brand-600 tracking-widest uppercase mt-0.5">
+            <p style={{ margin: '2px 0 0 0', fontSize: '11px', fontWeight: 800, color: '#ea580c', letterSpacing: '1px', textTransform: 'uppercase' }}>
               WELDING WORKS & FABRICATION SHOP
             </p>
-            <p className="text-[11px] text-slate-600 mt-1 font-medium leading-relaxed">
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#475569', lineHeight: '1.4' }}>
               Kallimandhayam - 624616, Dindigul District, Tamil Nadu<br />
               <strong>Phone:</strong> +91 96592 86268 | <strong>Email:</strong> manikandanlatheklm@gmail.com
             </p>
           </div>
 
-          <div className="text-right">
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
+          <div style={{ textAlign: 'right' }}>
+            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '-0.5px' }}>
               TAX INVOICE
             </h2>
-            <p className="text-sm font-black font-mono text-brand-600 mt-0.5">
+            <p style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: 800, color: '#ea580c', fontFamily: 'monospace' }}>
               Invoice No: {invoiceNo}
             </p>
-            <p className="text-xs text-slate-600 font-bold mt-0.5">
+            <p style={{ margin: '2px 0 0 0', fontSize: '12px', fontWeight: 700, color: '#64748b' }}>
               Date: {orderDate}
             </p>
-            <div className="mt-1.5 flex items-center justify-end gap-1.5">
-              <span className="inline-block text-[10px] font-black tracking-wider uppercase px-2.5 py-0.5 rounded-full border bg-slate-100 text-slate-800 border-slate-300">
+            <div style={{ marginTop: '6px', display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '12px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', color: '#334155', textTransform: 'uppercase' }}>
                 MODE: {order.is_pos || (order.admin_notes && order.admin_notes.includes('POS')) || String(order.order_number || '').includes('POS') ? 'POS SALE' : 'ONLINE ORDER'}
               </span>
-              <span className={`inline-block text-[10px] font-black tracking-wider uppercase px-3 py-0.5 rounded-full border ${statusBadgeBg}`}>
+              <span style={{ fontSize: '10px', fontWeight: 900, padding: '2px 10px', borderRadius: '12px', border: `1px solid ${statusBadgeBorder}`, backgroundColor: statusBadgeBg, color: statusBadgeColor, textTransform: 'uppercase' }}>
                 {statusStampText}
               </span>
             </div>
@@ -124,256 +133,220 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
         </div>
 
         {/* SUPPLIER & CUSTOMER SECTION (FROM / BILL TO 50/50 GRID) */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/70">
-            <h3 className="text-[10px] font-black text-brand-600 uppercase tracking-widest border-b border-slate-200 pb-1 mb-1.5">
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+          
+          {/* Supplier Box */}
+          <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', backgroundColor: '#f8fafc' }}>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: 900, color: '#ea580c', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
               FROM (SUPPLIER)
             </h3>
-            <p className="text-xs font-black text-slate-900">MANIKANDAN LATHE WORKS</p>
-            <p className="text-[11px] text-slate-700 font-medium">Kallimandhayam - 624616</p>
-            <p className="text-[11px] text-slate-700 font-medium">Dindigul District, Tamil Nadu</p>
-            <p className="text-[11px] text-slate-800 font-bold mt-0.5">Phone: +91 96592 86268</p>
+            <p style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>MANIKANDAN LATHE WORKS</p>
+            <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#475569' }}>Kallimandhayam - 624616</p>
+            <p style={{ margin: 0, fontSize: '12px', color: '#475569' }}>Dindigul District, Tamil Nadu</p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>Phone: +91 96592 86268</p>
           </div>
 
-          <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/70">
-            <h3 className="text-[10px] font-black text-brand-600 uppercase tracking-widest border-b border-slate-200 pb-1 mb-1.5">
+          {/* Customer Box */}
+          <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', backgroundColor: '#f8fafc' }}>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: 900, color: '#ea580c', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
               BILL TO (CUSTOMER)
             </h3>
-            <p className="text-xs font-black text-slate-900">{order.customerName || order.customer_name || 'Customer'}</p>
-            <p className="text-[11px] text-slate-800 font-bold">Phone: {order.customerPhone || order.customer_phone || '+91 96592 86268'}</p>
-            <p className="text-[11px] text-slate-700 font-medium">Customer City: {order.customerAddress || order.delivery_location || 'Kallimandhayam'}</p>
-            <p className="text-[11px] text-emerald-800 font-bold mt-0.5">
+            <p style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>{order.customerName || order.customer_name || 'Customer'}</p>
+            <p style={{ margin: '2px 0 0 0', fontSize: '12px', fontWeight: 700, color: '#334155' }}>Phone: {order.customerPhone || order.customer_phone || '+91 96592 86268'}</p>
+            <p style={{ margin: 0, fontSize: '12px', color: '#475569' }}>Customer City: {order.customerAddress || order.delivery_location || 'Kallimandhayam'}</p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '11px', fontWeight: 800, color: '#047857' }}>
               Fulfillment Mode: Direct Workshop Counter Pickup Only (Kallimandhayam)
             </p>
           </div>
+
         </div>
 
-        {/* ITEMIZATION TABLE - CONDITIONAL BILL TEMPLATE (WEIGHT/PARTS vs NORMAL FIXED INVOICE) */}
-        {(() => {
-          const isWeightBased = order.pricing_type === 'weight' ||
-            (order.weight_calculation &&
-             Array.isArray(order.weight_calculation.parts) &&
-             order.weight_calculation.parts.some((p: any) => Number(p.weight_kg) > 0));
-
-          if (isWeightBased) {
-            return (
-              <div className="space-y-4 mb-4">
-                {/* 1. Parts Breakdown Table */}
-                <div>
-                  <div className="flex justify-between items-center bg-slate-100 px-3 py-1 border border-slate-300 border-b-0 rounded-t-lg">
-                    <span className="text-[10px] font-black uppercase text-slate-800 tracking-wider">
-                      FABRICATION ITEM: {order.productName || order.product_name || 'LATHE ITEM'} - WEIGHT BREAKDOWN (RATE: ₹{order.weight_calculation.rate_per_kg || 160}/KG)
-                    </span>
-                    <span className="text-[10px] font-extrabold text-brand-600 font-mono">
-                      TOTAL WEIGHT: {order.weight_calculation.total_weight_kg || 0} KG
-                    </span>
-                  </div>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-slate-900 text-white text-[10px] uppercase font-black tracking-wider">
-                        <th className="py-2 px-3 text-center w-[8%] border border-slate-900">S.No</th>
-                        <th className="py-2 px-3 text-left w-[46%] border border-slate-900">Product Item & Section Description</th>
-                        <th className="py-2 px-3 text-center w-[16%] border border-slate-900">Weight (KG)</th>
-                        <th className="py-2 px-3 text-right w-[15%] border border-slate-900">Rate / KG</th>
-                        <th className="py-2 px-3 text-right w-[15%] border border-slate-900">Cost (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-xs font-medium divide-y divide-slate-200">
-                      {order.weight_calculation.parts.map((p: any, idx: number) => {
-                        const rate = order.weight_calculation.rate_per_kg || 160;
-                        const cost = Math.round((Number(p.weight_kg) || 0) * rate);
-                        const displayName = p.name ? p.name : `${order.productName || 'Fabrication Item'} Piece ${idx + 1}`;
-                        return (
-                          <tr key={p.id || idx}>
-                            <td className="py-2 px-3 text-center font-bold text-slate-600 border border-slate-200">{idx + 1}</td>
-                            <td className="py-2 px-3 border border-slate-200 font-extrabold text-slate-900">{displayName}</td>
-                            <td className="py-2 px-3 text-center font-bold font-mono text-slate-900 border border-slate-200">{p.weight_kg} kg</td>
-                            <td className="py-2 px-3 text-right font-mono text-slate-700 border border-slate-200">₹{rate}</td>
-                            <td className="py-2 px-3 text-right font-black font-mono text-slate-900 border border-slate-200">₹{cost.toLocaleString('en-IN')}</td>
-                          </tr>
-                        );
-                      })}
-                      <tr className="bg-slate-50 font-black">
-                        <td colSpan={2} className="py-2 px-3 text-right text-slate-800 border border-slate-300">Base Weight Total:</td>
-                        <td className="py-2 px-3 text-center font-mono text-slate-900 border border-slate-300">{order.weight_calculation.total_weight_kg || 0} kg</td>
-                        <td className="py-2 px-3 text-right text-slate-600 border border-slate-300">-</td>
-                        <td className="py-2 px-3 text-right font-mono text-brand-700 border border-slate-300">
-                          ₹{(order.weight_calculation.weight_subtotal || 0).toLocaleString('en-IN')}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 2. Extra Shop Charges / Outsourced Expenses Table */}
-                {order.weight_calculation.extra_charges && order.weight_calculation.extra_charges.length > 0 && (
-                  <div>
-                    <div className="bg-amber-100/70 px-3 py-1 border border-amber-300 border-b-0 rounded-t-lg">
-                      <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider">
-                        EXTRA SHOP CHARGES & OUTSOURCED ITEMS
-                      </span>
-                    </div>
-                    <table className="w-full border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-800 text-white text-[10px] uppercase font-black">
-                          <th className="py-1.5 px-3 text-center w-[8%] border border-slate-800">#</th>
-                          <th className="py-1.5 px-3 text-left border border-slate-800">Description of Extra Item / Service</th>
-                          <th className="py-1.5 px-3 text-right w-[20%] border border-slate-800">Amount (₹)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {order.weight_calculation.extra_charges.map((ext: any, eIdx: number) => (
-                          <tr key={ext.id || eIdx}>
-                            <td className="py-1.5 px-3 text-center font-bold border border-slate-200">{eIdx + 1}</td>
-                            <td className="py-1.5 px-3 font-semibold text-slate-800 border border-slate-200">{ext.description}</td>
-                            <td className="py-1.5 px-3 text-right font-mono font-bold border border-slate-200">₹{Number(ext.amount || 0).toLocaleString('en-IN')}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          // STANDARD FIXED PRICE INVOICE TABLE
-          return (
-            <table className="w-full border-collapse mb-4">
+        {/* ITEMIZATION TABLE */}
+        {isWeightBased ? (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '6px 12px', border: '1px solid #cbd5e1', borderBottom: 'none', borderTopLeftRadius: '8px', borderTopRightRadius: '8px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', color: '#1e293b', letterSpacing: '0.5px' }}>
+                FABRICATION ITEM: {order.productName || order.product_name || 'LATHE ITEM'} - WEIGHT BREAKDOWN (RATE: ₹{order.weight_calculation.rate_per_kg || 160}/KG)
+              </span>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#ea580c', fontFamily: 'monospace' }}>
+                TOTAL WEIGHT: {order.weight_calculation.total_weight_kg || 0} KG
+              </span>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
-                <tr className="bg-slate-900 text-white text-[10px] uppercase font-black tracking-wider">
-                  <th className="py-2 px-3 text-center w-[8%] border border-slate-900">S.No</th>
-                  <th className="py-2 px-3 text-left w-[48%] border border-slate-900">Product Item & Specifications</th>
-                  <th className="py-2 px-3 text-center w-[12%] border border-slate-900">Qty</th>
-                  <th className="py-2 px-3 text-right w-[16%] border border-slate-900">Unit Rate (₹)</th>
-                  <th className="py-2 px-3 text-right w-[16%] border border-slate-900">Amount (₹)</th>
+                <tr style={{ backgroundColor: '#0f172a', color: '#ffffff', fontSize: '11px', textTransform: 'uppercase', fontWeight: 900 }}>
+                  <th style={{ padding: '8px 10px', textAlign: 'center', width: '8%', border: '1px solid #0f172a' }}>S.No</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', width: '46%', border: '1px solid #0f172a' }}>Product Item & Section Description</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'center', width: '16%', border: '1px solid #0f172a' }}>Weight (KG)</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right', width: '15%', border: '1px solid #0f172a' }}>Rate / KG</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'right', width: '15%', border: '1px solid #0f172a' }}>Cost (₹)</th>
                 </tr>
               </thead>
-              <tbody className="text-xs font-medium divide-y divide-slate-200">
-                <tr>
-                  <td className="py-2.5 px-3 text-center font-bold text-slate-600 border border-slate-200">1</td>
-                  <td className="py-2.5 px-3 border border-slate-200">
-                    <p className="font-extrabold text-slate-900 text-sm">{order.productName || order.product_name || 'Custom Lathe Fabricated Item'}</p>
-                    <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                      {order.specifications || 'Heavy duty precision steel lathe turning & welding fabrication.'}
-                    </p>
+              <tbody>
+                {order.weight_calculation.parts.map((p: any, idx: number) => {
+                  const rate = order.weight_calculation.rate_per_kg || 160;
+                  const cost = Math.round((Number(p.weight_kg) || 0) * rate);
+                  const displayName = p.name ? p.name : `${order.productName || 'Fabrication Item'} Piece ${idx + 1}`;
+                  return (
+                    <tr key={p.id || idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: '#64748b', border: '1px solid #e2e8f0' }}>{idx + 1}</td>
+                      <td style={{ padding: '8px 12px', fontWeight: 800, color: '#0f172a', border: '1px solid #e2e8f0' }}>{displayName}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, fontFamily: 'monospace', border: '1px solid #e2e8f0' }}>{p.weight_kg} kg</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', color: '#475569', border: '1px solid #e2e8f0' }}>₹{rate}</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 900, fontFamily: 'monospace', color: '#0f172a', border: '1px solid #e2e8f0' }}>₹{cost.toLocaleString('en-IN')}</td>
+                    </tr>
+                  );
+                })}
+                <tr style={{ backgroundColor: '#f8fafc', fontWeight: 900 }}>
+                  <td colSpan={2} style={{ padding: '8px 12px', textAlign: 'right', color: '#1e293b', border: '1px solid #cbd5e1' }}>Base Weight Total:</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', fontFamily: 'monospace', color: '#0f172a', border: '1px solid #cbd5e1' }}>{order.weight_calculation.total_weight_kg || 0} kg</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', color: '#64748b', border: '1px solid #cbd5e1' }}>-</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#c2410c', border: '1px solid #cbd5e1' }}>
+                    ₹{(order.weight_calculation.weight_subtotal || 0).toLocaleString('en-IN')}
                   </td>
-                  <td className="py-2.5 px-3 text-center font-bold font-mono text-slate-900 border border-slate-200">{qty} Unit(s)</td>
-                  <td className="py-2.5 px-3 text-right font-bold font-mono text-slate-800 border border-slate-200">₹{unitRate.toLocaleString('en-IN')}</td>
-                  <td className="py-2.5 px-3 text-right font-black font-mono text-slate-900 border border-slate-200">₹{baseItemSubtotal.toLocaleString('en-IN')}</td>
                 </tr>
-
-                {discount > 0 && (
-                  <tr className="bg-rose-50/40">
-                    <td className="py-2 px-3 text-center font-bold text-rose-700 border border-slate-200">2</td>
-                    <td className="py-2 px-3 border border-slate-200 font-bold text-rose-800">
-                      Discount & Special Concession {order.discount_notes ? `(${order.discount_notes})` : ''}
-                    </td>
-                    <td className="py-2 px-3 text-center font-mono text-rose-700 border border-slate-200">-</td>
-                    <td className="py-2 px-3 text-right font-mono text-rose-700 border border-slate-200">-₹{discount.toLocaleString('en-IN')}</td>
-                    <td className="py-2 px-3 text-right font-black font-mono text-rose-700 border border-slate-200">-₹{discount.toLocaleString('en-IN')}</td>
-                  </tr>
-                )}
-
-                {extraCharges > 0 && (
-                  <tr className="bg-amber-50/40">
-                    <td className="py-2 px-3 text-center font-bold text-amber-800 border border-slate-200">{discount > 0 ? 3 : 2}</td>
-                    <td className="py-2 px-3 border border-slate-200 font-bold text-amber-900">
-                      On-Site Fitting & Transport Add-ons
-                    </td>
-                    <td className="py-2 px-3 text-center font-mono text-amber-800 border border-slate-200">1</td>
-                    <td className="py-2 px-3 text-right font-mono text-amber-800 border border-slate-200">+₹{extraCharges.toLocaleString('en-IN')}</td>
-                    <td className="py-2 px-3 text-right font-black font-mono text-amber-800 border border-slate-200">+₹{extraCharges.toLocaleString('en-IN')}</td>
-                  </tr>
-                )}
               </tbody>
             </table>
-          );
-        })()}
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '16px', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#0f172a', color: '#ffffff', fontSize: '11px', textTransform: 'uppercase', fontWeight: 900 }}>
+                <th style={{ padding: '8px 10px', textAlign: 'center', width: '8%', border: '1px solid #0f172a' }}>S.No</th>
+                <th style={{ padding: '8px 12px', textAlign: 'left', width: '48%', border: '1px solid #0f172a' }}>Product Item & Specifications</th>
+                <th style={{ padding: '8px 10px', textAlign: 'center', width: '12%', border: '1px solid #0f172a' }}>Qty</th>
+                <th style={{ padding: '8px 12px', textAlign: 'right', width: '16%', border: '1px solid #0f172a' }}>Unit Rate (₹)</th>
+                <th style={{ padding: '8px 12px', textAlign: 'right', width: '16%', border: '1px solid #0f172a' }}>Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ padding: '10px', textAlign: 'center', fontWeight: 700, color: '#64748b', border: '1px solid #e2e8f0' }}>1</td>
+                <td style={{ padding: '10px 12px', border: '1px solid #e2e8f0' }}>
+                  <p style={{ margin: 0, fontWeight: 900, color: '#0f172a', fontSize: '14px' }}>{order.productName || order.product_name || 'Custom Lathe Fabricated Item'}</p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#64748b' }}>
+                    {order.specifications || 'Heavy duty precision steel lathe turning & welding fabrication.'}
+                  </p>
+                </td>
+                <td style={{ padding: '10px', textAlign: 'center', fontWeight: 800, fontFamily: 'monospace', color: '#0f172a', border: '1px solid #e2e8f0' }}>{qty} Unit(s)</td>
+                <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace', color: '#334155', border: '1px solid #e2e8f0' }}>₹{unitRate.toLocaleString('en-IN')}</td>
+                <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 900, fontFamily: 'monospace', color: '#0f172a', border: '1px solid #e2e8f0' }}>₹{baseItemSubtotal.toLocaleString('en-IN')}</td>
+              </tr>
+
+              {discount > 0 && (
+                <tr style={{ backgroundColor: '#fff1f2' }}>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: '#be123c', border: '1px solid #e2e8f0' }}>2</td>
+                  <td style={{ padding: '8px 12px', fontWeight: 800, color: '#9f1239', border: '1px solid #e2e8f0' }}>
+                    Discount & Special Concession {order.discount_notes ? `(${order.discount_notes})` : ''}
+                  </td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', fontFamily: 'monospace', color: '#be123c', border: '1px solid #e2e8f0' }}>-</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#be123c', border: '1px solid #e2e8f0' }}>-₹{discount.toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 900, fontFamily: 'monospace', color: '#be123c', border: '1px solid #e2e8f0' }}>-₹{discount.toLocaleString('en-IN')}</td>
+                </tr>
+              )}
+
+              {extraCharges > 0 && (
+                <tr style={{ backgroundColor: '#fffbeb' }}>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: '#92400e', border: '1px solid #e2e8f0' }}>{discount > 0 ? 3 : 2}</td>
+                  <td style={{ padding: '8px 12px', fontWeight: 800, color: '#78350f', border: '1px solid #e2e8f0' }}>
+                    On-Site Fitting & Transport Add-ons
+                  </td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', fontFamily: 'monospace', color: '#92400e', border: '1px solid #e2e8f0' }}>1</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#92400e', border: '1px solid #e2e8f0' }}>+₹{extraCharges.toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 900, fontFamily: 'monospace', color: '#92400e', border: '1px solid #e2e8f0' }}>+₹{extraCharges.toLocaleString('en-IN')}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
 
         {/* FINANCIAL BREAKDOWN SUMMARY */}
-        <div className="flex justify-between items-start mb-4">
-          <div className="bg-slate-100/80 p-3 rounded-xl border-l-4 border-brand-600 max-w-[340px] text-xs">
-            <p className="font-bold text-slate-800">
-              <strong>Thank you for choosing Manikandan Lathe Works!</strong>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+          
+          {/* Note Box */}
+          <div style={{ backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '10px', borderLeft: '4px solid #ea580c', maxWidth: '340px', fontSize: '12px' }}>
+            <p style={{ margin: 0, fontWeight: 800, color: '#1e293b' }}>
+              Thank you for choosing Manikandan Lathe Works!
             </p>
-            <p className="text-[10px] text-slate-600 mt-0.5 leading-relaxed">
+            <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#475569', lineHeight: '1.4' }}>
               Quality guaranteed steel welding & lathe fabrication engineered to customer specifications.
             </p>
           </div>
 
-          <div className="w-[280px]">
-            <table className="w-full text-xs font-semibold">
+          {/* Totals Table */}
+          <div style={{ width: '280px' }}>
+            <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
               <tbody>
                 {order.weight_calculation && order.pricing_type === 'weight' ? (
                   <>
-                    <tr className="border-b border-slate-200">
-                      <td className="py-1 text-slate-600">Base Weight Amount:</td>
-                      <td className="py-1 text-right font-bold text-slate-900 font-mono">₹{(order.weight_calculation.weight_subtotal || 0).toLocaleString('en-IN')}</td>
+                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '4px 0', color: '#475569' }}>Base Weight Amount:</td>
+                      <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 800, fontFamily: 'monospace', color: '#0f172a' }}>₹{(order.weight_calculation.weight_subtotal || 0).toLocaleString('en-IN')}</td>
                     </tr>
                     {Number(order.weight_calculation.extra_subtotal || 0) > 0 && (
-                      <tr className="border-b border-slate-200">
-                        <td className="py-1 text-slate-600">Extra Expenses Total:</td>
-                        <td className="py-1 text-right font-bold text-slate-900 font-mono">₹{(order.weight_calculation.extra_subtotal || 0).toLocaleString('en-IN')}</td>
+                      <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '4px 0', color: '#475569' }}>Extra Expenses Total:</td>
+                        <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 800, fontFamily: 'monospace', color: '#0f172a' }}>₹{(order.weight_calculation.extra_subtotal || 0).toLocaleString('en-IN')}</td>
                       </tr>
                     )}
                   </>
                 ) : (
-                  <tr className="border-b border-slate-200">
-                    <td className="py-1 text-slate-600">Base Subtotal:</td>
-                    <td className="py-1 text-right font-bold text-slate-900 font-mono">₹{baseItemSubtotal.toLocaleString('en-IN')}</td>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 0', color: '#475569' }}>Base Subtotal:</td>
+                    <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 800, fontFamily: 'monospace', color: '#0f172a' }}>₹{baseItemSubtotal.toLocaleString('en-IN')}</td>
                   </tr>
                 )}
                 {discount > 0 && (
-                  <tr className="border-b border-slate-200">
-                    <td className="py-1 text-rose-700">Special Discount:</td>
-                    <td className="py-1 text-right font-bold text-rose-700 font-mono">-₹{discount.toLocaleString('en-IN')}</td>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 0', color: '#be123c' }}>Special Discount:</td>
+                    <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 800, fontFamily: 'monospace', color: '#be123c' }}>-₹{discount.toLocaleString('en-IN')}</td>
                   </tr>
                 )}
                 {extraCharges > 0 && (
-                  <tr className="border-b border-slate-200">
-                    <td className="py-1 text-amber-800">Extra Fitting / Transport:</td>
-                    <td className="py-1 text-right font-bold text-amber-800 font-mono">+₹{extraCharges.toLocaleString('en-IN')}</td>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 0', color: '#92400e' }}>Extra Fitting / Transport:</td>
+                    <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 800, fontFamily: 'monospace', color: '#92400e' }}>+₹{extraCharges.toLocaleString('en-IN')}</td>
                   </tr>
                 )}
-                <tr className="border-b border-slate-200 font-black">
-                  <td className="py-1 text-slate-900">Grand Total Amount:</td>
-                  <td className="py-1 text-right text-slate-900 font-mono">₹{total.toLocaleString('en-IN')}</td>
+                <tr style={{ borderBottom: '1px solid #e2e8f0', fontWeight: 900 }}>
+                  <td style={{ padding: '6px 0', color: '#0f172a', fontSize: '13px' }}>Grand Total Amount:</td>
+                  <td style={{ padding: '6px 0', textAlign: 'right', color: '#0f172a', fontFamily: 'monospace', fontSize: '14px' }}>₹{total.toLocaleString('en-IN')}</td>
                 </tr>
-                <tr className="border-b border-slate-200">
-                  <td className="py-1 text-slate-600">Advance / Paid:</td>
-                  <td className="py-1 text-right font-bold text-emerald-700 font-mono">₹{advancePaid.toLocaleString('en-IN')}</td>
+                <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                  <td style={{ padding: '4px 0', color: '#475569' }}>Advance / Paid:</td>
+                  <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 800, fontFamily: 'monospace', color: '#047857' }}>₹{advancePaid.toLocaleString('en-IN')}</td>
                 </tr>
-                <tr className="border-t-2 border-b-2 border-brand-600">
-                  <td className="py-2 font-black text-sm text-slate-900">Balance Due:</td>
-                  <td className="py-2 text-right font-black text-base text-brand-600 font-mono">₹{remaining.toLocaleString('en-IN')}</td>
+                <tr style={{ borderTop: '2px solid #ea580c', borderBottom: '2px solid #ea580c' }}>
+                  <td style={{ padding: '8px 0', fontWeight: 900, fontSize: '14px', color: '#0f172a' }}>Balance Due:</td>
+                  <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: 900, fontSize: '16px', color: '#ea580c', fontFamily: 'monospace' }}>₹{remaining.toLocaleString('en-IN')}</td>
                 </tr>
               </tbody>
             </table>
           </div>
+
         </div>
       </div>
 
-      {/* SIGNATURE & FOOTER SECTION (ABSOLUTE PINNED INSIDE 297mm A4) */}
-      <div className="absolute bottom-[8mm] left-[14mm] right-[14mm]">
-        <div className="flex justify-between items-end border-t border-slate-200 pt-3 mb-2">
-          <div className="text-center w-[180px]">
-            <div className="border-t border-slate-500 pt-1 text-xs font-bold text-slate-800">
+      {/* SIGNATURE & FOOTER SECTION */}
+      <div style={{ marginTop: '24px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '12px' }}>
+          <div style={{ textAlign: 'center', width: '180px' }}>
+            <div style={{ borderTop: '1px solid #64748b', paddingTop: '4px', fontSize: '12px', fontWeight: 700, color: '#334155' }}>
               Customer Signature
             </div>
           </div>
 
-          <div className="text-center w-[220px]">
-            <div className="border-t border-slate-500 pt-1 text-xs font-black text-slate-900">
+          <div style={{ textAlign: 'center', width: '220px' }}>
+            <div style={{ borderTop: '1px solid #64748b', paddingTop: '4px', fontSize: '12px', fontWeight: 900, color: '#0f172a' }}>
               Shop Owner Signature<br />
-              <span className="text-[9px] text-slate-500 font-extrabold uppercase tracking-wider block mt-0.5">
+              <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 MANIKANDAN LATHE WORKS
               </span>
             </div>
           </div>
         </div>
 
-        <div className="text-center text-[9px] text-slate-500 font-bold border-t border-slate-100 pt-1.5 uppercase">
+        <div style={{ textAlign: 'center', fontSize: '10px', color: '#64748b', fontWeight: 700, borderTop: '1px solid #f1f5f9', paddingTop: '6px', textTransform: 'uppercase' }}>
           Tax Invoice Document • MANIKANDAN LATHE WORKS, Kallimandhayam - 624616, Dindigul District, Tamil Nadu
         </div>
       </div>

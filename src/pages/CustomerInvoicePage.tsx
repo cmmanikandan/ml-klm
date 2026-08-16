@@ -234,21 +234,33 @@ export const CustomerInvoicePage: React.FC = () => {
       const html2pdf = (window as any).html2pdf;
       const targetInvoiceNo = order?.order_number || order?.id || 'MNK-ORD-1';
 
+      // Temporarily store zoom and reset scale so html2canvas captures full 100% resolution
+      const prevZoom = zoomLevel;
+      setZoomLevel(1.0);
+      await new Promise((r) => setTimeout(r, 120));
+
       const opt = {
-        margin: 0,
+        margin: [0, 0, 0, 0],
         filename: `Tax_Invoice_${targetInvoiceNo}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          logging: false,
+          scrollY: 0,
+          scrollX: 0
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
       await html2pdf().set(opt).from(invoiceElement).save();
+      setZoomLevel(prevZoom);
       setPdfDownloaded(true);
       setTimeout(() => setPdfDownloaded(false), 5000);
     } catch (e: any) {
       console.error('Customer PDF Generation Error', e);
-      setPdfError('Downloading PDF file. Use "Print" button if download is blocked.');
-      setTimeout(() => setPdfError(null), 6000);
+      setPdfError('Generating PDF via browser print...');
+      window.print();
     } finally {
       setIsPdfGenerating(false);
     }
