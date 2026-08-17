@@ -86,14 +86,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div 
-      className="min-h-screen flex flex-col justify-between p-4"
-      style={{
-        backgroundColor: '#f8fafc',
-        backgroundImage: 'linear-gradient(to right, rgba(226, 232, 240, 0.7) 1px, transparent 1px), linear-gradient(to bottom, rgba(226, 232, 240, 0.7) 1px, transparent 1px)',
-        backgroundSize: '48px 48px'
-      }}
-    >
+    <div className="min-h-screen bg-[#FFF9F2] flex flex-col justify-between p-4 relative">
       {/* Top Bar with Back to Website Button */}
       <div className="max-w-md w-full mx-auto flex items-center justify-between pt-2">
         <Link
@@ -288,12 +281,13 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        {/* Divider */}
-        <div className="relative flex items-center justify-center my-4">
-          <div className="border-t border-slate-200 w-full"></div>
-          <span className="bg-white px-3 text-[11px] font-bold text-charcoal-400 uppercase tracking-wider relative">
+        {/* Symmetrical Centered Divider */}
+        <div className="flex items-center my-4 gap-3">
+          <div className="flex-1 border-t border-slate-200"></div>
+          <span className="text-[11px] font-extrabold text-charcoal-400 uppercase tracking-wider select-none shrink-0">
             {isTamil ? 'அல்லது' : 'OR'}
           </span>
+          <div className="flex-1 border-t border-slate-200"></div>
         </div>
 
         {/* Google Sign-In Button */}

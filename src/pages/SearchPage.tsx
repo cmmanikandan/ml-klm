@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, ArrowLeft, Clock, Sparkles } from 'lucide-react';
+import { Search, X, ArrowLeft, Clock, Sparkles, Mic } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
+import { VoiceSearchModal } from '../components/common/VoiceSearchModal';
 import { useLanguage } from '../context/LanguageContext';
 import { Product } from '../types';
 import { fetchActiveProducts } from '../lib/productsStore';
@@ -13,6 +14,7 @@ export const SearchPage: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [query, setQuery] = useState('');
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     const saved = localStorage.getItem('ml_recent_searches');
@@ -85,15 +87,35 @@ export const SearchPage: React.FC = () => {
             />
           </div>
 
-          {query && (
+          {query ? (
             <button
               onClick={handleClear}
               className="p-1.5 text-charcoal-400 hover:text-charcoal-800 rounded-full hover:bg-warm-bg transition-colors mr-1"
+              aria-label="Clear Search"
             >
               <X className="w-4 h-4" />
             </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsVoiceOpen(true)}
+              className="p-2 text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors mr-1 shrink-0 flex items-center justify-center"
+              title="Tamil & English Voice Search"
+              aria-label="Voice Search"
+            >
+              <Mic className="w-4 h-4 animate-pulse-subtle" />
+            </button>
           )}
         </div>
+
+        {/* Voice Search Modal */}
+        <VoiceSearchModal
+          isOpen={isVoiceOpen}
+          onClose={() => setIsVoiceOpen(false)}
+          onTranscript={(spokenText) => {
+            setQuery(spokenText);
+          }}
+        />
 
         {/* Recent Searches Pills */}
         {!query && recentSearches.length > 0 && (

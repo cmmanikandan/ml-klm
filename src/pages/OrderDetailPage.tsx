@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Phone, MapPin, CheckCircle2, CreditCard, QrCode, Star, Package, Printer, Share2, FileText, Download } from 'lucide-react';
+import { ArrowLeft, Calendar, Phone, MapPin, CheckCircle2, CreditCard, QrCode, Star, Package, Printer, Share2, FileText, Download, ExternalLink, Sparkles } from 'lucide-react';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
@@ -545,6 +545,71 @@ export const OrderDetailPage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* COMPLETED ORDER CELEBRATION & GOOGLE MAPS REVIEW BOOSTER */}
+          {order.status === 'delivered' && (
+            <div className="bg-gradient-to-br from-amber-500/15 via-brand-500/10 to-orange-500/15 p-5 sm:p-6 rounded-3xl border-2 border-amber-400 shadow-xl space-y-4 animate-slide-up">
+              <div className="flex items-start gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-brand-500 text-white flex items-center justify-center text-2xl shrink-0 shadow-md">
+                  🎉
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-900 block">
+                      {isTamil ? 'ஆர்டர் வெற்றிகரமாக ஒப்படைக்கப்பட்டது!' : 'Order Completed & Handed Over!'}
+                    </span>
+                    <span className="bg-emerald-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow-xs">
+                      100% Verified
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black text-charcoal-950">
+                    {isTamil 
+                      ? 'மணிகண்டன் லேத் பட்டறையைத் தேர்ந்தெடுத்தமைக்கு நன்றி!' 
+                      : 'Thank you for choosing Manikandan Lathe Works!'}
+                  </h3>
+                  <p className="text-xs text-charcoal-700 font-medium leading-relaxed">
+                    {isTamil
+                      ? 'எங்கள் தயாரிப்பு மற்றும் வெல்டிங் வேலைப்பாடு உங்களுக்கு திருப்தி அளித்ததா? கூகிள் மேப்ஸில் 5-ஸ்டார் மதிப்பீடு வழங்கி உள்ளூர் பட்டறையை ஆதரிக்கவும்!'
+                      : 'Are you satisfied with our steel fabrication & lathe turning precision? Please support our local shop by rating us 5 stars on Google Maps!'}
+                  </p>
+                </div>
+              </div>
+
+              {/* 1-Tap Google Maps Review Action Button */}
+              <div className="pt-1 flex flex-col sm:flex-row items-center gap-2.5">
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query=Manikandan+Lathe+Works+Kallimandhayam"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    confetti({ particleCount: 100, spread: 70 });
+                  }}
+                  className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-brand-600 hover:from-amber-600 hover:to-brand-700 text-white font-extrabold py-3.5 px-5 rounded-2xl shadow-lg hover:shadow-xl transition-all transform active:scale-98 text-xs sm:text-sm"
+                >
+                  <span className="text-base">⭐⭐⭐⭐⭐</span>
+                  <span>
+                    {isTamil
+                      ? 'Google Maps-ல் 5-Star மதிப்பீடு வழங்குக'
+                      : 'Rate us 5 Stars on Google Maps'}
+                  </span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+
+                {/* Direct WhatsApp Share Feedback */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = `⭐ *Review for Manikandan Lathe Works*\nOrder #${order.order_number || order.id}: Excellent fabrication quality and precision lathe work!\nRecommended for all welding & lathe needs in Kallimandhayam.`;
+                    window.open(`https://api.whatsapp.com/send?phone=919659286268&text=${encodeURIComponent(text)}`, '_blank');
+                  }}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-700 font-extrabold py-3.5 px-4 rounded-2xl border-2 border-emerald-300 shadow-sm transition-all text-xs"
+                >
+                  <Share2 className="w-4 h-4 text-emerald-600" />
+                  <span>{isTamil ? 'வாட்ஸ்அப் கருத்து' : 'WhatsApp Review'}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* DYNAMIC PAYMENT / NOTIFICATION CARD SECTION */}
           {(() => {

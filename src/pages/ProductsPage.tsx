@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, Search, X, ArrowUpDown, PackageX } from 'lucide-react';
+import { Filter, Search, X, ArrowUpDown, PackageX, Mic } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
+import { VoiceSearchModal } from '../components/common/VoiceSearchModal';
 import { useLanguage } from '../context/LanguageContext';
 import { Product, Category } from '../types';
 import { supabase, INITIAL_CATEGORIES } from '../lib/supabase';
@@ -18,6 +19,7 @@ export const ProductsPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
 
   // In-page search and sorting state
   const [searchQuery, setSearchQuery] = useState('');
@@ -99,17 +101,38 @@ export const ProductsPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={isTamil ? 'பொருட்கள் அல்லது பொருளின் பெயர் தேடுக...' : 'Search products by title, Tamil name, or material...'}
-              className="w-full pl-10 pr-9 py-2.5 text-xs font-bold border-2 border-warm-border focus:border-brand-500 rounded-2xl bg-white focus:outline-none shadow-card transition-colors"
+              className="w-full pl-10 pr-20 py-2.5 text-xs font-bold border-2 border-warm-border focus:border-brand-500 rounded-2xl bg-white focus:outline-none shadow-card transition-colors"
             />
-            {searchQuery && (
+            <div className="absolute right-2.5 top-2 flex items-center gap-1">
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 text-charcoal-400 hover:text-charcoal-800 rounded-full"
+                  aria-label="Clear Search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
               <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-3 text-charcoal-400 hover:text-charcoal-800"
+                type="button"
+                onClick={() => setIsVoiceOpen(true)}
+                className="p-1.5 text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors"
+                title="Tamil & English Voice Search"
+                aria-label="Voice Search"
               >
-                <X className="w-4 h-4" />
+                <Mic className="w-3.5 h-3.5" />
               </button>
-            )}
+            </div>
           </div>
+
+          {/* Voice Search Modal */}
+          <VoiceSearchModal
+            isOpen={isVoiceOpen}
+            onClose={() => setIsVoiceOpen(false)}
+            onTranscript={(spokenText) => {
+              setSearchQuery(spokenText);
+            }}
+          />
 
           {/* Price & Priority Sort Dropdown */}
           <div className="relative w-full sm:w-auto shrink-0 flex items-center gap-2 bg-white px-3 py-2 rounded-2xl border-2 border-warm-border shadow-card">
