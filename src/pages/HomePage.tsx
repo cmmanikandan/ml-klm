@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles, Flame, ThumbsUp, Clock, PackageX, CreditCard, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Sparkles, Flame, ThumbsUp, Clock, PackageX, CreditCard, ShieldCheck, Wrench } from 'lucide-react';
 import { SearchCard } from '../components/common/SearchCard';
 import { ProductCard } from '../components/product/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
@@ -221,6 +221,40 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* MACHINING & LATHE REPAIR SERVICE REQUEST CTA BANNER */}
+        <div className="bg-gradient-to-r from-slate-900 via-charcoal-900 to-slate-800 text-white rounded-3xl p-5 sm:p-6 border border-slate-700 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-brand-500 text-white flex items-center justify-center text-2xl shrink-0 shadow-md">
+              🛠️
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                  {isTamil ? 'உடனடி பழுது பார்க்கும் சேவை' : 'Machining & Repair Service'}
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-white">
+                {isTamil 
+                  ? 'டிராக்டர் பாகங்கள் & ஷாப்ட் லேத் பழுது வேலை தேவையா?' 
+                  : 'Need Lathe Machining or Tractor Part Repair?'}
+              </h3>
+              <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                {isTamil
+                  ? 'உடைந்த பாகத்தின் புகைப்படத்தை அனுப்பி உடனடி மதிப்பீடு & கட்டண விபரம் பெறுங்கள்.'
+                  : 'Upload photo of broken machinery or agricultural implements for fast precision turnaround.'}
+              </p>
+            </div>
+          </div>
+
+          <Link
+            to="/repair"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-brand-500 to-amber-500 hover:from-brand-600 hover:to-amber-600 text-white font-extrabold py-3.5 px-5 rounded-2xl text-xs shadow-lg transition-all transform active:scale-95 shrink-0"
+          >
+            <Wrench className="w-4 h-4" />
+            <span>{isTamil ? 'பழுது கோரிக்கை விடுக்கவும்' : 'Request Repair Service'}</span>
+          </Link>
+        </div>
 
         {/* Featured Products Section */}
         <div className="space-y-3">

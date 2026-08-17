@@ -12,11 +12,13 @@ import {
   Sparkles,
   Package,
   Wrench,
-  ThumbsUp
+  ThumbsUp,
+  Maximize2
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { ProductCard } from '../components/product/ProductCard';
 import { EnquiryModal } from '../components/product/EnquiryModal';
+import { ImageLightboxModal } from '../components/common/ImageLightboxModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +41,7 @@ export const ProductDetailPage: React.FC = () => {
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isEnquiryOpen, setIsEnquiryOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -162,15 +165,25 @@ export const ProductDetailPage: React.FC = () => {
 
         {/* Product Image Gallery & Main View */}
         <div className="bg-white rounded-3xl p-4 sm:p-6 border border-warm-border shadow-card space-y-4">
-          <div className="relative aspect-square sm:aspect-video rounded-2xl overflow-hidden bg-warm-bg border border-warm-border">
+          <div 
+            onClick={() => setIsLightboxOpen(true)}
+            className="relative aspect-square sm:aspect-video rounded-2xl overflow-hidden bg-warm-bg border border-warm-border cursor-pointer group"
+            title="Click to view full image & zoom"
+          >
             <img
               src={images[selectedImageIndex] || images[0] || fallbackImage}
               alt={title}
               onError={(e) => {
                 (e.target as HTMLImageElement).src = fallbackImage;
               }}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
+
+            {/* Click to Zoom Badge */}
+            <div className="absolute bottom-3 right-3 bg-black/70 hover:bg-black text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-xs shadow-lg transition-all">
+              <Maximize2 className="w-3.5 h-3.5 text-brand-400" />
+              <span>{isTamil ? 'பெரிதாக்குக' : 'Click to Zoom'}</span>
+            </div>
           </div>
 
           {/* Thumbnail Selector */}
@@ -179,7 +192,9 @@ export const ProductDetailPage: React.FC = () => {
               {images.map((img, idx) => (
                 <button
                   key={idx}
-                  onClick={() => setSelectedImageIndex(idx)}
+                  onClick={() => {
+                    setSelectedImageIndex(idx);
+                  }}
                   className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
                     selectedImageIndex === idx ? 'border-brand-600 ring-2 ring-brand-500/30' : 'border-warm-border opacity-70 hover:opacity-100'
                   }`}
@@ -315,6 +330,15 @@ export const ProductDetailPage: React.FC = () => {
       {isEnquiryOpen && (
         <EnquiryModal isOpen={isEnquiryOpen} product={product} onClose={() => setIsEnquiryOpen(false)} />
       )}
+
+      {/* Fullscreen High-Res Image Lightbox Modal */}
+      <ImageLightboxModal
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        images={images}
+        initialIndex={selectedImageIndex}
+        productTitle={title}
+      />
     </div>
   );
 };
