@@ -16,8 +16,7 @@ import {
   Share2, 
   X, 
   Check, 
-  Loader2,
-  CreditCard
+  Loader2
 } from 'lucide-react';
 import { InvoiceDocument } from '../components/invoice/InvoiceDocument';
 import { Logo } from '../components/common/Logo';
@@ -279,85 +278,7 @@ export const CustomerInvoicePage: React.FC = () => {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const handlePayNow = () => {
-    const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_T547lttHOVL633';
-    const amount = Number(order?.pay_button_amount || order?.remaining_amount || order?.total_amount || 1000);
 
-    let paymentCompleted = false;
-
-    const options = {
-      key: rzpKey,
-      amount: amount * 100,
-      currency: 'INR',
-      name: 'MANIKANDAN LATHE',
-      description: `Payment for Tax Invoice #${order?.order_number || id}`,
-      image: '/logo.png',
-      handler: async function (response: any) {
-        paymentCompleted = true;
-        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
-        
-        // Update local and DB remaining amount
-        setOrder((prev: any) => ({
-          ...prev,
-          remaining_amount: 0,
-          total_paid: (prev?.total_paid || 0) + amount,
-          payment_status: 'paid'
-        }));
-
-        try {
-          const ordNum = order?.order_number || id;
-          await supabase.from('orders').update({
-            remaining_amount: 0,
-            payment_status: 'paid'
-          }).or(`order_number.eq.${ordNum},id.eq.${ordNum}`);
-
-          await supabase.from('payments').insert({
-            order_number: ordNum,
-            amount: amount,
-            payment_mode: 'Razorpay Online',
-            payment_type: 'razorpay',
-            notes: `Paid online for Invoice #${ordNum}`,
-            created_at: new Date().toISOString(),
-            status: 'completed',
-            recorded_by: 'customer_invoice_checkout'
-          });
-        } catch (e) {
-          console.warn('Payment record DB sync warning', e);
-        }
-
-        alert('Payment completed successfully via Razorpay! Your invoice is now marked PAID.');
-      },
-      modal: {
-        ondismiss: function () {
-          if (!paymentCompleted) {
-            alert('Payment process was closed without completing. You can click "Pay Online" to try again anytime.');
-          }
-        }
-      },
-      prefill: {
-        name: order?.customerName || 'Manikandan Customer',
-        email: 'customer@manikandanlathe.com',
-        contact: order?.customerPhone || '+91 96592 86268'
-      },
-      theme: {
-        color: '#ea580c'
-      }
-    };
-
-    try {
-      const rzp = new (window as any).Razorpay(options);
-
-      rzp.on('payment.failed', function (response: any) {
-        const errorDesc = response.error?.description || response.error?.reason || 'Transaction could not be processed.';
-        alert(`Payment Failed: ${errorDesc}\nPlease check your account/payment method and try again, or pay cash at the workshop counter.`);
-      });
-
-      rzp.open();
-    } catch (err) {
-      console.warn('Razorpay checkout error:', err);
-      alert('Could not initialize Razorpay payment. Please verify your connection and try again.');
-    }
-  };
 
   const handleDownloadPdf = async () => {
     setIsPdfGenerating(true);
@@ -557,16 +478,7 @@ export const CustomerInvoicePage: React.FC = () => {
               </button>
             </div>
 
-            {/* Pay Online via Razorpay Button if balance due */}
-            {(order && (order.remaining_amount > 0 || (order.total_amount > 0 && order.total_paid === 0))) && (
-              <button
-                onClick={handlePayNow}
-                className="bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-black px-4 py-2 rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5 animate-pulse-subtle"
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>Pay Online (₹{(order.pay_button_amount || order.remaining_amount || order.total_amount || 0).toLocaleString('en-IN')})</span>
-              </button>
-            )}
+
 
             {/* Primary Download PDF Action Button */}
             <button
