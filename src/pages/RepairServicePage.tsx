@@ -13,10 +13,11 @@ import {
   ChevronRight,
   Sparkles,
   History,
-  PlusCircle,
+  Plus,
   Package,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  ListFilter
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { useLanguage } from '../context/LanguageContext';
@@ -28,37 +29,37 @@ import { getNextRepairTicketId } from '../lib/idGenerator';
 const COMPACT_REPAIR_CATEGORIES = [
   {
     id: 'tractor_agri',
-    icon: '🚜',
+    image: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=300&auto=format&fit=crop&q=80',
     title_en: 'Tractor & Agri Implements',
     title_ta: '7-கலப்பை & விவசாயக் கருவிகள்',
   },
   {
     id: 'heavy_arc',
-    icon: '🔥',
+    image: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=300&auto=format&fit=crop&q=80',
     title_en: 'ARC Welding & Gates/Grills',
     title_ta: 'ARC வெல்டிங் & கேட் கிரில்',
   },
   {
     id: 'shaft_turning',
-    icon: '⚙️',
+    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80',
     title_en: 'Shaft Turning & Bushing',
     title_ta: 'ஷாப்ட் டர்னிங் & புஷ் வேலை',
   },
   {
     id: 'axle_keyway',
-    icon: '📏',
+    image: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=300&auto=format&fit=crop&q=80',
     title_en: 'Axle Straightening & Keyway',
     title_ta: 'ஆக்சில் வளைவு நீக்குதல் & கீவே',
   },
   {
     id: 'motor_pump',
-    icon: '⚡',
+    image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&auto=format&fit=crop&q=80',
     title_en: 'Borewell Pump & Motor',
     title_ta: 'போர்வெல் பம்ப் & மோட்டார்',
   },
   {
     id: 'custom_lathe',
-    icon: '🛠️',
+    image: 'https://images.unsplash.com/photo-1581092162384-8987c1d64718?w=300&auto=format&fit=crop&q=80',
     title_en: 'Custom Industrial Lathe',
     title_ta: 'தனிப்பயன் லேத் & இயந்திரங்கள்',
   },
@@ -70,7 +71,8 @@ export const RepairServicePage: React.FC = () => {
   const navigate = useNavigate();
   const isTamil = language === 'ta';
 
-  const [activeTab, setActiveTab] = useState<'new_request' | 'sent_requests'>('new_request');
+  // Default view shows the user's created requests. If no requests, or when clicked '+ New Request', opens form.
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   // Form State
   const [selectedService, setSelectedService] = useState('tractor_agri');
@@ -84,7 +86,7 @@ export const RepairServicePage: React.FC = () => {
 
   // Sent Requests State
   const [myRequests, setMyRequests] = useState<any[]>([]);
-  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [loadingRequests, setLoadingRequests] = useState(true);
 
   const customerName = user?.full_name?.trim() || 'Customer';
   const customerPhone = user?.phone?.trim() || guestPhone.trim();
@@ -256,17 +258,23 @@ export const RepairServicePage: React.FC = () => {
     setSubmittedTicket(null);
     setDescription('');
     setPhotos([]);
-    setActiveTab('new_request');
+    setShowCreateForm(false);
   };
 
   return (
     <div className="min-h-screen bg-warm-bg pb-24 md:pb-12 pt-4">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-4">
         
-        {/* Top Header */}
+        {/* Top Header Navigation */}
         <div className="flex items-center justify-between">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (showCreateForm) {
+                setShowCreateForm(false);
+              } else {
+                navigate(-1);
+              }
+            }}
             className="inline-flex items-center gap-2 p-2 text-charcoal-700 bg-white rounded-full border border-warm-border shadow-sm hover:bg-warm-bg transition-colors text-xs font-bold"
           >
             <ArrowLeft className="w-4 h-4 text-brand-600" />
@@ -282,57 +290,46 @@ export const RepairServicePage: React.FC = () => {
           </a>
         </div>
 
-        {/* Page Title & Tab Switcher (Styled cleanly like OrdersPage.tsx) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Page Title & Top-Right "+ New Request" Action Button */}
+        <div className="flex items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-warm-border shadow-card">
           <div className="space-y-0.5">
-            <h1 className="text-xl sm:text-2xl font-black text-charcoal-900">
+            <h1 className="text-base sm:text-lg font-black text-charcoal-900 leading-tight">
               {isTamil ? 'லேத் & ARC பழுது பார்க்கும் சேவை' : 'Machining & ARC Repair Service'}
             </h1>
-            <p className="text-xs text-charcoal-500 font-medium">
-              {isTamil 
-                ? 'டிராக்டர் கருவிகள், கேட் கிரில், வளைந்த ஷாப்ட் பழுது கோரிக்கை' 
-                : 'Submit damaged agricultural or machinery parts for quick quote'}
+            <p className="text-[11px] text-charcoal-500 font-medium">
+              {showCreateForm 
+                ? (isTamil ? 'பழுது விபரங்களை பதிவு செய்யவும்' : 'Fill details for instant workshop quote')
+                : (isTamil ? `${myRequests.length} கோரிக்கைகள் சமர்ப்பிக்கப்பட்டுள்ளன` : `${myRequests.length} submitted repair requests`)}
             </p>
           </div>
 
-          <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-warm-border shadow-sm shrink-0 w-fit">
+          {/* Top-Right Toggle Button */}
+          {showCreateForm ? (
             <button
               type="button"
-              onClick={() => setActiveTab('new_request')}
-              className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
-                activeTab === 'new_request'
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'text-charcoal-600 hover:bg-warm-hover'
-              }`}
+              onClick={() => setShowCreateForm(false)}
+              className="inline-flex items-center gap-1.5 bg-warm-bg hover:bg-warm-muted text-charcoal-700 font-black px-3.5 py-2 rounded-2xl text-xs border border-warm-border transition-all shrink-0 shadow-xs"
             >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>{isTamil ? 'புதிய கோரிக்கை' : 'New Request'}</span>
+              <ListFilter className="w-3.5 h-3.5 text-brand-600" />
+              <span>{isTamil ? 'கோரிக்கைகள்' : 'View Requests'}</span>
             </button>
-
+          ) : (
             <button
               type="button"
-              onClick={() => setActiveTab('sent_requests')}
-              className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
-                activeTab === 'sent_requests'
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'text-charcoal-600 hover:bg-warm-hover'
-              }`}
+              onClick={() => {
+                setSubmittedTicket(null);
+                setShowCreateForm(true);
+              }}
+              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-brand-600 to-amber-500 hover:from-brand-700 hover:to-amber-600 text-white font-black px-3.5 py-2 rounded-2xl text-xs transition-all shrink-0 shadow-md active:scale-95"
             >
-              <History className="w-3.5 h-3.5" />
-              <span>{isTamil ? 'அனுப்பப்பட்டவை' : 'Sent Requests'}</span>
-              {myRequests.length > 0 && (
-                <span className={`text-[10px] font-mono font-black px-1.5 py-0.2 rounded-full ${
-                  activeTab === 'sent_requests' ? 'bg-white text-brand-700' : 'bg-brand-100 text-brand-700'
-                }`}>
-                  {myRequests.length}
-                </span>
-              )}
+              <Plus className="w-4 h-4" />
+              <span>{isTamil ? 'புதிய கோரிக்கை' : '+ New Request'}</span>
             </button>
-          </div>
+          )}
         </div>
 
-        {/* TAB 1: NEW REPAIR REQUEST */}
-        {activeTab === 'new_request' && (
+        {/* VIEW 1: CREATE REPAIR REQUEST FORM */}
+        {showCreateForm ? (
           <>
             {submittedTicket ? (
               /* SUCCESS STATE */
@@ -387,7 +384,11 @@ export const RepairServicePage: React.FC = () => {
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={handleResetForm}
+                      onClick={() => {
+                        setSubmittedTicket(null);
+                        setDescription('');
+                        setPhotos([]);
+                      }}
                       className="flex-1 py-2.5 text-xs font-bold text-charcoal-600 hover:text-charcoal-900 bg-warm-bg rounded-xl border border-warm-border transition-colors"
                     >
                       {isTamil ? 'மற்றொரு கோரிக்கை' : 'Submit Another'}
@@ -395,20 +396,17 @@ export const RepairServicePage: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => {
-                        setSubmittedTicket(null);
-                        setActiveTab('sent_requests');
-                      }}
+                      onClick={handleResetForm}
                       className="flex-1 py-2.5 text-xs font-bold text-brand-700 hover:text-brand-800 bg-brand-50 rounded-xl border border-brand-200 transition-colors"
                     >
-                      {isTamil ? 'அனைத்து கோரிக்கைகள்' : 'View Sent Requests'}
+                      {isTamil ? 'கோரிக்கைகளை பார்' : 'View All Requests'}
                     </button>
                   </div>
                 </div>
               </div>
             ) : (
               /* CLEAN, STREAMLINED REPAIR FORM */
-              <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-5 sm:p-6 border border-warm-border shadow-card space-y-4">
+              <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-5 sm:p-6 border border-warm-border shadow-card space-y-4 animate-fade-in">
                 
                 {/* Guest Phone Input (Only if user not logged in) */}
                 {!user && (
@@ -427,13 +425,13 @@ export const RepairServicePage: React.FC = () => {
                   </div>
                 )}
 
-                {/* 1. SELECT CATEGORY (Small Card Chips Without Descriptions) */}
+                {/* 1. SELECT CATEGORY (Small Card with Small Image) */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-black text-charcoal-900 uppercase tracking-wider">
                     1. {isTamil ? 'பழுது வகை' : 'Select Category'}
                   </label>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {COMPACT_REPAIR_CATEGORIES.map((srv) => {
                       const isSelected = selectedService === srv.id;
                       return (
@@ -441,13 +439,19 @@ export const RepairServicePage: React.FC = () => {
                           key={srv.id}
                           type="button"
                           onClick={() => setSelectedService(srv.id)}
-                          className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                          className={`p-2 rounded-2xl border text-center transition-all flex flex-col items-center justify-between gap-1.5 cursor-pointer ${
                             isSelected
-                              ? 'border-brand-600 bg-brand-50 ring-2 ring-brand-500/20 shadow-xs'
+                              ? 'border-brand-600 bg-brand-50/70 ring-2 ring-brand-500 shadow-xs'
                               : 'border-warm-border bg-white hover:bg-warm-bg'
                           }`}
                         >
-                          <span className="text-xl">{srv.icon}</span>
+                          <div className="w-full h-16 sm:h-20 rounded-xl overflow-hidden bg-warm-bg border border-warm-border/50">
+                            <img
+                              src={srv.image}
+                              alt={srv.title_en}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                           <span className={`text-[11px] font-black leading-tight line-clamp-1 ${
                             isSelected ? 'text-brand-900' : 'text-charcoal-800'
                           }`}>
@@ -562,10 +566,8 @@ export const RepairServicePage: React.FC = () => {
               </form>
             )}
           </>
-        )}
-
-        {/* TAB 2: SENT REQUESTS (Track Status & WhatsApp) */}
-        {activeTab === 'sent_requests' && (
+        ) : (
+          /* VIEW 2: SHOW CREATED REPAIR REQUESTS LIST (Primary View) */
           <div className="space-y-3">
             {loadingRequests ? (
               <div className="bg-white rounded-3xl p-8 text-center border border-warm-border shadow-card space-y-2">
@@ -584,7 +586,7 @@ export const RepairServicePage: React.FC = () => {
                 return (
                   <div
                     key={req.id}
-                    className="bg-white rounded-3xl p-4 sm:p-5 border border-warm-border shadow-card space-y-3"
+                    className="bg-white rounded-3xl p-4 sm:p-5 border border-warm-border shadow-card space-y-3 animate-fade-in"
                   >
                     <div className="flex items-start justify-between gap-2 border-b border-warm-muted pb-3">
                       <div>
@@ -653,7 +655,7 @@ export const RepairServicePage: React.FC = () => {
                           location: req.delivery_location,
                           description: req.custom_notes
                         })}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2 px-3 rounded-xl text-xs shadow-xs transition-colors"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 px-3 rounded-xl text-xs shadow-xs transition-colors"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
                         <span>{isTamil ? 'வாட்ஸ்அப்' : 'WhatsApp Shop'}</span>
@@ -661,7 +663,7 @@ export const RepairServicePage: React.FC = () => {
 
                       <a
                         href={`tel:${DEFAULT_SHOP_INFO.phone}`}
-                        className="inline-flex items-center justify-center gap-1.5 bg-warm-bg hover:bg-brand-50 text-charcoal-800 font-bold py-2 px-3 rounded-xl text-xs border border-warm-border transition-colors"
+                        className="inline-flex items-center justify-center gap-1.5 bg-warm-bg hover:bg-brand-50 text-charcoal-800 font-bold py-2.5 px-3 rounded-xl text-xs border border-warm-border transition-colors"
                       >
                         <Phone className="w-3.5 h-3.5 text-brand-600" />
                         <span>{isTamil ? 'அழைக்க' : 'Call'}</span>
@@ -670,7 +672,7 @@ export const RepairServicePage: React.FC = () => {
                       {isConverted && (
                         <Link
                           to={`/orders`}
-                          className="inline-flex items-center justify-center gap-1 bg-brand-50 text-brand-700 font-extrabold py-2 px-3 rounded-xl text-xs border border-brand-200 hover:bg-brand-100 transition-colors"
+                          className="inline-flex items-center justify-center gap-1 bg-brand-50 text-brand-700 font-extrabold py-2.5 px-3 rounded-xl text-xs border border-brand-200 hover:bg-brand-100 transition-colors"
                         >
                           <span>{isTamil ? 'ஆர்டர் அறிதல்' : 'Track Order'}</span>
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -681,21 +683,26 @@ export const RepairServicePage: React.FC = () => {
                 );
               })
             ) : (
-              <div className="bg-white rounded-3xl p-8 text-center border border-warm-border shadow-card space-y-3">
-                <Package className="w-10 h-10 text-charcoal-400 mx-auto" />
-                <h3 className="text-sm font-black text-charcoal-900">
-                  {isTamil ? 'அனுப்பப்பட்ட கோரிக்கைகள் ஏதும் இல்லை' : 'No Repair Requests Found'}
-                </h3>
-                <p className="text-xs text-charcoal-500 font-medium max-w-xs mx-auto">
-                  {isTamil
-                    ? 'நீங்கள் இதுவரை எந்த பழுது கோரிக்கையும் சமர்ப்பிக்கவில்லை.'
-                    : 'You have not submitted any repair or machining requests yet.'}
-                </p>
+              <div className="bg-white rounded-3xl p-8 sm:p-10 text-center border border-warm-border shadow-card space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-warm-bg text-charcoal-500 flex items-center justify-center mx-auto border border-warm-border">
+                  <Package className="w-7 h-7" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-black text-charcoal-900">
+                    {isTamil ? 'அனுப்பப்பட்ட கோரிக்கைகள் ஏதும் இல்லை' : 'No Repair Requests Found'}
+                  </h3>
+                  <p className="text-xs text-charcoal-500 font-medium max-w-xs mx-auto">
+                    {isTamil
+                      ? 'நீங்கள் இதுவரை எந்த பழுது அல்லது லேத் வேலை கோரிக்கையும் சமர்ப்பிக்கவில்லை.'
+                      : 'You have not submitted any repair or machining requests yet.'}
+                  </p>
+                </div>
                 <Button
-                  onClick={() => setActiveTab('new_request')}
+                  onClick={() => setShowCreateForm(true)}
                   variant="primary"
-                  size="sm"
-                  className="rounded-xl mt-2"
+                  size="md"
+                  icon={<Plus className="w-4 h-4" />}
+                  className="rounded-2xl shadow-md"
                 >
                   {isTamil ? '+ புதிய கோரிக்கை சமர்ப்பிக்க' : '+ Create New Request'}
                 </Button>
