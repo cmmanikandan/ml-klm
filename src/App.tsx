@@ -14,7 +14,6 @@ import { PublicHeader } from './components/layout/PublicHeader';
 import { SplashScreen } from './components/common/SplashScreen';
 import { NetworkBanner } from './components/common/NetworkBanner';
 import { InstallPwaPrompt } from './components/common/InstallPwaPrompt';
-import { FeatureSpotlightModal } from './components/common/FeatureSpotlightModal';
 
 // Customer Pages
 import { LandingPage } from './pages/LandingPage';
@@ -112,9 +111,6 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       {/* "Add to Home Screen" PWA install prompt & iOS guide */}
       <InstallPwaPrompt />
-
-      {/* One-time New Feature Spotlight Tour for Customer Pages */}
-      {!isAdmin && <FeatureSpotlightModal autoCheckFirstTime={true} />}
 
       {/* Public Header with Home, Products, About, Contact links for visitors */}
       {!isAdmin && (isPublicPage || isGuestProductBrowse) && <PublicHeader />}

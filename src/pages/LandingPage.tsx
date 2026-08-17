@@ -189,48 +189,6 @@ export const LandingPage: React.FC = () => {
           )}
         </div>
       </section>
-
-      {/* Machining, Heavy ARC Welding & Lathe Repair Service Highlight Section */}
-      <section className="py-14 bg-gradient-to-b from-warm-bg to-white border-b border-warm-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-10 border border-slate-800 shadow-2xl relative overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-8">
-            <div className="space-y-3 text-center lg:text-left max-w-xl">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-500/20 text-brand-400 text-xs font-black uppercase tracking-wider border border-brand-500/30">
-                <Wrench className="w-3.5 h-3.5" />
-                <span>{isTamil ? 'அனைத்து வகை லேத் & ARC பழுது சேவை' : 'All Machining, ARC Welding & Lathe Repair'}</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white">
-                {isTamil
-                  ? 'டிராக்டர் கலப்பை, கேட் கிரில், வளைந்த ஷாப்ட் & ARC வெல்டிங் பழுது வேலைகள்'
-                  : 'Tractor Implements, Gates, Bent Shafts & Heavy ARC Welding Repairs'}
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
-                {isTamil
-                  ? 'உடைந்த விவசாயக் கருவிகள், கேட் கிரில் விரிசல், வளைந்த ஆக்சில்கள், போர்வெல் மோட்டார் மற்றும் தொழிற்துறை பாகங்களை எங்கள் லேத் பட்டறையில் கொண்டு வந்து உடனடியாக சரிசெய்து கொள்ளலாம்.'
-                  : 'Bring damaged agricultural implements, broken gate/grill joints, bent axles, submersible motors, or industrial equipment for precision lathe turning and heavy ARC welding repair.'}
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full lg:w-auto">
-              <Link
-                to="/repair"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-brand-500 to-amber-500 hover:from-brand-600 hover:to-amber-600 text-white font-black py-3.5 px-6 rounded-2xl text-xs sm:text-sm shadow-xl transition-all active:scale-95"
-              >
-                <Wrench className="w-4 h-4" />
-                <span>{isTamil ? 'பழுது கோரிக்கை விடுக்கவும்' : 'Open Repair Service Page'}</span>
-              </Link>
-
-              <a
-                href={`tel:${DEFAULT_SHOP_INFO.phone}`}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold py-3.5 px-5 rounded-2xl text-xs border border-white/20 transition-all"
-              >
-                <Phone className="w-4 h-4 text-brand-400" />
-                <span>{DEFAULT_SHOP_INFO.phone}</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };
