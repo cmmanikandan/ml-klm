@@ -37,22 +37,24 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
   }
 
   // 3. Determine Paid and Remaining Due
+  const isPaidStatus = order.payment_status === 'paid';
   const totalPaidInHistory = Number(order.total_paid || 0);
-  const explicitAdvance = Number(order.advance_amount || 0);
 
   let advancePaid = 0;
-  if (totalPaidInHistory > 0) {
+  if (isPaidStatus) {
+    advancePaid = total;
+  } else if (totalPaidInHistory > 0) {
     advancePaid = totalPaidInHistory;
-  } else if (order.remaining_amount != null && Number(order.remaining_amount) > 0 && Number(order.remaining_amount) < total) {
+  } else if (order.remaining_amount != null && Number(order.remaining_amount) >= 0 && Number(order.remaining_amount) < total) {
     advancePaid = Math.max(0, total - Number(order.remaining_amount));
-  } else if (explicitAdvance > 0) {
-    advancePaid = explicitAdvance;
+  } else {
+    advancePaid = 0;
   }
 
   let remaining = 0;
-  if (totalPaidInHistory > 0) {
-    remaining = Math.max(0, total - totalPaidInHistory);
-  } else if (order.remaining_amount != null && Number(order.remaining_amount) > 0) {
+  if (isPaidStatus) {
+    remaining = 0;
+  } else if (order.remaining_amount != null && Number(order.remaining_amount) >= 0) {
     remaining = Number(order.remaining_amount);
   } else {
     remaining = Math.max(0, total - advancePaid);

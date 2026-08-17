@@ -196,8 +196,8 @@ export const CustomerInvoicePage: React.FC = () => {
         } catch {}
       }
 
-      // Compute payments
-      let totalPaid = Number(record.advance_amount || 0);
+      // Compute payments: only actual completed payments in db
+      let totalPaid = 0;
       try {
         const { data: dbPayments } = await supabase
           .from('payments')
@@ -218,25 +218,33 @@ export const CustomerInvoicePage: React.FC = () => {
         ? Number(record.total_amount)
         : Math.max(0, (defaultUnitPrice * qty) - discount + extra);
 
-      // Determine explicit advance/paid
-      const explicitAdvance = Number(record.advance_amount || 0);
+      const isPaidStatus = record.payment_status === 'paid';
+
       let advancePaid = 0;
-      if (totalPaid > 0) {
+      if (isPaidStatus) {
+        advancePaid = computedTotal;
+      } else if (totalPaid > 0) {
         advancePaid = totalPaid;
-      } else if (record.remaining_amount != null && Number(record.remaining_amount) > 0 && Number(record.remaining_amount) < computedTotal) {
+      } else if (record.remaining_amount != null && Number(record.remaining_amount) >= 0 && Number(record.remaining_amount) < computedTotal) {
         advancePaid = Math.max(0, computedTotal - Number(record.remaining_amount));
-      } else if (explicitAdvance > 0) {
-        advancePaid = explicitAdvance;
+      } else {
+        advancePaid = 0;
       }
 
       let computedRemaining = 0;
-      if (totalPaid > 0) {
-        computedRemaining = Math.max(0, computedTotal - totalPaid);
-      } else if (record.remaining_amount != null && Number(record.remaining_amount) > 0 && Number(record.remaining_amount) < computedTotal) {
+      if (isPaidStatus) {
+        computedRemaining = 0;
+      } else if (record.remaining_amount != null && Number(record.remaining_amount) >= 0) {
         computedRemaining = Number(record.remaining_amount);
       } else {
         computedRemaining = Math.max(0, computedTotal - advancePaid);
       }
+
+      // If admin has specifically requested a partial/advance payment amount, use it for the CTA
+      const requestedPayAmount = Number(record.payment_request_amount || 0);
+      const payButtonAmount = requestedPayAmount > 0 && requestedPayAmount <= computedRemaining
+        ? requestedPayAmount
+        : computedRemaining;
 
       const finalOrderObj = {
         ...record,
@@ -249,6 +257,7 @@ export const CustomerInvoicePage: React.FC = () => {
         remaining_amount: computedRemaining,
         total_paid: advancePaid,
         advance_amount: advancePaid,
+        pay_button_amount: payButtonAmount,
         product: prod
       };
 
@@ -272,7 +281,7 @@ export const CustomerInvoicePage: React.FC = () => {
 
   const handlePayNow = () => {
     const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_T547lttHOVL633';
-    const amount = Number(order?.remaining_amount || order?.total_amount || 1000);
+    const amount = Number(order?.pay_button_amount || order?.remaining_amount || order?.total_amount || 1000);
 
     let paymentCompleted = false;
 
@@ -555,7 +564,7 @@ export const CustomerInvoicePage: React.FC = () => {
                 className="bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-black px-4 py-2 rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5 animate-pulse-subtle"
               >
                 <CreditCard className="w-4 h-4" />
-                <span>Pay Online (₹{(order.remaining_amount != null && order.remaining_amount > 0 ? order.remaining_amount : order.total_amount || 0).toLocaleString('en-IN')})</span>
+                <span>Pay Online (₹{(order.pay_button_amount || order.remaining_amount || order.total_amount || 0).toLocaleString('en-IN')})</span>
               </button>
             )}
 
