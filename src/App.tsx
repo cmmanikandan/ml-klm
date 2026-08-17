@@ -101,6 +101,9 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Product detail page handles its own bottom sticky enquiry bar
   const isProductDetailPage = location.pathname.startsWith('/products/') && location.pathname !== '/products';
 
+  // Repair form page — no bottom nav, it has its own back button
+  const isRepairFormPage = location.pathname === '/repair';
+
   if (isInvoicePage) {
     return <main className="flex-1">{children}</main>;
   }
@@ -122,7 +125,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <main className="flex-1">{children}</main>
 
       {/* MobileNav bottom bar for customer portal pages */}
-      {!isAdmin && !isAuthPage && !isPublicPage && !isGuestProductBrowse && !isProductDetailPage && <MobileNav />}
+      {!isAdmin && !isAuthPage && !isPublicPage && !isGuestProductBrowse && !isProductDetailPage && !isRepairFormPage && <MobileNav />}
 
       {/* Footer ONLY on public static pages (/, /about, /contact) */}
       {!isAdmin && isPublicPage && <Footer />}

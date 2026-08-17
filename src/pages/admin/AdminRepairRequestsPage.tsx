@@ -31,7 +31,7 @@ import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { convertEnquiryToOrderSafely } from '../../lib/orderConversionService';
 
 export const AdminRepairRequestsPage: React.FC = () => {
-  const [filter, setFilter] = useState<'all' | 'pending' | 'urgent' | 'accepted' | 'rejected'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'urgent' | 'accepted' | 'rejected'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [repairRequests, setRepairRequests] = useState<any[]>([]);
@@ -55,6 +55,9 @@ export const AdminRepairRequestsPage: React.FC = () => {
   // Fullscreen Image Lightbox
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  // View Detail Modal
+  const [viewDetailRep, setViewDetailRep] = useState<any | null>(null);
 
   // Notification Modal
   const [notifyModal, setNotifyModal] = useState<{
@@ -203,23 +206,25 @@ export const AdminRepairRequestsPage: React.FC = () => {
         )
       );
 
-      // Send WhatsApp Quote with confirmation
+      // Send WhatsApp Quote confirmation to CUSTOMER
       const rawPhone = String(selectedRepairForQuote.customerPhone || '').replace(/[^0-9]/g, '');
-      const targetPhone = rawPhone.startsWith('91') ? rawPhone : `91${rawPhone}`;
-      const text = encodeURIComponent(
-        `🛠️ *MANIKANDAN LATHE WORKS - REPAIR JOB ACCEPTED*\n` +
-        `--------------------------------------\n` +
-        `📌 *Ticket Ref:* #${selectedRepairForQuote.ticketId}\n` +
-        `📦 *Active Order:* #${orderNumber}\n` +
-        `🔧 *Job:* ${selectedRepairForQuote.serviceTitle}\n` +
-        `💰 *Estimated Cost:* ₹${quoteAmount.toLocaleString('en-IN')}\n` +
-        `⏳ *Estimated Duration:* ${estimatedDays} Day(s)\n` +
-        `--------------------------------------\n` +
-        `Hello ${selectedRepairForQuote.customerName}! We have reviewed your machinery repair request and accepted the job.\n` +
-        `Please bring the part to our Kallimandhayam workshop counter.`
-      );
-
-      window.open(`https://wa.me/${targetPhone}?text=${text}`, '_blank');
+      const targetPhone = rawPhone.length >= 10 ? (rawPhone.startsWith('91') ? rawPhone : `91${rawPhone.slice(-10)}`) : '';
+      if (targetPhone) {
+        const text = encodeURIComponent(
+          `🛠️ *MANIKANDAN LATHE WORKS — REPAIR JOB ACCEPTED*\n` +
+          `--------------------------------------\n` +
+          `📌 *Ticket Ref:* #${selectedRepairForQuote.ticketId}\n` +
+          `📦 *Active Order:* #${orderNumber}\n` +
+          `🔧 *Job:* ${selectedRepairForQuote.serviceTitle}\n` +
+          `💰 *Estimated Cost:* ₹${quoteAmount.toLocaleString('en-IN')}\n` +
+          `⏳ *Estimated Duration:* ${estimatedDays} Day(s)\n` +
+          `--------------------------------------\n` +
+          `Dear ${selectedRepairForQuote.customerName},\n` +
+          `Your repair request has been accepted. Please bring the damaged part to our Kallimandhayam workshop.\n` +
+          `Thank you for choosing Manikandan Lathe Works! 🙏`
+        );
+        window.open(`https://wa.me/${targetPhone}?text=${text}`, '_blank');
+      }
 
       setSelectedRepairForQuote(null);
       setNotifyModal({
@@ -294,15 +299,15 @@ export const AdminRepairRequestsPage: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
-      
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-5">
+
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-charcoal-900">Machining & Lathe Repair Requests</h1>
+            <h1 className="text-2xl font-black text-charcoal-900">Machining &amp; Repair Requests</h1>
             <span className="bg-brand-100 text-brand-700 text-xs font-black px-3 py-1 rounded-full border border-brand-200">
-              {repairRequests.length} Total Tickets
+              {repairRequests.length} Tickets
             </span>
             <button
               onClick={handleManualReload}
@@ -314,32 +319,39 @@ export const AdminRepairRequestsPage: React.FC = () => {
             </button>
           </div>
           <p className="text-xs text-charcoal-500 font-semibold mt-0.5">
-            Review incoming broken tractor parts, shaft turning, motor machining & provide repair quotes
+            Review incoming broken part repairs, shaft machining &amp; provide workshop quotes
           </p>
         </div>
+      </div>
 
-        {/* Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-white p-1 rounded-2xl border border-warm-border shadow-sm">
-          {[
-            { id: 'all', label: `All (${repairRequests.length})` },
-            { id: 'pending', label: `New (${repairRequests.filter((r) => !r.isAccepted && r.status !== 'rejected').length})` },
-            { id: 'urgent', label: `Urgent (${repairRequests.filter((r) => r.isUrgent || r.isEmergency).length})` },
-            { id: 'accepted', label: `Accepted (${repairRequests.filter((r) => r.isAccepted).length})` },
-            { id: 'rejected', label: `Rejected (${repairRequests.filter((r) => r.status === 'rejected').length})` },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setFilter(tab.id as any)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                filter === tab.id
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'text-charcoal-700 hover:bg-warm-hover'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      {/* Filter Tabs — New first */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+        {[
+          { id: 'pending', label: 'New', count: repairRequests.filter((r) => !r.isAccepted && r.status !== 'rejected').length, color: 'bg-orange-500 text-white' },
+          { id: 'all', label: 'All', count: repairRequests.length, color: 'bg-brand-600 text-white' },
+          { id: 'urgent', label: 'Urgent', count: repairRequests.filter((r) => r.isUrgent || r.isEmergency).length, color: 'bg-rose-500 text-white' },
+          { id: 'accepted', label: 'Accepted', count: repairRequests.filter((r) => r.isAccepted).length, color: 'bg-emerald-600 text-white' },
+          { id: 'rejected', label: 'Rejected', count: repairRequests.filter((r) => r.status === 'rejected').length, color: 'bg-charcoal-500 text-white' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setFilter(tab.id as any)}
+            className={`shrink-0 px-4 py-2 rounded-2xl text-xs font-extrabold transition-all flex items-center gap-1.5 border ${
+              filter === tab.id
+                ? `${tab.color} border-transparent shadow-md`
+                : 'bg-white text-charcoal-700 border-warm-border hover:bg-warm-bg'
+            }`}
+          >
+            <span>{tab.label}</span>
+            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+              filter === tab.id
+                ? 'bg-white/25 text-white'
+                : 'bg-warm-bg text-charcoal-500'
+            }`}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Search Input Bar */}
@@ -349,7 +361,7 @@ export const AdminRepairRequestsPage: React.FC = () => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search by ticket #, customer name, phone, service, or village..."
+          placeholder="Search by ticket #, customer name, phone, service..."
           className="w-full pl-10 pr-4 py-2.5 text-xs font-bold border border-warm-border rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm"
         />
       </div>
@@ -476,6 +488,15 @@ export const AdminRepairRequestsPage: React.FC = () => {
 
               {/* Action Buttons */}
               <div className="pt-3 border-t border-warm-border flex flex-col space-y-2">
+                {/* View Full Detail Button — always visible */}
+                <button
+                  onClick={() => setViewDetailRep(rep)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 font-extrabold py-2 px-3 rounded-xl text-xs border border-brand-200 transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>View Full Detail</span>
+                </button>
+
                 {!rep.isAccepted && rep.status !== 'rejected' ? (
                   <div className="space-y-2">
                     <Button
@@ -550,6 +571,136 @@ export const AdminRepairRequestsPage: React.FC = () => {
         )}
       </div>
 
+      {/* VIEW FULL DETAIL MODAL */}
+      {viewDetailRep && (() => {
+        const raw = String(viewDetailRep.custom_notes || '');
+        const cleanDesc = raw.startsWith('Scope:')
+          ? raw.replace(/^Scope:\s*/i, '').replace(/\.?\s*Photos:\s*\d+\.?$/i, '').trim()
+          : raw;
+        const urgencyLabel = String(viewDetailRep.size_requirement || '').replace(/^Urgency:\s*/i, '').trim() || 'STANDARD';
+        return (
+          <Modal
+            isOpen={Boolean(viewDetailRep)}
+            onClose={() => setViewDetailRep(null)}
+            title={`Repair Ticket — #${viewDetailRep.ticketId}`}
+            maxWidth="md"
+          >
+            <div className="space-y-4 py-1">
+
+              {/* Status + Service */}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-black text-charcoal-900">{viewDetailRep.serviceTitle}</h3>
+                  <p className="text-[11px] text-charcoal-500 font-medium mt-0.5">
+                    {viewDetailRep.created_at ? new Date(viewDetailRep.created_at).toLocaleString() : 'Recently submitted'}
+                  </p>
+                </div>
+                <Badge variant={viewDetailRep.isAccepted ? 'accepted' : viewDetailRep.status === 'rejected' ? 'rejected' : 'pending'}>
+                  {viewDetailRep.isAccepted ? 'ACCEPTED' : (viewDetailRep.status || 'PENDING').toUpperCase()}
+                </Badge>
+              </div>
+
+              {/* Customer Info */}
+              <div className="grid grid-cols-2 gap-3 bg-warm-bg p-3.5 rounded-2xl border border-warm-border text-xs">
+                <div>
+                  <span className="text-[10px] font-bold text-charcoal-400 uppercase block">Customer</span>
+                  <span className="font-extrabold text-charcoal-900 block">{viewDetailRep.customerName}</span>
+                  <a href={`tel:${viewDetailRep.customerPhone}`} className="text-brand-600 font-mono font-bold hover:underline block">
+                    {viewDetailRep.customerPhone}
+                  </a>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-charcoal-400 uppercase block">Location</span>
+                  <span className="font-bold text-charcoal-800 block">{viewDetailRep.location}</span>
+                  <span className="text-[10px] font-black text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-200 inline-block mt-0.5">
+                    {urgencyLabel}
+                  </span>
+                </div>
+              </div>
+
+              {/* Issue Description */}
+              {cleanDesc && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 space-y-1">
+                  <span className="text-[10px] font-black text-amber-800 uppercase block">Reported Problem / Issue</span>
+                  <p className="text-xs text-charcoal-800 font-medium leading-relaxed">{cleanDesc}</p>
+                </div>
+              )}
+
+              {/* Uploaded Photos */}
+              {viewDetailRep.photos && viewDetailRep.photos.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-charcoal-500 uppercase">Damage Photos ({viewDetailRep.photos.length})</span>
+                    <button
+                      type="button"
+                      onClick={() => { setLightboxImages(viewDetailRep.photos); setLightboxOpen(true); }}
+                      className="text-[10px] font-bold text-brand-600 flex items-center gap-1 hover:text-brand-700"
+                    >
+                      <Maximize2 className="w-3 h-3" /> Fullscreen View
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {viewDetailRep.photos.map((url: string, i: number) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => { setLightboxImages(viewDetailRep.photos); setLightboxOpen(true); }}
+                        className="group relative h-24 rounded-2xl overflow-hidden border border-warm-border shadow-xs bg-warm-bg"
+                      >
+                        <img src={url} alt={`Photo ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <Maximize2 className="w-5 h-5 text-white" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!viewDetailRep.photos?.length && (
+                <div className="bg-warm-bg rounded-2xl p-3 text-center text-xs text-charcoal-400 font-medium border border-warm-border">
+                  No photos attached by customer
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="pt-2 border-t border-warm-border flex gap-2">
+                {!viewDetailRep.isAccepted && viewDetailRep.status !== 'rejected' && (
+                  <>
+                    <Button
+                      onClick={() => { setViewDetailRep(null); handleOpenQuoteModal(viewDetailRep); }}
+                      variant="primary"
+                      fullWidth
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs"
+                      icon={<DollarSign className="w-4 h-4" />}
+                    >
+                      Provide Quote & Accept
+                    </Button>
+                    <button
+                      onClick={() => { handleRejectRepair(viewDetailRep.id); setViewDetailRep(null); }}
+                      className="shrink-0 inline-flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold py-2.5 px-4 rounded-2xl text-xs border border-red-200"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Reject
+                    </button>
+                  </>
+                )}
+                {viewDetailRep.isAccepted && (
+                  <Link
+                    to={`/admin/orders/${viewDetailRep.convertedOrderNum || 'MNK-ORD-1'}`}
+                    className="w-full inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 px-4 rounded-2xl text-xs shadow-md"
+                    onClick={() => setViewDetailRep(null)}
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    View Active Job Order
+                  </Link>
+                )}
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
+
       {/* QUOTE & CONVERT TO ORDER MODAL */}
       {selectedRepairForQuote && (
         <Modal
@@ -559,16 +710,31 @@ export const AdminRepairRequestsPage: React.FC = () => {
           maxWidth="md"
         >
           <div className="space-y-4 py-2">
-            {/* Repair Item Header */}
-            <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border">
-              <span className="text-[10px] font-black uppercase text-brand-600 block">REPAIR ITEM</span>
+            {/* Repair Item Header — customer detail clearly separated */}
+            <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border space-y-2">
+              <span className="text-[10px] font-black uppercase text-brand-600 block">REPAIR REQUEST</span>
               <h4 className="text-sm font-black text-charcoal-900">{selectedRepairForQuote.serviceTitle}</h4>
-              <p className="text-xs text-charcoal-600 font-medium mt-0.5">
-                Customer: <strong>{selectedRepairForQuote.customerName}</strong> ({selectedRepairForQuote.customerPhone})
-              </p>
-              {selectedRepairForQuote.location && (
-                <p className="text-xs text-charcoal-500 font-medium mt-0.5">📍 {selectedRepairForQuote.location}</p>
-              )}
+              <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+                <div>
+                  <span className="text-[10px] font-bold text-charcoal-400 uppercase block">Customer Name</span>
+                  <span className="font-extrabold text-charcoal-900">
+                    {selectedRepairForQuote.customerName || selectedRepairForQuote.customer_name || 'Unknown'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-charcoal-400 uppercase block">Phone</span>
+                  <a
+                    href={`tel:${selectedRepairForQuote.customerPhone}`}
+                    className="font-extrabold text-brand-600 font-mono hover:underline"
+                  >
+                    {selectedRepairForQuote.customerPhone || '-'}
+                  </a>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-[10px] font-bold text-charcoal-400 uppercase block">Location</span>
+                  <span className="font-bold text-charcoal-800">{selectedRepairForQuote.location || 'Kallimandhayam'}</span>
+                </div>
+              </div>
             </div>
 
             {/* Problem Description */}

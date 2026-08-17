@@ -170,21 +170,7 @@ export const OrdersPage: React.FC = () => {
         };
       });
 
-      // Filter out repair requests — they belong in /repair page, not here
-      const isRepairEnquiry = (e: any) => {
-        const pName = String(e.product_name || '').toLowerCase();
-        const num = String(e.enquiry_number || '').toLowerCase();
-        return (
-          pName.includes('[repair service]') ||
-          pName.includes('repair') ||
-          pName.includes('machining') ||
-          pName.includes('பழுது') ||
-          num.includes('rep')
-        );
-      };
-
-      const nonRepairEnquiries = hydratedEnquiries.filter((e: any) => !isRepairEnquiry(e));
-      setEnquiries(nonRepairEnquiries);
+      setEnquiries(hydratedEnquiries);
     } catch (e) {
       console.warn('OrdersPage live Supabase DB fetch error:', e);
       setOrders([]);
@@ -339,12 +325,22 @@ export const OrdersPage: React.FC = () => {
                 return (
                   <div key={enq.id} className="bg-white p-5 rounded-3xl border border-warm-border shadow-card space-y-3">
                     <div className="flex items-center justify-between border-b border-warm-muted pb-3">
-                      <div>
-                        <span className="text-[11px] font-mono font-extrabold text-brand-600 block">
-                          #{enq.enquiry_number}
-                        </span>
-                        <h4 className="text-sm font-bold text-charcoal-900 mt-0.5">
-                          {(enq as any).productName || (enq.product ? (isTamil ? enq.product.name_ta : enq.product.name_en) : 'Fabrication Enquiry')}
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono font-extrabold text-brand-600 block">
+                            #{enq.enquiry_number}
+                          </span>
+                          {/* Repair badge */}
+                          {String((enq as any).product_name || '').toLowerCase().includes('[repair service]') && (
+                            <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-300 shrink-0">
+                              🔧 {isTamil ? 'பழுது' : 'Repair'}
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-sm font-bold text-charcoal-900 mt-0.5 truncate">
+                          {String((enq as any).product_name || '').replace('[REPAIR SERVICE]', '').trim() ||
+                            ((enq as any).productName) ||
+                            (enq.product ? (isTamil ? enq.product.name_ta : enq.product.name_en) : 'Fabrication Enquiry')}
                         </h4>
                       </div>
 
