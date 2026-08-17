@@ -70,10 +70,11 @@ export const PublicHeader: React.FC = () => {
 
           {/* Right Action Buttons */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Language Switcher */}
+            {/* Language Switcher (Desktop Only in Top Bar, Kept Inside Menu for Mobile) */}
             <button
               onClick={() => setLanguage(language === 'en' ? 'ta' : 'en')}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warm-bg hover:bg-brand-100 border border-brand-200 text-xs font-bold text-brand-700 transition-all shadow-sm"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warm-bg hover:bg-brand-100 border border-brand-200 text-xs font-bold text-brand-700 transition-all shadow-sm shrink-0"
+              title="Switch Language / மொழியை மாற்றுக"
             >
               <Globe className="w-3.5 h-3.5" />
               <span>{language === 'en' ? 'தமிழ்' : 'English'}</span>
@@ -124,6 +125,21 @@ export const PublicHeader: React.FC = () => {
       {/* ☰ Normal Mobile Dropdown Navigation Panel */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-warm-border px-4 pt-3 pb-5 space-y-3 animate-fade-in shadow-xl">
+          {/* Mobile Menu Language Selector Bar */}
+          <div className="flex items-center justify-between bg-warm-bg p-2.5 rounded-2xl border border-warm-border">
+            <span className="text-xs font-black text-charcoal-800 flex items-center gap-1.5">
+              <Globe className="w-4 h-4 text-brand-600" />
+              <span>{isTamil ? 'மொழியைத் தேர்ந்தெடுக்கவும்' : 'Choose Language'}</span>
+            </span>
+            <button
+              onClick={() => setLanguage(language === 'en' ? 'ta' : 'en')}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white hover:bg-brand-50 border border-brand-300 text-xs font-bold text-brand-700 transition-all shadow-sm"
+            >
+              <Globe className="w-3.5 h-3.5 text-brand-600" />
+              <span>{language === 'en' ? 'தமிழ்' : 'English'}</span>
+            </button>
+          </div>
+
           <div className="space-y-1">
             <span className="text-[10px] font-extrabold text-charcoal-400 uppercase tracking-widest block mb-2 px-2">
               NAVIGATION MENU

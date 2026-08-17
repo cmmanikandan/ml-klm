@@ -90,10 +90,10 @@ export const Navbar: React.FC = () => {
 
           {/* Right Action Icons */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Language Switcher */}
+            {/* Language Switcher (Desktop Only) */}
             <button
               onClick={toggleLanguage}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warm-bg hover:bg-brand-100 border border-brand-200 text-xs font-bold text-brand-700 transition-all shadow-sm"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warm-bg hover:bg-brand-100 border border-brand-200 text-xs font-bold text-brand-700 transition-all shadow-sm shrink-0"
               title="Switch Language / மொழியை மாற்றுக"
             >
               <Globe className="w-3.5 h-3.5" />
