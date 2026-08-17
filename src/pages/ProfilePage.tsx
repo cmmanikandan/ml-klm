@@ -1,6 +1,19 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Heart, ShoppingBag, Globe, HelpCircle, LogOut, ChevronRight, Bell, Camera, LayoutDashboard, ShieldCheck, Smartphone, Wrench } from 'lucide-react';
+import { 
+  User, 
+  Heart, 
+  ShoppingBag, 
+  Globe, 
+  HelpCircle, 
+  LogOut, 
+  ChevronRight, 
+  Bell, 
+  Camera, 
+  LayoutDashboard, 
+  Smartphone, 
+  Wrench 
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNetworkStatus } from '../context/NetworkStatusContext';
@@ -10,6 +23,7 @@ export const ProfilePage: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const { isInstalled, openInstallModal } = useNetworkStatus();
   const navigate = useNavigate();
+  const isTamil = language === 'ta';
 
   const handleLogout = async () => {
     await signOut();
@@ -22,10 +36,10 @@ export const ProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-warm-bg pb-24 md:pb-12 pt-4">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
         
         {/* Profile Card Header with DP Avatar */}
-        <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card flex items-center gap-4 relative">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-warm-border shadow-card flex items-center gap-4 relative">
           <Link to="/profile/details" className="relative group shrink-0">
             {user?.avatar_url ? (
               <img
@@ -61,7 +75,7 @@ export const ProfilePage: React.FC = () => {
             to="/profile/details"
             className="text-xs font-extrabold text-brand-600 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-full border border-brand-200 transition-colors shrink-0"
           >
-            Edit DP
+            {isTamil ? 'விபரம்' : 'Edit DP'}
           </Link>
         </div>
 
@@ -72,18 +86,18 @@ export const ProfilePage: React.FC = () => {
             className="bg-gradient-to-r from-charcoal-900 via-charcoal-800 to-brand-900 text-white rounded-3xl p-5 border-2 border-brand-500 shadow-xl flex items-center justify-between group hover:scale-[1.01] transition-all"
           >
             <div className="flex items-center gap-3.5">
-              <div className="p-3 rounded-2xl bg-brand-600 text-white shadow-md">
-                <LayoutDashboard className="w-6 h-6" />
+              <div className="p-2.5 rounded-2xl bg-brand-600 text-white shadow-md">
+                <LayoutDashboard className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-white">Open Admin SaaS Dashboard</h3>
+                  <h3 className="text-sm sm:text-base font-black text-white">Admin SaaS Dashboard</h3>
                   <span className="bg-brand-500 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase">
                     MASTER ADMIN
                   </span>
                 </div>
                 <p className="text-xs text-brand-200 font-medium mt-0.5">
-                  Manage orders, products, price quotes & payments ledger
+                  Manage orders, products, price quotes & payments
                 </p>
               </div>
             </div>
@@ -91,31 +105,10 @@ export const ProfilePage: React.FC = () => {
           </Link>
         )}
 
-        {/* Options List */}
+        {/* Clean Options List (Single-Line Simple Tabs Without Sub-Description) */}
         <div className="bg-white rounded-3xl border border-warm-border shadow-card divide-y divide-warm-muted overflow-hidden">
           
-          {/* Repair & Lathe Work Form (Clean Page Link like Help / Wishlist) */}
-          <Link
-            to="/repair"
-            className="flex items-center justify-between p-4 hover:bg-warm-hover transition-colors"
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="p-2 rounded-xl bg-amber-100 text-amber-600">
-                <Wrench className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-sm font-bold text-charcoal-900 block">
-                  {language === 'ta' ? 'லேத் & ARC பழுது பார்க்கும் சேவை' : 'Repair & Lathe Services'}
-                </span>
-                <span className="text-[11px] text-charcoal-500 font-medium">
-                  {language === 'ta' ? 'உடைந்த பாகங்கள் & லேத் வேலைக்கான கோரிக்கை படிவம்' : 'Request repair for tractor parts, gates, grills & axles'}
-                </span>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-charcoal-400" />
-          </Link>
-
-          {/* My Details & Profile DP */}
+          {/* 1. My Details */}
           <Link
             to="/profile/details"
             className="flex items-center justify-between p-4 hover:bg-warm-hover transition-colors"
@@ -124,15 +117,12 @@ export const ProfilePage: React.FC = () => {
               <div className="p-2 rounded-xl bg-brand-100 text-brand-600">
                 <User className="w-5 h-5" />
               </div>
-              <div>
-                <span className="text-sm font-bold text-charcoal-900 block">{t('my_details')}</span>
-                <span className="text-[11px] text-charcoal-500 font-medium">Update name, phone, address & Profile DP</span>
-              </div>
+              <span className="text-sm font-bold text-charcoal-900">{t('my_details')}</span>
             </div>
             <ChevronRight className="w-4 h-4 text-charcoal-400" />
           </Link>
 
-          {/* Wishlist */}
+          {/* 2. Wishlist */}
           <Link
             to="/wishlist"
             className="flex items-center justify-between p-4 hover:bg-warm-hover transition-colors"
@@ -146,7 +136,7 @@ export const ProfilePage: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-charcoal-400" />
           </Link>
 
-          {/* My Orders */}
+          {/* 3. My Orders */}
           <Link
             to="/orders"
             className="flex items-center justify-between p-4 hover:bg-warm-hover transition-colors"
@@ -160,7 +150,23 @@ export const ProfilePage: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-charcoal-400" />
           </Link>
 
-          {/* App Language */}
+          {/* 4. Repair & Lathe Services (Placed right after My Orders) */}
+          <Link
+            to="/repair"
+            className="flex items-center justify-between p-4 hover:bg-warm-hover transition-colors"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="p-2 rounded-xl bg-amber-100 text-amber-600">
+                <Wrench className="w-5 h-5" />
+              </div>
+              <span className="text-sm font-bold text-charcoal-900">
+                {isTamil ? 'லேத் & ARC பழுது பார்க்கும் சேவை' : 'Repair & Lathe Services'}
+              </span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-charcoal-400" />
+          </Link>
+
+          {/* 5. App Language */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'ta' : 'en')}
             className="w-full flex items-center justify-between p-4 hover:bg-warm-hover transition-colors text-left"
@@ -169,19 +175,14 @@ export const ProfilePage: React.FC = () => {
               <div className="p-2 rounded-xl bg-emerald-100 text-emerald-600">
                 <Globe className="w-5 h-5" />
               </div>
-              <div>
-                <span className="text-sm font-bold text-charcoal-900">{t('language_setting')}</span>
-                <span className="text-xs text-charcoal-500 block font-medium">
-                  {language === 'en' ? 'English (ஆங்கிலம்)' : 'தமிழ் (Tamil)'}
-                </span>
-              </div>
+              <span className="text-sm font-bold text-charcoal-900">{t('language_setting')}</span>
             </div>
             <span className="text-xs font-extrabold text-brand-600 bg-brand-50 px-3 py-1 rounded-full border border-brand-200">
               {language === 'en' ? 'Switch to தமிழ்' : 'Switch to English'}
             </span>
           </button>
 
-          {/* Notifications */}
+          {/* 6. Notifications */}
           <Link
             to="/notifications"
             className="flex items-center justify-between p-4 hover:bg-warm-hover transition-colors"
@@ -195,7 +196,7 @@ export const ProfilePage: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-charcoal-400" />
           </Link>
 
-          {/* Install Mobile App (PWA) - Only visible when NOT already installed */}
+          {/* 7. Install Mobile App (PWA) - Only visible when NOT already installed */}
           {!isInstalled && (
             <button
               onClick={openInstallModal}
@@ -205,20 +206,15 @@ export const ProfilePage: React.FC = () => {
                 <div className="p-2 rounded-xl bg-orange-100 text-orange-600">
                   <Smartphone className="w-5 h-5" />
                 </div>
-                <div>
-                  <span className="text-sm font-bold text-charcoal-900 block">
-                    {language === 'ta' ? 'மொபைல் செயலியை நிறுவுக' : 'Install Mobile App (PWA)'}
-                  </span>
-                  <span className="text-[11px] text-charcoal-500 font-medium">
-                    {language === 'ta' ? 'முகப்புத் திரையில் சேர்க்க' : 'Add to home screen for offline access'}
-                  </span>
-                </div>
+                <span className="text-sm font-bold text-charcoal-900">
+                  {isTamil ? 'மொபைல் செயலியை நிறுவுக' : 'Install Mobile App (PWA)'}
+                </span>
               </div>
               <ChevronRight className="w-4 h-4 text-charcoal-400" />
             </button>
           )}
 
-          {/* Help & Shop Contact */}
+          {/* 8. Help & Shop Contact */}
           <Link
             to="/help"
             className="flex items-center justify-between p-4 hover:bg-warm-hover transition-colors"
@@ -232,7 +228,7 @@ export const ProfilePage: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-charcoal-400" />
           </Link>
 
-          {/* Logout */}
+          {/* 9. Logout */}
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3.5 p-4 hover:bg-red-50 text-red-600 transition-colors text-left font-extrabold text-sm"
@@ -248,3 +244,5 @@ export const ProfilePage: React.FC = () => {
     </div>
   );
 };
+
+export default ProfilePage;
