@@ -199,15 +199,15 @@ export const LoginPage: React.FC = () => {
                 {isTamil ? 'முழு பெயர்' : 'Full Name'}
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-400">
-                  <User className="w-4 h-4" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-charcoal-400">
+                  <User className="w-4 h-4 text-brand-600" />
                 </div>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder={isTamil ? 'உங்கள் பெயர்' : 'e.g. Ramesh Kumar'}
-                  className="w-full pl-9.5 pr-3 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-hidden transition-all text-charcoal-900 font-medium"
+                  className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-hidden transition-all text-charcoal-900 font-medium"
                 />
               </div>
             </div>
@@ -219,8 +219,8 @@ export const LoginPage: React.FC = () => {
               {isTamil ? 'மின்னஞ்சல் முகவரி' : 'Email Address'}
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-400">
-                <Mail className="w-4 h-4" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-charcoal-400">
+                <Mail className="w-4 h-4 text-brand-600" />
               </div>
               <input
                 type="email"
@@ -229,7 +229,7 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
                 autoComplete="email"
-                className="w-full pl-9.5 pr-3 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-hidden transition-all text-charcoal-900 font-medium"
+                className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-hidden transition-all text-charcoal-900 font-medium"
               />
             </div>
           </div>
@@ -245,8 +245,8 @@ export const LoginPage: React.FC = () => {
               </span>
             </div>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-charcoal-400">
-                <Lock className="w-4 h-4" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-charcoal-400">
+                <Lock className="w-4 h-4 text-brand-600" />
               </div>
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -255,12 +255,12 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
-                className="w-full pl-9.5 pr-10 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-hidden transition-all text-charcoal-900 font-medium"
+                className="w-full pl-11 pr-11 py-3 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white focus:outline-hidden transition-all text-charcoal-900 font-medium"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-charcoal-400 hover:text-charcoal-600"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-charcoal-400 hover:text-charcoal-700"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>

@@ -275,6 +275,8 @@ export const OrderDetailPage: React.FC = () => {
     const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_T547lttHOVL633';
     const amount = order?.payment_request_amount || order?.remaining_amount || order?.advance_amount || 1000;
 
+    let paymentCompleted = false;
+
     const options = {
       key: rzpKey,
       amount: amount * 100,
@@ -283,14 +285,31 @@ export const OrderDetailPage: React.FC = () => {
       description: `Payment for Order #${order?.order_number}`,
       image: '/logo.png',
       handler: function (response: any) {
+        paymentCompleted = true;
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
         recordCustomerPayment(amount, 'Online Payment');
         setNotifyModal({
           isOpen: true,
-          title: 'Payment Successful',
-          message: t('payment_success'),
+          title: isTamil ? 'கட்டணம் வெற்றிகரமாக செலுத்தப்பட்டது' : 'Payment Successful',
+          message: isTamil 
+            ? 'உங்கள் ஆன்லைன் கட்டணம் பெறப்பட்டது! ரசீது புதுப்பிக்கப்பட்டது.' 
+            : t('payment_success'),
           type: 'success'
         });
+      },
+      modal: {
+        ondismiss: function () {
+          if (!paymentCompleted) {
+            setNotifyModal({
+              isOpen: true,
+              title: isTamil ? 'கட்டணம் ரத்து செய்யப்பட்டது' : 'Payment Incomplete / Cancelled',
+              message: isTamil 
+                ? 'கட்டண பரிவர்த்தனை நிறைவடையவில்லை. நீங்கள் மீண்டும் "Pay Now" பொத்தானை அழுத்தி செலுத்தலாம் அல்லது பட்டறையில் ரொக்கமாக செலுத்தலாம்.' 
+                : 'Payment checkout was closed before completing. You can click "Pay Now" to try again anytime, or pay cash at the workshop.',
+              type: 'warning'
+            });
+          }
+        }
       },
       prefill: {
         name: user?.full_name || 'Manikandan Customer',
@@ -304,15 +323,29 @@ export const OrderDetailPage: React.FC = () => {
 
     try {
       const rzp = new (window as any).Razorpay(options);
+
+      rzp.on('payment.failed', function (response: any) {
+        const errorDesc = response.error?.description || response.error?.reason || 'Transaction could not be processed.';
+        setNotifyModal({
+          isOpen: true,
+          title: isTamil ? 'கட்டணம் தோல்வியடைந்தது' : 'Payment Failed',
+          message: isTamil 
+            ? `கட்டணப் பரிவர்த்தனை தோல்வியடைந்தது: ${errorDesc}. உங்கள் வங்கி அல்லது கார்டு விவரங்களைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.` 
+            : `Payment failed: ${errorDesc}. Please check your payment method and try again, or use UPI QR / Cash at workshop.`,
+          type: 'error'
+        });
+      });
+
       rzp.open();
-    } catch (err) {
-      confetti({ particleCount: 100, spread: 70 });
-      recordCustomerPayment(amount, 'Online Payment');
+    } catch (err: any) {
+      console.warn('Razorpay checkout initialization notice:', err);
       setNotifyModal({
         isOpen: true,
-        title: 'Payment Successful',
-        message: t('payment_success'),
-        type: 'success'
+        title: isTamil ? 'கட்டண இணைப்பு பிழை' : 'Payment Gateway Notice',
+        message: isTamil
+          ? 'ரேஸர்பே கட்டணப் பக்கத்தைத் திறப்பதில் சிக்கல். தயவுசெய்து இணைய இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.'
+          : 'Could not open Razorpay checkout. Please verify your internet connection and try again.',
+        type: 'error'
       });
     }
   };

@@ -212,15 +212,31 @@ export const CustomerInvoicePage: React.FC = () => {
       const qty = Number(record.quantity) || 1;
       const defaultUnitPrice = prod?.admin_price || 40000;
       const discount = Number(record.discount_amount || 0);
-      const extra = Number(record.extra_charges || 0);
+      const extra = Number(record.extra_charges || record.extra_charges_amount || 0);
 
       const computedTotal = (Number(record.total_amount) > 0)
         ? Number(record.total_amount)
         : Math.max(0, (defaultUnitPrice * qty) - discount + extra);
 
-      const computedRemaining = (record.remaining_amount != null && Number(record.remaining_amount) > 0)
-        ? Number(record.remaining_amount)
-        : (totalPaid > 0 ? Math.max(0, computedTotal - totalPaid) : computedTotal);
+      // Determine explicit advance/paid
+      const explicitAdvance = Number(record.advance_amount || 0);
+      let advancePaid = 0;
+      if (totalPaid > 0) {
+        advancePaid = totalPaid;
+      } else if (record.remaining_amount != null && Number(record.remaining_amount) > 0 && Number(record.remaining_amount) < computedTotal) {
+        advancePaid = Math.max(0, computedTotal - Number(record.remaining_amount));
+      } else if (explicitAdvance > 0) {
+        advancePaid = explicitAdvance;
+      }
+
+      let computedRemaining = 0;
+      if (totalPaid > 0) {
+        computedRemaining = Math.max(0, computedTotal - totalPaid);
+      } else if (record.remaining_amount != null && Number(record.remaining_amount) > 0 && Number(record.remaining_amount) < computedTotal) {
+        computedRemaining = Number(record.remaining_amount);
+      } else {
+        computedRemaining = Math.max(0, computedTotal - advancePaid);
+      }
 
       const finalOrderObj = {
         ...record,
@@ -231,7 +247,8 @@ export const CustomerInvoicePage: React.FC = () => {
         productImage: record.productImage || (prod ? prod.primary_image : undefined),
         total_amount: computedTotal,
         remaining_amount: computedRemaining,
-        total_paid: totalPaid,
+        total_paid: advancePaid,
+        advance_amount: advancePaid,
         product: prod
       };
 
@@ -257,6 +274,8 @@ export const CustomerInvoicePage: React.FC = () => {
     const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_T547lttHOVL633';
     const amount = Number(order?.remaining_amount || order?.total_amount || 1000);
 
+    let paymentCompleted = false;
+
     const options = {
       key: rzpKey,
       amount: amount * 100,
@@ -265,6 +284,7 @@ export const CustomerInvoicePage: React.FC = () => {
       description: `Payment for Tax Invoice #${order?.order_number || id}`,
       image: '/logo.png',
       handler: async function (response: any) {
+        paymentCompleted = true;
         confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
         
         // Update local and DB remaining amount
@@ -298,6 +318,13 @@ export const CustomerInvoicePage: React.FC = () => {
 
         alert('Payment completed successfully via Razorpay! Your invoice is now marked PAID.');
       },
+      modal: {
+        ondismiss: function () {
+          if (!paymentCompleted) {
+            alert('Payment process was closed without completing. You can click "Pay Online" to try again anytime.');
+          }
+        }
+      },
       prefill: {
         name: order?.customerName || 'Manikandan Customer',
         email: 'customer@manikandanlathe.com',
@@ -310,10 +337,16 @@ export const CustomerInvoicePage: React.FC = () => {
 
     try {
       const rzp = new (window as any).Razorpay(options);
+
+      rzp.on('payment.failed', function (response: any) {
+        const errorDesc = response.error?.description || response.error?.reason || 'Transaction could not be processed.';
+        alert(`Payment Failed: ${errorDesc}\nPlease check your account/payment method and try again, or pay cash at the workshop counter.`);
+      });
+
       rzp.open();
     } catch (err) {
       console.warn('Razorpay checkout error:', err);
-      alert('Opening Razorpay Payment Checkout...');
+      alert('Could not initialize Razorpay payment. Please verify your connection and try again.');
     }
   };
 
@@ -450,12 +483,42 @@ export const CustomerInvoicePage: React.FC = () => {
   const rawInvoiceNo = (order?.order_number || order?.id || id || 'MNK-ORD-1').toString();
   const invoiceNo = rawInvoiceNo.startsWith('#') ? rawInvoiceNo.slice(1) : rawInvoiceNo;
 
+  const isUuid = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  const formattedDisplayId = isUuid ? `INV-${id.slice(0, 8).toUpperCase()}` : (id?.startsWith('#') ? id : `#${id || 'MNK-ORD-1'}`);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-4">
-        <div className="text-center space-y-3 bg-white p-8 rounded-3xl border border-warm-border shadow-card">
-          <div className="animate-spin rounded-full h-9 w-9 border-4 border-brand-500 border-t-transparent mx-auto"></div>
-          <p className="text-xs font-black text-charcoal-900">Loading Official Tax Invoice #{id}...</p>
+      <div 
+        className="min-h-screen flex flex-col items-center justify-center p-6 text-center animate-fade-in select-none"
+        style={{
+          backgroundColor: '#0F172A',
+          backgroundImage: 'radial-gradient(ellipse 80% 80% at 50% -20%, rgba(245, 102, 0, 0.2), rgba(255, 255, 255, 0))'
+        }}
+      >
+        <div className="relative p-8 bg-slate-900/90 rounded-3xl border border-brand-500/40 shadow-2xl backdrop-blur-md max-w-sm w-full text-center space-y-5">
+          {/* Logo */}
+          <div className="w-16 h-16 rounded-2xl bg-white p-2.5 mx-auto shadow-lg border border-slate-100 flex items-center justify-center">
+            <img src="/logo.png" alt="Manikandan Lathe" className="w-full h-full object-contain" />
+          </div>
+
+          {/* Animated Spinner with Spark Center */}
+          <div className="relative w-12 h-12 mx-auto flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full border-3 border-slate-700" />
+            <div className="absolute inset-0 rounded-full border-3 border-transparent border-t-brand-500 border-r-amber-400 animate-spin" />
+            <div className="w-4 h-4 rounded-full bg-brand-500 shadow-md animate-pulse" />
+          </div>
+
+          <div className="space-y-1.5">
+            <h3 className="text-base font-black text-white">
+              Loading Tax Invoice
+            </h3>
+            <span className="text-xs font-mono font-bold text-brand-400 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700 inline-block">
+              {formattedDisplayId}
+            </span>
+            <p className="text-[11px] text-slate-400 font-medium pt-1">
+              Verifying invoice ledger & fabrication breakdown...
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -507,13 +570,13 @@ export const CustomerInvoicePage: React.FC = () => {
             </div>
 
             {/* Pay Online via Razorpay Button if balance due */}
-            {(order?.remaining_amount > 0 || (order?.total_amount > 0 && order?.total_paid === 0)) && (
+            {(order && (order.remaining_amount > 0 || (order.total_amount > 0 && order.total_paid === 0))) && (
               <button
                 onClick={handlePayNow}
                 className="bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-black px-4 py-2 rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5 animate-pulse-subtle"
               >
                 <CreditCard className="w-4 h-4" />
-                <span>Pay Online (₹{(order?.remaining_amount || order?.total_amount || 0).toLocaleString('en-IN')})</span>
+                <span>Pay Online (₹{(order.remaining_amount != null && order.remaining_amount > 0 ? order.remaining_amount : order.total_amount || 0).toLocaleString('en-IN')})</span>
               </button>
             )}
 

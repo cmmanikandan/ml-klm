@@ -8,7 +8,7 @@ import { useNetworkStatus } from '../context/NetworkStatusContext';
 export const ProfilePage: React.FC = () => {
   const { user, isAdmin, signOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
-  const { isInstallable, isInstalled, isIOS, promptInstall } = useNetworkStatus();
+  const { isInstalled, openInstallModal } = useNetworkStatus();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -174,50 +174,28 @@ export const ProfilePage: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-charcoal-400" />
           </Link>
 
-          {/* Install Mobile App (PWA) */}
-          <button
-            onClick={async () => {
-              if (isIOS) {
-                alert(
-                  language === 'ta'
-                    ? 'ஐபோனில் நிறுவ: Safari கீழே உள்ள Share (பகிர்) பொத்தானை அழுத்தி "Add to Home Screen" என்பதைத் தேர்ந்தெடுக்கவும்.'
-                    : 'To install on iOS: Tap the Share button at the bottom of Safari and select "Add to Home Screen".'
-                );
-              } else if (isInstallable) {
-                await promptInstall();
-              } else if (isInstalled) {
-                alert(
-                  language === 'ta'
-                    ? 'செயலி ஏற்கனவே உங்கள் சாதனத்தில் நிறுவப்பட்டுள்ளது!'
-                    : 'App is already installed on your device!'
-                );
-              } else {
-                alert(
-                  language === 'ta'
-                    ? 'உலாவியின் மெனுவை (⋮) திறந்து "Install App" அல்லது "Add to Home Screen" என்பதைத் தேர்ந்தெடுக்கவும்.'
-                    : 'Open browser menu (⋮) and tap "Install App" or "Add to Home Screen".'
-                );
-              }
-            }}
-            className="w-full flex items-center justify-between p-4 hover:bg-warm-hover transition-colors text-left"
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="p-2 rounded-xl bg-orange-100 text-orange-600">
-                <Smartphone className="w-5 h-5" />
+          {/* Install Mobile App (PWA) - Only visible when NOT already installed */}
+          {!isInstalled && (
+            <button
+              onClick={openInstallModal}
+              className="w-full flex items-center justify-between p-4 hover:bg-warm-hover transition-colors text-left"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="p-2 rounded-xl bg-orange-100 text-orange-600">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-sm font-bold text-charcoal-900 block">
+                    {language === 'ta' ? 'மொபைல் செயலியை நிறுவுக' : 'Install Mobile App (PWA)'}
+                  </span>
+                  <span className="text-[11px] text-charcoal-500 font-medium">
+                    {language === 'ta' ? 'முகப்புத் திரையில் சேர்க்க' : 'Add to home screen for offline access'}
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="text-sm font-bold text-charcoal-900 block">
-                  {language === 'ta' ? 'மொபைல் செயலியை நிறுவுக' : 'Install Mobile App (PWA)'}
-                </span>
-                <span className="text-[11px] text-charcoal-500 font-medium">
-                  {isInstalled
-                    ? (language === 'ta' ? 'நிறுவப்பட்டுள்ளது ✓' : 'App Installed ✓')
-                    : (language === 'ta' ? 'முகப்புத் திரையில் சேர்க்க' : 'Add to home screen for offline access')}
-                </span>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-charcoal-400" />
-          </button>
+              <ChevronRight className="w-4 h-4 text-charcoal-400" />
+            </button>
+          )}
 
           {/* Help & Shop Contact */}
           <Link
