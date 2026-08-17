@@ -282,50 +282,53 @@ export const RepairServicePage: React.FC = () => {
           </a>
         </div>
 
-        {/* Page Title */}
-        <div className="space-y-0.5">
-          <h1 className="text-xl sm:text-2xl font-black text-charcoal-900">
-            {isTamil ? 'லேத் & ARC பழுது பார்க்கும் சேவை' : 'Machining & ARC Repair Service'}
-          </h1>
-          <p className="text-xs text-charcoal-500 font-medium">
-            {isTamil 
-              ? 'டிராக்டர் கருவிகள், கேட் கிரில், வளைந்த ஷாப்ட் பழுது கோரிக்கை' 
-              : 'Submit damaged agricultural or machinery parts for quick lathe quote'}
-          </p>
-        </div>
+        {/* Page Title & Tab Switcher (Styled cleanly like OrdersPage.tsx) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <h1 className="text-xl sm:text-2xl font-black text-charcoal-900">
+              {isTamil ? 'லேத் & ARC பழுது பார்க்கும் சேவை' : 'Machining & ARC Repair Service'}
+            </h1>
+            <p className="text-xs text-charcoal-500 font-medium">
+              {isTamil 
+                ? 'டிராக்டர் கருவிகள், கேட் கிரில், வளைந்த ஷாப்ட் பழுது கோரிக்கை' 
+                : 'Submit damaged agricultural or machinery parts for quick quote'}
+            </p>
+          </div>
 
-        {/* Tab Switcher (New Request vs Sent Requests) */}
-        <div className="grid grid-cols-2 gap-1.5 bg-warm-muted/70 p-1 rounded-2xl border border-warm-border">
-          <button
-            type="button"
-            onClick={() => setActiveTab('new_request')}
-            className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'new_request'
-                ? 'bg-white text-brand-700 shadow-sm'
-                : 'text-charcoal-600 hover:text-charcoal-900'
-            }`}
-          >
-            <PlusCircle className="w-3.5 h-3.5 text-brand-600" />
-            <span>{isTamil ? 'புதிய பழுது கோரிக்கை' : 'New Repair Request'}</span>
-          </button>
+          <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-warm-border shadow-sm shrink-0 w-fit">
+            <button
+              type="button"
+              onClick={() => setActiveTab('new_request')}
+              className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                activeTab === 'new_request'
+                  ? 'bg-brand-600 text-white shadow-sm'
+                  : 'text-charcoal-600 hover:bg-warm-hover'
+              }`}
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>{isTamil ? 'புதிய கோரிக்கை' : 'New Request'}</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('sent_requests')}
-            className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'sent_requests'
-                ? 'bg-white text-brand-700 shadow-sm'
-                : 'text-charcoal-600 hover:text-charcoal-900'
-            }`}
-          >
-            <History className="w-3.5 h-3.5 text-brand-600" />
-            <span>{isTamil ? 'அனுப்பப்பட்ட கோரிக்கைகள்' : 'Sent Requests'}</span>
-            {myRequests.length > 0 && (
-              <span className="bg-brand-600 text-white text-[10px] font-mono font-black px-1.5 py-0.2 rounded-full">
-                {myRequests.length}
-              </span>
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('sent_requests')}
+              className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                activeTab === 'sent_requests'
+                  ? 'bg-brand-600 text-white shadow-sm'
+                  : 'text-charcoal-600 hover:bg-warm-hover'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>{isTamil ? 'அனுப்பப்பட்டவை' : 'Sent Requests'}</span>
+              {myRequests.length > 0 && (
+                <span className={`text-[10px] font-mono font-black px-1.5 py-0.2 rounded-full ${
+                  activeTab === 'sent_requests' ? 'bg-white text-brand-700' : 'bg-brand-100 text-brand-700'
+                }`}>
+                  {myRequests.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* TAB 1: NEW REPAIR REQUEST */}
