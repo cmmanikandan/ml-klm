@@ -113,12 +113,12 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Categories Section */}
+      {/* Categories Section - Left-to-Right Horizontal Scrolling Carousel */}
       {categories.length > 0 && (
-        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-6">
+        <section className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-black text-charcoal-900">{t('categories_title')}</h2>
+              <h2 className="text-xl sm:text-2xl font-black text-charcoal-900">{t('categories_title')}</h2>
               <p className="text-xs text-charcoal-500 font-semibold mt-0.5">
                 {isTamil ? 'எங்கள் பிரதான தயாரிப்பு பிரிவுகள்' : 'Explore by product category'}
               </p>
@@ -129,18 +129,30 @@ export const LandingPage: React.FC = () => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5">
+          {/* Left to Right Horizontal Scrolling Category Carousel */}
+          <div className="flex items-center gap-3.5 overflow-x-auto pb-3 pt-1 scrollbar-none no-scrollbar snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
             {categories.map((cat) => (
               <Link
                 key={cat.id}
                 to={`/products?category=${cat.slug}`}
-                className="group bg-white p-4 rounded-2xl border border-warm-border/80 shadow-card hover:shadow-warm transition-all text-center flex flex-col items-center justify-center"
+                className="snap-start shrink-0 w-36 sm:w-44 bg-white rounded-3xl p-3 border border-warm-border shadow-card hover:shadow-warm-lg hover:border-brand-400 transition-all flex flex-col items-center text-center group cursor-pointer"
               >
-                <div className="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                  <Flame className="w-6 h-6" />
+                <div className="w-full h-24 sm:h-28 rounded-2xl overflow-hidden mb-2.5 bg-brand-50 relative border border-warm-border/60">
+                  {cat.image_url ? (
+                    <img
+                      src={cat.image_url}
+                      alt={cat.name_en}
+                      className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-brand-600">
+                      <Flame className="w-8 h-8" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <span className="text-xs font-bold text-charcoal-900 group-hover:text-brand-600 transition-colors line-clamp-1">
-                  {isTamil ? cat.name_ta || cat.name_en : cat.name_en}
+                <span className="text-xs sm:text-sm font-black text-charcoal-900 group-hover:text-brand-600 transition-colors line-clamp-1 leading-tight">
+                  {isTamil ? (cat.name_ta || cat.name_en) : cat.name_en}
                 </span>
               </Link>
             ))}

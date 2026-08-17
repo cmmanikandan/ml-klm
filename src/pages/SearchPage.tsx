@@ -7,21 +7,15 @@ import {
   Clock, 
   Sparkles, 
   Mic, 
-  Wrench, 
-  MessageSquare, 
-  ShoppingBag, 
-  Flame, 
-  ArrowRight,
-  Zap,
-  CheckCircle2,
-  TrendingUp
+  TrendingUp,
+  Wrench,
+  MessageSquare
 } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
 import { VoiceSearchModal } from '../components/common/VoiceSearchModal';
 import { useLanguage } from '../context/LanguageContext';
 import { Product } from '../types';
 import { fetchActiveProducts } from '../lib/productsStore';
-import { DEFAULT_SHOP_INFO } from '../lib/supabase';
 
 const POPULAR_SEARCH_TAGS = [
   { en: '7-Kallapai', ta: '7-ஏர் கலப்பை' },
@@ -87,7 +81,7 @@ export const SearchPage: React.FC = () => {
 
   const handleWhatsAppQuickChat = () => {
     const text = encodeURIComponent(
-      `Hello Manikandan Lathe Works! I am looking for custom gates, grills, lathe works or repair service.`
+      `Hello Manikandan Lathe Works! I am searching for custom metal fabrication & lathe work.`
     );
     window.open(`https://wa.me/919659286268?text=${text}`, '_blank');
   };
@@ -112,7 +106,7 @@ export const SearchPage: React.FC = () => {
     : [];
 
   return (
-    <div className="min-h-screen bg-warm-bg pb-24 md:pb-12 pt-3">
+    <div className="min-h-screen bg-warm-bg pb-52 md:pb-24 pt-3 safe-area-pb">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
         
         {/* Top Floating Search Header Bar */}
@@ -173,117 +167,12 @@ export const SearchPage: React.FC = () => {
           }}
         />
 
-        {/* SMART FEATURE DISCOVERY CARDS (Shown when query is empty) */}
+        {/* POPULAR SEARCH TAGS & RECENT SEARCHES (When query is empty) */}
         {!query && (
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             
-            {/* 1. Voice Search Hero Feature Card */}
-            <div
-              onClick={() => setIsVoiceOpen(true)}
-              className="bg-gradient-to-r from-slate-900 via-charcoal-900 to-slate-800 text-white rounded-3xl p-4 sm:p-5 border border-slate-700 shadow-xl cursor-pointer hover:border-brand-400 transition-all group flex items-center justify-between gap-4"
-            >
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-500 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-110 transition-transform">
-                  <Mic className="w-6 h-6 animate-pulse" />
-                </div>
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-500/20 px-2 py-0.2 rounded-full border border-amber-500/30">
-                      {isTamil ? 'புதிய குரல் தேடல்' : 'Voice Search'}
-                    </span>
-                  </div>
-                  <h3 className="text-sm sm:text-base font-black text-white group-hover:text-amber-200 transition-colors">
-                    {isTamil ? 'மைக்கை அழுத்தி தமிழில் தேடவும்' : 'Tap to Speak in Tamil or English'}
-                  </h3>
-                  <p className="text-[11px] text-slate-300 font-medium">
-                    {isTamil ? 'எ.கா: "7 கலப்பை", "மெயின் கேட்", "கிரில்"' : 'Speak "Main Gate", "7 Kallapai", "Safety Grill"'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-brand-600 group-hover:bg-brand-500 text-white px-3.5 py-2 rounded-xl text-xs font-black shrink-0 flex items-center gap-1 shadow-sm">
-                <span>{isTamil ? 'பேசுக' : 'Speak'}</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-              </div>
-            </div>
-
-            {/* 2. Feature Quick Action Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              
-              {/* Machining & Repair Requests */}
-              <Link
-                to="/repair"
-                className="bg-white rounded-3xl p-4 border border-warm-border shadow-card hover:shadow-warm-md hover:border-brand-400 transition-all flex flex-col justify-between space-y-3 group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="p-2.5 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 group-hover:scale-105 transition-transform">
-                    <Wrench className="w-5 h-5" />
-                  </div>
-                  <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                    {isTamil ? 'பழுது சேவை' : 'Repair Form'}
-                  </span>
-                </div>
-                <div>
-                  <h4 className="text-xs font-black text-charcoal-900 group-hover:text-brand-600 transition-colors">
-                    {isTamil ? 'லேத் & ARC பழுது சேவை' : 'Machining & ARC Repair'}
-                  </h4>
-                  <p className="text-[11px] text-charcoal-500 font-medium mt-0.5 line-clamp-2">
-                    {isTamil ? 'டிராக்டர் கலப்பை, ஷாப்ட், கேட் கிரில் பழுதுக்கு மதிப்பீடு பெற' : 'Request repair estimate for tractor parts, bent axles & welding'}
-                  </p>
-                </div>
-              </Link>
-
-              {/* Direct WhatsApp Quote */}
-              <button
-                type="button"
-                onClick={handleWhatsAppQuickChat}
-                className="bg-white rounded-3xl p-4 border border-warm-border shadow-card hover:shadow-warm-md hover:border-emerald-400 transition-all flex flex-col justify-between space-y-3 text-left group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 group-hover:scale-105 transition-transform">
-                    <MessageSquare className="w-5 h-5" />
-                  </div>
-                  <span className="text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                    {isTamil ? 'வாட்ஸ்அப்' : 'WhatsApp'}
-                  </span>
-                </div>
-                <div>
-                  <h4 className="text-xs font-black text-charcoal-900 group-hover:text-emerald-700 transition-colors">
-                    {isTamil ? 'உடனடி வாட்ஸ்அப் மதிப்பீடு' : 'Instant WhatsApp Quote'}
-                  </h4>
-                  <p className="text-[11px] text-charcoal-500 font-medium mt-0.5 line-clamp-2">
-                    {isTamil ? 'பட்டறை பொறுப்பாளருடன் நேரடி வாட்ஸ்அப் உரையாடல்' : 'Chat with shop craftsman directly for custom size price'}
-                  </p>
-                </div>
-              </button>
-
-              {/* Track Orders & Invoices */}
-              <Link
-                to="/orders"
-                className="bg-white rounded-3xl p-4 border border-warm-border shadow-card hover:shadow-warm-md hover:border-blue-400 transition-all flex flex-col justify-between space-y-3 group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="p-2.5 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 group-hover:scale-105 transition-transform">
-                    <ShoppingBag className="w-5 h-5" />
-                  </div>
-                  <span className="text-[9px] font-black uppercase bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                    {isTamil ? 'ஆர்டர்கள்' : 'Orders'}
-                  </span>
-                </div>
-                <div>
-                  <h4 className="text-xs font-black text-charcoal-900 group-hover:text-blue-700 transition-colors">
-                    {isTamil ? 'ஆர்டர் & இன்வாய்ஸ் அறிதல்' : 'Live Orders & Invoices'}
-                  </h4>
-                  <p className="text-[11px] text-charcoal-500 font-medium mt-0.5 line-clamp-2">
-                    {isTamil ? 'தயாரிப்பு நிலை அறிதல் & ஜிஎஸ்டி ரசீது பதிவிறக்கம்' : 'Track fabrication progress & download digital invoices'}
-                  </p>
-                </div>
-              </Link>
-
-            </div>
-
-            {/* Popular Search Tags / Suggestions */}
-            <div className="bg-white rounded-3xl p-5 border border-warm-border shadow-card space-y-3">
+            {/* Popular Trending Search Tags */}
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-warm-border shadow-card space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-charcoal-900 flex items-center gap-1.5">
                   <TrendingUp className="w-4 h-4 text-brand-600" />
@@ -307,7 +196,7 @@ export const SearchPage: React.FC = () => {
 
             {/* Recent Searches List */}
             {recentSearches.length > 0 && (
-              <div className="bg-white rounded-3xl p-5 border border-warm-border shadow-card space-y-3">
+              <div className="bg-white rounded-3xl p-4 sm:p-5 border border-warm-border shadow-card space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-charcoal-900 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-brand-600" />
@@ -342,7 +231,7 @@ export const SearchPage: React.FC = () => {
 
         {/* SEARCH RESULTS DISPLAY (When query has text) */}
         {query && (
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-extrabold text-charcoal-600">
                 {filteredProducts.length} {isTamil ? 'முடிவுகள் கண்டறியப்பட்டன' : 'products found'} for "{query}"
