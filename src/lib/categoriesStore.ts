@@ -4,7 +4,7 @@ import { Category } from '../types';
 const LOCAL_CATEGORIES_KEY = 'ml_custom_categories';
 const DELETED_CATEGORIES_KEY = 'ml_deleted_categories';
 
-// Fetch all active categories directly from Supabase DB (Live 100% sync)
+// Fetch all active categories directly from Supabase DB (with Offline Cache Fallback)
 export const fetchActiveCategories = async (): Promise<Category[]> => {
   try {
     const { data, error } = await supabase
@@ -14,14 +14,23 @@ export const fetchActiveCategories = async (): Promise<Category[]> => {
       .order('sort_order', { ascending: true });
 
     if (error) {
-      console.warn('Supabase categories fetch error:', error.message);
-      return [];
+      console.warn('Supabase categories fetch error (attempting offline cache):', error.message);
+      const cached = localStorage.getItem('ml_cached_categories');
+      return cached ? JSON.parse(cached) : INITIAL_CATEGORIES;
     }
 
-    return data || [];
+    const categories = data || [];
+    if (categories.length > 0) {
+      try {
+        localStorage.setItem('ml_cached_categories', JSON.stringify(categories));
+      } catch (e) {}
+    }
+
+    return categories;
   } catch (e) {
-    console.error('Supabase categories fetch exception:', e);
-    return [];
+    console.warn('Supabase categories fetch exception (falling back to offline cache):', e);
+    const cached = localStorage.getItem('ml_cached_categories');
+    return cached ? JSON.parse(cached) : INITIAL_CATEGORIES;
   }
 };
 

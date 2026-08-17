@@ -4,6 +4,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { RecentlyViewedProvider } from './context/RecentlyViewedContext';
+import { NetworkStatusProvider } from './context/NetworkStatusContext';
 
 import { Navbar } from './components/layout/Navbar';
 import { MobileNav } from './components/layout/MobileNav';
@@ -11,6 +12,8 @@ import { Footer } from './components/layout/Footer';
 import { FloatingWhatsApp } from './components/common/FloatingWhatsApp';
 import { PublicHeader } from './components/layout/PublicHeader';
 import { SplashScreen } from './components/common/SplashScreen';
+import { NetworkBanner } from './components/common/NetworkBanner';
+import { InstallPwaPrompt } from './components/common/InstallPwaPrompt';
 
 // Customer Pages
 import { LandingPage } from './pages/LandingPage';
@@ -101,6 +104,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Real-time online/offline status notification toast */}
+      <NetworkBanner />
+
+      {/* "Add to Home Screen" PWA install prompt & iOS guide */}
+      <InstallPwaPrompt />
+
       {/* Public Header with Home, Products, About, Contact links for visitors */}
       {!isAdmin && (isPublicPage || isGuestProductBrowse) && <PublicHeader />}
       
@@ -108,8 +117,6 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {!isAdmin && !isAuthPage && !isPublicPage && !isGuestProductBrowse && <Navbar />}
 
       <main className="flex-1">{children}</main>
-
-
 
       {/* MobileNav bottom bar for customer portal pages */}
       {!isAdmin && !isAuthPage && !isPublicPage && !isGuestProductBrowse && !isProductDetailPage && <MobileNav />}
@@ -156,77 +163,79 @@ const ScrollToTop: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <WishlistProvider>
-          <RecentlyViewedProvider>
-            <BrowserRouter>
-              <ScrollToTop />
-              <AppLayout>
-                <Routes>
-                  {/* Public & Customer Routes */}
-                  <Route path="/" element={<LandingGuard />} />
-                  <Route path="/about" element={<AboutPage />} />
-                  <Route path="/contact" element={<ContactPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/onboarding" element={<OnboardingPage />} />
+    <NetworkStatusProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <WishlistProvider>
+            <RecentlyViewedProvider>
+              <BrowserRouter>
+                <ScrollToTop />
+                <AppLayout>
+                  <Routes>
+                    {/* Public & Customer Routes */}
+                    <Route path="/" element={<LandingGuard />} />
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="/contact" element={<ContactPage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/onboarding" element={<OnboardingPage />} />
 
-                  <Route
-                    path="/home"
-                    element={
-                      <OnboardingGuard>
-                        <HomePage />
-                      </OnboardingGuard>
-                    }
-                  />
+                    <Route
+                      path="/home"
+                      element={
+                        <OnboardingGuard>
+                          <HomePage />
+                        </OnboardingGuard>
+                      }
+                    />
 
-                  <Route path="/products" element={<ProductsPage />} />
-                  <Route path="/products/:id" element={<ProductDetailPage />} />
-                  <Route path="/search" element={<SearchPage />} />
-                  <Route path="/wishlist" element={<WishlistPage />} />
-                  <Route path="/orders" element={<OrdersPage />} />
-                  <Route path="/orders/:id" element={<OrderDetailPage />} />
-                  
-                  {/* Customer Public Invoice Preview Link */}
-                  <Route path="/invoice/:id" element={<CustomerInvoicePage />} />
-                  <Route path="/view-invoice/:id" element={<CustomerInvoicePage />} />
+                    <Route path="/products" element={<ProductsPage />} />
+                    <Route path="/products/:id" element={<ProductDetailPage />} />
+                    <Route path="/search" element={<SearchPage />} />
+                    <Route path="/wishlist" element={<WishlistPage />} />
+                    <Route path="/orders" element={<OrdersPage />} />
+                    <Route path="/orders/:id" element={<OrderDetailPage />} />
+                    
+                    {/* Customer Public Invoice Preview Link */}
+                    <Route path="/invoice/:id" element={<CustomerInvoicePage />} />
+                    <Route path="/view-invoice/:id" element={<CustomerInvoicePage />} />
 
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/profile/details" element={<ProfileDetailsPage />} />
-                  <Route path="/notifications" element={<NotificationsPage />} />
-                  <Route path="/help" element={<HelpPage />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/profile/details" element={<ProfileDetailsPage />} />
+                    <Route path="/notifications" element={<NotificationsPage />} />
+                    <Route path="/help" element={<HelpPage />} />
 
-                  {/* Separate Admin Routes */}
-                  <Route path="/admin/login" element={<AdminLoginPage />} />
-                  <Route path="/admin/invoice/:id" element={<InvoicePage />} />
-                  <Route path="/admin" element={<AdminLayout />}>
-                    <Route index element={<Navigate to="/admin/dashboard" replace />} />
-                    <Route path="dashboard" element={<AdminDashboardPage />} />
-                    <Route path="enquiries" element={<AdminEnquiriesPage />} />
-                    <Route path="enquiries/:id" element={<AdminEnquiryDetailPage />} />
-                    <Route path="orders" element={<AdminOrdersPage />} />
-                    <Route path="orders/:id" element={<AdminOrderDetailPage />} />
-                    <Route path="customers" element={<AdminCustomersPage />} />
-                    <Route path="contacts" element={<AdminContactsPage />} />
-                    <Route path="products" element={<AdminProductsPage />} />
-                    <Route path="products/new" element={<AdminProductEditPage />} />
-                    <Route path="products/edit/:id" element={<AdminProductEditPage />} />
-                    <Route path="categories" element={<AdminCategoriesPage />} />
-                    <Route path="import" element={<AdminImportPage />} />
-                    <Route path="payments" element={<AdminPaymentsPage />} />
-                    <Route path="settings" element={<AdminSettingsPage />} />
-                    <Route path="pos" element={<AdminPOSPage />} />
-                  </Route>
+                    {/* Separate Admin Routes */}
+                    <Route path="/admin/login" element={<AdminLoginPage />} />
+                    <Route path="/admin/invoice/:id" element={<InvoicePage />} />
+                    <Route path="/admin" element={<AdminLayout />}>
+                      <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                      <Route path="dashboard" element={<AdminDashboardPage />} />
+                      <Route path="enquiries" element={<AdminEnquiriesPage />} />
+                      <Route path="enquiries/:id" element={<AdminEnquiryDetailPage />} />
+                      <Route path="orders" element={<AdminOrdersPage />} />
+                      <Route path="orders/:id" element={<AdminOrderDetailPage />} />
+                      <Route path="customers" element={<AdminCustomersPage />} />
+                      <Route path="contacts" element={<AdminContactsPage />} />
+                      <Route path="products" element={<AdminProductsPage />} />
+                      <Route path="products/new" element={<AdminProductEditPage />} />
+                      <Route path="products/edit/:id" element={<AdminProductEditPage />} />
+                      <Route path="categories" element={<AdminCategoriesPage />} />
+                      <Route path="import" element={<AdminImportPage />} />
+                      <Route path="payments" element={<AdminPaymentsPage />} />
+                      <Route path="settings" element={<AdminSettingsPage />} />
+                      <Route path="pos" element={<AdminPOSPage />} />
+                    </Route>
 
-                  {/* Fallback */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </AppLayout>
-            </BrowserRouter>
-          </RecentlyViewedProvider>
-        </WishlistProvider>
-      </AuthProvider>
-    </LanguageProvider>
+                    {/* Fallback */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </AppLayout>
+              </BrowserRouter>
+            </RecentlyViewedProvider>
+          </WishlistProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </NetworkStatusProvider>
   );
 };
 

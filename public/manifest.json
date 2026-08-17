@@ -1,17 +1,58 @@
 {
   "short_name": "MANIKANDAN LATHE",
-  "name": "MANIKANDAN LATHE",
-  "description": "Manikandan Lathe - Premium Welding & Metal Fabrication Works",
+  "name": "MANIKANDAN LATHE – Welding Works",
+  "description": "Custom lathe turning, welding, gates, grills, steel furniture & metal fabrication in Kallimandhayam.",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "window-controls-overlay"],
+  "orientation": "portrait-primary",
+  "background_color": "#0F172A",
+  "theme_color": "#F56600",
+  "lang": "en",
+  "categories": ["business", "shopping", "utilities"],
   "icons": [
     {
       "src": "/logo.png",
+      "sizes": "192x192",
       "type": "image/png",
-      "sizes": "192x192 512x512"
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "start_url": "/",
-  "background_color": "#0F172A",
-  "theme_color": "#F56600",
-  "display": "standalone",
-  "orientation": "portrait"
+  "shortcuts": [
+    {
+      "name": "Product Catalogue",
+      "short_name": "Products",
+      "description": "Explore all welding & fabrication products",
+      "url": "/products",
+      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Track Orders",
+      "short_name": "Orders",
+      "description": "Check your fabrication order status",
+      "url": "/orders",
+      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Admin Counter POS",
+      "short_name": "POS Billing",
+      "description": "Workshop point of sale billing",
+      "url": "/admin/pos",
+      "icons": [{ "src": "/logo.png", "sizes": "192x192" }]
+    }
+  ]
 }

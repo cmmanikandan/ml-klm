@@ -6,7 +6,7 @@ const DELETED_IDS_KEY = 'ml_deleted_product_ids';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Fetch all active products directly from Supabase DB (Live 100% sync)
+// Fetch all active products directly from Supabase DB (with Offline Cache Fallback)
 export const fetchActiveProducts = async (): Promise<Product[]> => {
   try {
     const { data, error } = await supabase
@@ -16,19 +16,30 @@ export const fetchActiveProducts = async (): Promise<Product[]> => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn('Supabase DB product fetch error:', error.message);
-      return [];
+      console.warn('Supabase DB product fetch error (attempting offline cache):', error.message);
+      const cached = localStorage.getItem('ml_cached_products');
+      return cached ? JSON.parse(cached) : [];
     }
 
     // Hydrate primary_image from images array if missing
-    return (data || []).map((p: any) => ({
+    const formatted = (data || []).map((p: any) => ({
       ...p,
       primary_image: p.primary_image || (p.images && p.images.length > 0 ? p.images[0] : ''),
       images: p.images && p.images.length > 0 ? p.images : (p.primary_image ? [p.primary_image] : [])
     }));
+
+    // Cache products for offline access
+    if (formatted.length > 0) {
+      try {
+        localStorage.setItem('ml_cached_products', JSON.stringify(formatted));
+      } catch (e) {}
+    }
+
+    return formatted;
   } catch (e) {
-    console.error('Supabase DB fetch products exception:', e);
-    return [];
+    console.warn('Supabase DB fetch products exception (falling back to offline cache):', e);
+    const cached = localStorage.getItem('ml_cached_products');
+    return cached ? JSON.parse(cached) : [];
   }
 };
 
