@@ -13,7 +13,8 @@ import {
   Eye,
   Calculator,
   CheckCircle2,
-  Receipt
+  Receipt,
+  Wrench
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, supabase } from '../../lib/supabase';
@@ -22,6 +23,7 @@ import { fetchActiveProducts } from '../../lib/productsStore';
 export const AdminDashboardPage: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [enquiries, setEnquiries] = useState<any[]>([]);
+  const [pendingRepairs, setPendingRepairs] = useState<any[]>([]);
   const [productsCount, setProductsCount] = useState<number>(INITIAL_PRODUCTS.length);
   const [categoriesCount, setCategoriesCount] = useState<number>(INITIAL_CATEGORIES.length);
   const [loading, setLoading] = useState(true);
@@ -130,6 +132,24 @@ export const AdminDashboardPage: React.FC = () => {
 
       setEnquiries(enqData || []);
 
+      // 3b. Fetch pending repair requests separately
+      const repairFilter = (e: any) => {
+        const pName = String(e.product_name || '').toLowerCase();
+        const num = String(e.enquiry_number || e.id || '').toLowerCase();
+        return (
+          pName.includes('[repair service]') ||
+          pName.includes('repair') ||
+          pName.includes('machining') ||
+          num.includes('rep')
+        );
+      };
+      const allRepairs = (enqData || []).filter(repairFilter);
+      const pendingOnlyRepairs = allRepairs.filter((e: any) => {
+        const st = String(e.status || 'pending').toLowerCase();
+        return st === 'pending' || st === 'new';
+      });
+      setPendingRepairs(pendingOnlyRepairs);
+
       // 4. Fetch Active Categories from Supabase DB
       const { data: catData } = await supabase.from('categories').select('*').eq('is_active', true);
       setCategoriesCount(catData ? catData.length : 0);
@@ -226,8 +246,8 @@ export const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* Top High-Priority Notification Action Cards (Only shown for UNHANDLED NEW items) */}
-      {(newEnquiries.length > 0 || newOrders.length > 0) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {(newEnquiries.length > 0 || newOrders.length > 0 || pendingRepairs.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {newEnquiries.length > 0 && (
             <div className="bg-gradient-to-r from-amber-500 to-brand-600 text-white p-5 rounded-3xl shadow-lg flex items-center justify-between gap-4">
               <div className="space-y-1">
@@ -266,6 +286,28 @@ export const AdminDashboardPage: React.FC = () => {
                 className="bg-brand-600 hover:bg-brand-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-md transition-all shrink-0 whitespace-nowrap"
               >
                 Accept Orders ({newOrders.length}) →
+              </Link>
+            </div>
+          )}
+
+          {pendingRepairs.length > 0 && (
+            <div className="bg-gradient-to-r from-rose-600 to-brand-700 text-white p-5 rounded-3xl shadow-lg flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Wrench className="w-3.5 h-3.5 text-white/80" />
+                  <span className="bg-white/20 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Repair Ticket</span>
+                </div>
+                <h4 className="text-sm font-black">
+                  {pendingRepairs.length} Pending Repair {pendingRepairs.length === 1 ? 'Request' : 'Requests'}
+                </h4>
+                <p className="text-xs text-rose-100 font-medium">Inspect parts & send repair quote to customer</p>
+              </div>
+
+              <Link
+                to="/admin/repairs"
+                className="bg-white text-rose-700 hover:bg-rose-50 font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-md transition-all shrink-0 whitespace-nowrap"
+              >
+                Review Repairs ({pendingRepairs.length}) →
               </Link>
             </div>
           )}

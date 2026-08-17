@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Calendar, ChevronRight, ShoppingBag } from 'lucide-react';
+import { Package, Calendar, ChevronRight, ShoppingBag, RotateCcw } from 'lucide-react';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { useLanguage } from '../context/LanguageContext';
@@ -18,6 +18,14 @@ export const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloading, setReloading] = useState(false);
+  const initializedRef = useRef(false);
+
+  const handleManualReload = async () => {
+    setReloading(true);
+    await loadOrdersAndEnquiries();
+    setTimeout(() => setReloading(false), 600);
+  };
 
   useEffect(() => {
     loadOrdersAndEnquiries();
@@ -44,7 +52,10 @@ export const OrdersPage: React.FC = () => {
   }, [user?.id]);
 
   const loadOrdersAndEnquiries = async () => {
-    setLoading(true);
+    // Only show full loading spinner on first load; background polls are silent
+    if (!initializedRef.current) {
+      setLoading(true);
+    }
 
     try {
       // 1. Fetch all products for name and image hydration
@@ -159,12 +170,27 @@ export const OrdersPage: React.FC = () => {
         };
       });
 
-      setEnquiries(hydratedEnquiries);
+      // Filter out repair requests — they belong in /repair page, not here
+      const isRepairEnquiry = (e: any) => {
+        const pName = String(e.product_name || '').toLowerCase();
+        const num = String(e.enquiry_number || '').toLowerCase();
+        return (
+          pName.includes('[repair service]') ||
+          pName.includes('repair') ||
+          pName.includes('machining') ||
+          pName.includes('பழுது') ||
+          num.includes('rep')
+        );
+      };
+
+      const nonRepairEnquiries = hydratedEnquiries.filter((e: any) => !isRepairEnquiry(e));
+      setEnquiries(nonRepairEnquiries);
     } catch (e) {
       console.warn('OrdersPage live Supabase DB fetch error:', e);
       setOrders([]);
       setEnquiries([]);
     } finally {
+      initializedRef.current = true;
       setLoading(false);
     }
   };
@@ -174,27 +200,38 @@ export const OrdersPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         
         {/* Page Title & Tabs */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-black text-charcoal-900">{t('orders_title')}</h1>
 
-          <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-warm-border shadow-sm">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setActiveTab('orders')}
-              className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                activeTab === 'orders' ? 'bg-brand-600 text-white shadow-sm' : 'text-charcoal-600 hover:bg-warm-hover'
-              }`}
+              onClick={handleManualReload}
+              disabled={reloading || loading}
+              className="p-2 rounded-full bg-white border border-warm-border shadow-sm hover:bg-warm-bg transition-colors"
+              title="Reload"
             >
-              {t('active_orders')} ({orders.length})
+              <RotateCcw className={`w-3.5 h-3.5 text-brand-600 ${reloading ? 'animate-spin' : ''}`} />
             </button>
 
-            <button
-              onClick={() => setActiveTab('enquiries')}
-              className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                activeTab === 'enquiries' ? 'bg-brand-600 text-white shadow-sm' : 'text-charcoal-600 hover:bg-warm-hover'
-              }`}
-            >
-              {t('enquiries_tab')} ({enquiries.length})
-            </button>
+            <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-warm-border shadow-sm">
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                  activeTab === 'orders' ? 'bg-brand-600 text-white shadow-sm' : 'text-charcoal-600 hover:bg-warm-hover'
+                }`}
+              >
+                {t('active_orders')} ({orders.length})
+              </button>
+
+              <button
+                onClick={() => setActiveTab('enquiries')}
+                className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                  activeTab === 'enquiries' ? 'bg-brand-600 text-white shadow-sm' : 'text-charcoal-600 hover:bg-warm-hover'
+                }`}
+              >
+                {t('enquiries_tab')} ({enquiries.length})
+              </button>
+            </div>
           </div>
         </div>
 

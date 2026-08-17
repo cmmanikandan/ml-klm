@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Wrench, 
@@ -17,7 +17,8 @@ import {
   Package,
   AlertCircle,
   ExternalLink,
-  ListFilter
+  ListFilter,
+  RotateCcw
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { useLanguage } from '../context/LanguageContext';
@@ -87,6 +88,14 @@ export const RepairServicePage: React.FC = () => {
   // Sent Requests State
   const [myRequests, setMyRequests] = useState<any[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
+  const [reloading, setReloading] = useState(false);
+  const initializedRef = useRef(false);
+
+  const handleManualReload = async () => {
+    setReloading(true);
+    await fetchMyRepairRequests();
+    setTimeout(() => setReloading(false), 600);
+  };
 
   const customerName = user?.full_name?.trim() || 'Customer';
   const customerPhone = user?.phone?.trim() || guestPhone.trim();
@@ -97,25 +106,31 @@ export const RepairServicePage: React.FC = () => {
   }, [user?.id, user?.phone]);
 
   const fetchMyRepairRequests = async () => {
-    setLoadingRequests(true);
+    // Only show loading skeleton on first fetch; background refreshes are silent
+    if (!initializedRef.current) {
+      setLoadingRequests(true);
+    }
     try {
-      const { data: allEnquiries } = await supabase
+      let query = supabase
         .from('enquiries')
         .select('*')
+        .or('product_name.ilike.%repair%,product_name.ilike.%[repair service]%,product_name.ilike.%machining%,enquiry_number.ilike.%rep%')
         .order('created_at', { ascending: false });
 
-      // Filter repair items for this user
-      const filtered = (allEnquiries || []).filter((e: any) => {
-        const isRepair = 
-          String(e.product_name || '').toLowerCase().includes('repair') ||
-          String(e.product_name || '').toLowerCase().includes('பழுது') ||
-          String(e.enquiry_number || '').toLowerCase().includes('rep');
+      const { data: allRepairEnquiries } = await query;
 
-        if (!isRepair) return false;
-
-        // Match user ID or phone number
+      // Filter to only this user's requests
+      const filtered = (allRepairEnquiries || []).filter((e: any) => {
         if (user?.id && e.user_id === user.id) return true;
-        if (user?.phone && e.customer_phone === user.phone) return true;
+        if (user?.phone) {
+          const storedPhone = String(e.customer_phone || '').replace(/\D/g, '');
+          const userPhone = String(user.phone).replace(/\D/g, '');
+          if (storedPhone && userPhone && (
+            storedPhone === userPhone ||
+            storedPhone.endsWith(userPhone.slice(-10)) ||
+            userPhone.endsWith(storedPhone.slice(-10))
+          )) return true;
+        }
         return false;
       });
 
@@ -123,6 +138,7 @@ export const RepairServicePage: React.FC = () => {
     } catch (err) {
       console.warn('Failed to load my repair requests:', err);
     } finally {
+      initializedRef.current = true;
       setLoadingRequests(false);
     }
   };
@@ -185,7 +201,7 @@ export const RepairServicePage: React.FC = () => {
       product_name: `[REPAIR SERVICE] ${serviceTitle}`,
       quantity: 1,
       size_requirement: `Urgency: ${urgency.toUpperCase()}`,
-      custom_notes: `Scope: ${description.trim() || 'Broken part needs inspection & estimate'}. Photos: ${photos.length}`,
+      custom_notes: description.trim() || 'Broken part needs inspection & estimate',
       images: photos,
       status: 'pending',
       created_at: new Date().toISOString(),
@@ -304,28 +320,41 @@ export const RepairServicePage: React.FC = () => {
           </div>
 
           {/* Top-Right Toggle Button */}
-          {showCreateForm ? (
-            <button
-              type="button"
-              onClick={() => setShowCreateForm(false)}
-              className="inline-flex items-center gap-1.5 bg-warm-bg hover:bg-warm-muted text-charcoal-700 font-black px-3.5 py-2 rounded-2xl text-xs border border-warm-border transition-all shrink-0 shadow-xs"
-            >
-              <ListFilter className="w-3.5 h-3.5 text-brand-600" />
-              <span>{isTamil ? 'கோரிக்கைகள்' : 'View Requests'}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setSubmittedTicket(null);
-                setShowCreateForm(true);
-              }}
-              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-brand-600 to-amber-500 hover:from-brand-700 hover:to-amber-600 text-white font-black px-3.5 py-2 rounded-2xl text-xs transition-all shrink-0 shadow-md active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{isTamil ? 'புதிய கோரிக்கை' : '+ New Request'}</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {!showCreateForm && (
+              <button
+                type="button"
+                onClick={handleManualReload}
+                disabled={reloading || loadingRequests}
+                className="p-2 rounded-full bg-white border border-warm-border shadow-sm hover:bg-warm-bg transition-colors"
+                title="Reload"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 text-brand-600 ${reloading ? 'animate-spin' : ''}`} />
+              </button>
+            )}
+            {showCreateForm ? (
+              <button
+                type="button"
+                onClick={() => setShowCreateForm(false)}
+                className="inline-flex items-center gap-1.5 bg-warm-bg hover:bg-warm-muted text-charcoal-700 font-black px-3.5 py-2 rounded-2xl text-xs border border-warm-border transition-all shrink-0 shadow-xs"
+              >
+                <ListFilter className="w-3.5 h-3.5 text-brand-600" />
+                <span>{isTamil ? 'கோரிக்கைகள்' : 'View Requests'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setSubmittedTicket(null);
+                  setShowCreateForm(true);
+                }}
+                className="inline-flex items-center gap-1.5 bg-gradient-to-r from-brand-600 to-amber-500 hover:from-brand-700 hover:to-amber-600 text-white font-black px-3.5 py-2 rounded-2xl text-xs transition-all shrink-0 shadow-md active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{isTamil ? 'புதிய கோரிக்கை' : '+ New Request'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* VIEW 1: CREATE REPAIR REQUEST FORM */}
@@ -582,6 +611,13 @@ export const RepairServicePage: React.FC = () => {
                 const serviceTitle = (req.product_name || 'Machining & Repair').replace('[REPAIR SERVICE]', '').trim();
                 const isConverted = req.status === 'converted' || Boolean(req.converted_order_id);
                 const isRejected = req.status === 'rejected';
+                // Clean old "Scope: xxx. Photos: N" format for backward compat
+                const rawNotes = req.custom_notes || '';
+                const displayNotes = rawNotes.startsWith('Scope:')
+                  ? rawNotes.replace(/^Scope:\s*/i, '').replace(/\.?\s*Photos:\s*\d+\.?$/i, '').trim()
+                  : rawNotes;
+                const urgencyRaw = req.size_requirement || '';
+                const urgencyLabel = urgencyRaw.replace(/^Urgency:\s*/i, '').trim();
 
                 return (
                   <div
@@ -619,9 +655,9 @@ export const RepairServicePage: React.FC = () => {
                       </span>
                     </div>
 
-                    {req.custom_notes && (
-                      <p className="text-xs text-charcoal-600 font-medium bg-warm-bg p-2.5 rounded-xl border border-warm-border leading-relaxed line-clamp-2">
-                        {req.custom_notes}
+                    {displayNotes && (
+                      <p className="text-xs text-charcoal-600 font-medium bg-amber-50 p-2.5 rounded-xl border border-amber-200 leading-relaxed line-clamp-2">
+                        {displayNotes}
                       </p>
                     )}
 

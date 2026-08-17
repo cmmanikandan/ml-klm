@@ -178,6 +178,14 @@ export const ProductsPage: React.FC = () => {
                 {isTamil ? cat.name_ta || cat.name_en : cat.name_en}
               </button>
             ))}
+
+            {/* Special Repair & Machining Service Link */}
+            <a
+              href="/repair"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-extrabold transition-all whitespace-nowrap border bg-gradient-to-r from-brand-50 to-amber-50 text-brand-700 border-brand-300 hover:from-brand-100 hover:to-amber-100 shadow-xs"
+            >
+              🔧 {isTamil ? 'பழுது & இயந்திர சேவை' : 'Repair & Machining'}
+            </a>
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Wrench, 
@@ -17,7 +17,10 @@ import {
   DollarSign,
   Maximize2,
   Calendar,
-  Filter
+  Filter,
+  RotateCcw,
+  Tag,
+  Image
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
@@ -32,13 +35,21 @@ export const AdminRepairRequestsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [repairRequests, setRepairRequests] = useState<any[]>([]);
+  const initializedRef = useRef(false);
 
   // Quote & Conversion Modal State
   const [selectedRepairForQuote, setSelectedRepairForQuote] = useState<any | null>(null);
-  const [quoteAmount, setQuoteAmount] = useState<number>(1500);
-  const [advanceAmount, setAdvanceAmount] = useState<number>(500);
-  const [estimatedDays, setEstimatedDays] = useState<number>(2);
-  const [quoteNotes, setQuoteNotes] = useState<string>('Lathe turning, shaft alignment & heavy ARC welding');
+  const [quoteAmount, setQuoteAmount] = useState<number>(0);
+  const [advanceAmount, setAdvanceAmount] = useState<number>(0);
+  const [estimatedDays, setEstimatedDays] = useState<number>(1);
+  const [quoteNotes, setQuoteNotes] = useState<string>('');
+  const [reloading, setReloading] = useState(false);
+
+  const handleManualReload = async () => {
+    setReloading(true);
+    await fetchRepairRequests();
+    setTimeout(() => setReloading(false), 600);
+  };
   const [isConverting, setIsConverting] = useState(false);
 
   // Fullscreen Image Lightbox
@@ -81,7 +92,7 @@ export const AdminRepairRequestsPage: React.FC = () => {
   }, []);
 
   const fetchRepairRequests = async () => {
-    setLoading(true);
+    if (!initializedRef.current) setLoading(true);
     try {
       // 1. Fetch all enquiries
       const { data: dbEnquiries, error } = await supabase
@@ -156,16 +167,17 @@ export const AdminRepairRequestsPage: React.FC = () => {
     } catch (e) {
       console.warn('Failed to load repair requests:', e);
     } finally {
+      initializedRef.current = true;
       setLoading(false);
     }
   };
 
   const handleOpenQuoteModal = (repair: any) => {
     setSelectedRepairForQuote(repair);
-    setQuoteAmount(1500);
-    setAdvanceAmount(500);
-    setEstimatedDays(2);
-    setQuoteNotes('Lathe turning, shaft alignment & heavy ARC welding');
+    setQuoteAmount(0);
+    setAdvanceAmount(0);
+    setEstimatedDays(1);
+    setQuoteNotes('');
   };
 
   const handleAcceptAndConvert = async () => {
@@ -292,6 +304,14 @@ export const AdminRepairRequestsPage: React.FC = () => {
             <span className="bg-brand-100 text-brand-700 text-xs font-black px-3 py-1 rounded-full border border-brand-200">
               {repairRequests.length} Total Tickets
             </span>
+            <button
+              onClick={handleManualReload}
+              disabled={reloading || loading}
+              className="p-1.5 rounded-full bg-white border border-warm-border shadow-sm hover:bg-warm-bg transition-colors"
+              title="Reload"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 text-brand-600 ${reloading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
           <p className="text-xs text-charcoal-500 font-semibold mt-0.5">
             Review incoming broken tractor parts, shaft turning, motor machining & provide repair quotes
@@ -359,7 +379,7 @@ export const AdminRepairRequestsPage: React.FC = () => {
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3 border-b border-warm-muted pb-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[11px] font-mono font-extrabold text-brand-600 uppercase">
                         #{rep.ticketId}
                       </span>
@@ -377,6 +397,15 @@ export const AdminRepairRequestsPage: React.FC = () => {
                     <h3 className="text-base font-black text-charcoal-900 mt-1">
                       {rep.serviceTitle}
                     </h3>
+                    {/* Category label from product_name / urgency */}
+                    {rep.size_requirement && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Tag className="w-3 h-3 text-charcoal-400" />
+                        <span className="text-[10px] font-bold text-charcoal-500">
+                          {String(rep.size_requirement).replace(/^Urgency:\s*/i, '').trim()}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <Badge variant={rep.isAccepted ? 'accepted' : rep.status === 'rejected' ? 'rejected' : 'pending'}>
@@ -403,13 +432,19 @@ export const AdminRepairRequestsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Issue Description */}
-                {rep.custom_notes && (
-                  <div className="text-xs text-charcoal-700 bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-1">
-                    <span className="text-[10px] font-black text-amber-800 uppercase block">Reported Problem:</span>
-                    <p className="font-medium leading-relaxed">{rep.custom_notes}</p>
-                  </div>
-                )}
+                {/* Issue Description - clean old "Scope:" prefix format */}
+                {rep.custom_notes && (() => {
+                  const raw = String(rep.custom_notes || '');
+                  const clean = raw.startsWith('Scope:')
+                    ? raw.replace(/^Scope:\s*/i, '').replace(/\.?\s*Photos:\s*\d+\.?$/i, '').trim()
+                    : raw;
+                  return (
+                    <div className="text-xs text-charcoal-700 bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-1">
+                      <span className="text-[10px] font-black text-amber-800 uppercase block">Reported Problem:</span>
+                      <p className="font-medium leading-relaxed">{clean}</p>
+                    </div>
+                  );
+                })()}
 
                 {/* Damaged Part Photos Inspection */}
                 {rep.photos && rep.photos.length > 0 && (
@@ -524,13 +559,45 @@ export const AdminRepairRequestsPage: React.FC = () => {
           maxWidth="md"
         >
           <div className="space-y-4 py-2">
+            {/* Repair Item Header */}
             <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border">
               <span className="text-[10px] font-black uppercase text-brand-600 block">REPAIR ITEM</span>
               <h4 className="text-sm font-black text-charcoal-900">{selectedRepairForQuote.serviceTitle}</h4>
               <p className="text-xs text-charcoal-600 font-medium mt-0.5">
                 Customer: <strong>{selectedRepairForQuote.customerName}</strong> ({selectedRepairForQuote.customerPhone})
               </p>
+              {selectedRepairForQuote.location && (
+                <p className="text-xs text-charcoal-500 font-medium mt-0.5">📍 {selectedRepairForQuote.location}</p>
+              )}
             </div>
+
+            {/* Problem Description */}
+            {selectedRepairForQuote.custom_notes && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
+                <span className="text-[10px] font-black text-amber-800 uppercase block mb-1">Reported Problem</span>
+                <p className="text-xs text-charcoal-800 font-medium leading-relaxed">{selectedRepairForQuote.custom_notes}</p>
+              </div>
+            )}
+
+            {/* Damage Photos Preview */}
+            {selectedRepairForQuote.photos && selectedRepairForQuote.photos.length > 0 && (
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Image className="w-3.5 h-3.5 text-charcoal-500" />
+                  <span className="text-[10px] font-black text-charcoal-500 uppercase">Damage Photos ({selectedRepairForQuote.photos.length})</span>
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {selectedRepairForQuote.photos.map((url: string, i: number) => (
+                    <img
+                      key={i}
+                      src={url}
+                      alt="Damage"
+                      className="w-20 h-20 rounded-xl object-cover border border-warm-border shrink-0 shadow-xs"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -540,7 +607,8 @@ export const AdminRepairRequestsPage: React.FC = () => {
                 <input
                   type="number"
                   required
-                  value={quoteAmount}
+                  placeholder="e.g. 1500"
+                  value={quoteAmount || ''}
                   onChange={(e) => setQuoteAmount(parseFloat(e.target.value) || 0)}
                   className="w-full px-3.5 py-2 text-sm font-extrabold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500 font-mono"
                 />
@@ -552,7 +620,8 @@ export const AdminRepairRequestsPage: React.FC = () => {
                 </label>
                 <input
                   type="number"
-                  value={advanceAmount}
+                  placeholder="e.g. 500"
+                  value={advanceAmount || ''}
                   onChange={(e) => setAdvanceAmount(parseFloat(e.target.value) || 0)}
                   className="w-full px-3.5 py-2 text-sm font-extrabold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500 font-mono"
                 />
@@ -565,7 +634,8 @@ export const AdminRepairRequestsPage: React.FC = () => {
               </label>
               <input
                 type="number"
-                value={estimatedDays}
+                placeholder="e.g. 2"
+                value={estimatedDays || ''}
                 onChange={(e) => setEstimatedDays(parseInt(e.target.value) || 1)}
                 className="w-full px-3.5 py-2 text-xs font-extrabold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
               />
@@ -577,6 +647,7 @@ export const AdminRepairRequestsPage: React.FC = () => {
               </label>
               <input
                 type="text"
+                placeholder="Describe the repair scope e.g. Shaft turning, ARC welding"
                 value={quoteNotes}
                 onChange={(e) => setQuoteNotes(e.target.value)}
                 className="w-full px-3.5 py-2 text-xs border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
@@ -595,6 +666,18 @@ export const AdminRepairRequestsPage: React.FC = () => {
               >
                 {isConverting ? 'Creating Order...' : `Accept & Send Quote (₹${quoteAmount.toLocaleString('en-IN')})`}
               </Button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleRejectRepair(selectedRepairForQuote.id);
+                  setSelectedRepairForQuote(null);
+                }}
+                className="shrink-0 inline-flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold py-3 px-4 rounded-2xl text-xs border border-red-200 transition-colors"
+              >
+                <XCircle className="w-4 h-4" />
+                <span>Reject</span>
+              </button>
             </div>
           </div>
         </Modal>

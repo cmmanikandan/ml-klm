@@ -49,21 +49,63 @@ export const RepairDetailPage: React.FC = () => {
       return;
     }
 
+    // Strip leading # if present (e.g. "#MNK-REP-1001" → "MNK-REP-1001")
+    const cleanId = id.startsWith('#') ? id.slice(1) : id;
+
     try {
-      // 1. Try matching by enquiry_number or id in Supabase
-      const { data: dbData } = await supabase
+      // Strategy 1: Match by enquiry_number exactly (MNK-REP-1001 format)
+      const { data: byNum } = await supabase
         .from('enquiries')
         .select('*')
-        .or(`enquiry_number.eq.${id},id.eq.${id}`);
+        .eq('enquiry_number', cleanId)
+        .limit(1);
 
-      if (dbData && dbData.length > 0) {
-        setTicket(dbData[0]);
-      } else {
-        // Fallback to local storage
-        const local = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
-        const match = local.find((e: any) => e.enquiry_number === id || e.id === id);
-        if (match) setTicket(match);
+      if (byNum && byNum.length > 0) {
+        setTicket(byNum[0]);
+        return;
       }
+
+      // Strategy 2: Case-insensitive ilike match for enquiry_number
+      const { data: byNumIlike } = await supabase
+        .from('enquiries')
+        .select('*')
+        .ilike('enquiry_number', cleanId)
+        .limit(1);
+
+      if (byNumIlike && byNumIlike.length > 0) {
+        setTicket(byNumIlike[0]);
+        return;
+      }
+
+      // Strategy 3: Match by UUID id field (if it's a UUID)
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+      if (isUuid) {
+        const { data: byId } = await supabase
+          .from('enquiries')
+          .select('*')
+          .eq('id', cleanId)
+          .limit(1);
+        if (byId && byId.length > 0) {
+          setTicket(byId[0]);
+          return;
+        }
+      }
+
+      // Strategy 4: Fallback - search in localStorage (offline / cached)
+      const local = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+      const match = local.find(
+        (e: any) =>
+          e.enquiry_number === cleanId ||
+          e.enquiry_number === id ||
+          e.id === cleanId ||
+          e.id === id
+      );
+      if (match) {
+        setTicket(match);
+        return;
+      }
+
+      // Not found — ticket stays null → shows "not found" UI
     } catch (err) {
       console.warn('Error loading repair ticket:', err);
     } finally {
@@ -140,13 +182,29 @@ export const RepairDetailPage: React.FC = () => {
   const isConverted = ticket.status === 'converted' || Boolean(ticket.converted_order_id);
   const isRejected = ticket.status === 'rejected';
 
+  // Clean description — strip old "Scope:" prefix if present
+  const rawNotes = ticket.custom_notes || '';
+  const cleanDescription = rawNotes.startsWith('Scope:')
+    ? rawNotes.replace(/^Scope:\s*/i, '').replace(/\.?\s*Photos:\s*\d+\.?$/i, '').trim()
+    : rawNotes;
+
+  // Extract urgency from size_requirement (strip 'Urgency:' prefix)
+  const urgencyRaw = ticket.size_requirement || '';
+  const urgencyLabel = urgencyRaw.replace(/^Urgency:\s*/i, '').trim() || 'STANDARD';
+
   // Determine Timeline Step (1: Submitted, 2: Inspection, 3: Machining, 4: Ready)
   let currentStep = 1;
   if (isConverted) {
     currentStep = 3;
   }
 
-  const imagesList = Array.isArray(ticket.images) ? ticket.images : [];
+  // Images — support both 'images' array and 'primary_image' string
+  const imagesList: string[] = [];
+  if (Array.isArray(ticket.images)) {
+    ticket.images.forEach((u: string) => { if (u) imagesList.push(u); });
+  } else if (ticket.primary_image) {
+    imagesList.push(ticket.primary_image);
+  }
 
   return (
     <div className="min-h-screen bg-warm-bg pb-32 md:pb-16 pt-4">
@@ -309,8 +367,8 @@ export const RepairDetailPage: React.FC = () => {
             {isTamil ? 'பழுது விபரம் & குறிப்புகள்' : 'Problem Description & Details'}
           </h2>
 
-          <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border text-xs text-charcoal-800 font-medium leading-relaxed">
-            {ticket.custom_notes || (isTamil ? 'விபரம் எதுவும் குறிப்பிடப்படவில்லை' : 'No additional notes provided.')}
+          <div className="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 text-xs text-charcoal-800 font-medium leading-relaxed">
+            {cleanDescription || (isTamil ? 'விபரம் எதுவும் குறிப்பிடப்படவில்லை' : 'No additional notes provided.')}
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-1 text-xs">
@@ -319,7 +377,7 @@ export const RepairDetailPage: React.FC = () => {
                 {isTamil ? 'தேவை நிலை' : 'Urgency'}
               </span>
               <span className="font-extrabold text-brand-700">
-                {ticket.size_requirement || 'STANDARD'}
+                {urgencyLabel}
               </span>
             </div>
 
