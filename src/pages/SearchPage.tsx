@@ -1,11 +1,38 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, X, ArrowLeft, Clock, Sparkles, Mic } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { 
+  Search, 
+  X, 
+  ArrowLeft, 
+  Clock, 
+  Sparkles, 
+  Mic, 
+  Wrench, 
+  MessageSquare, 
+  ShoppingBag, 
+  Flame, 
+  ArrowRight,
+  Zap,
+  CheckCircle2,
+  TrendingUp
+} from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
 import { VoiceSearchModal } from '../components/common/VoiceSearchModal';
 import { useLanguage } from '../context/LanguageContext';
 import { Product } from '../types';
 import { fetchActiveProducts } from '../lib/productsStore';
+import { DEFAULT_SHOP_INFO } from '../lib/supabase';
+
+const POPULAR_SEARCH_TAGS = [
+  { en: '7-Kallapai', ta: '7-ஏர் கலப்பை' },
+  { en: 'Main Gate', ta: 'மெயின் கேட்' },
+  { en: 'Safety Grill', ta: 'பாதுகாப்பு கிரில்' },
+  { en: 'Roofing Structure', ta: 'கூரை ஸ்ட்ரக்சர்' },
+  { en: 'ARC Welding', ta: 'ARC வெல்டிங்' },
+  { en: 'Shaft Lathe Turning', ta: 'லேத் டர்னிங்' },
+  { en: 'Rolling Shutter', ta: 'ரோலிங் ஷட்டர்' },
+  { en: 'Steel Chair', ta: 'ஸ்டீல் நாற்காலி' },
+];
 
 export const SearchPage: React.FC = () => {
   const { language, t } = useLanguage();
@@ -18,7 +45,7 @@ export const SearchPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     const saved = localStorage.getItem('ml_recent_searches');
-    return saved ? JSON.parse(saved) : ['Steel Chair', 'Main Gate', 'Grill'];
+    return saved ? JSON.parse(saved) : ['7-Kallapai', 'Main Gate', 'Safety Grill', 'Lathe Work'];
   });
 
   useEffect(() => {
@@ -38,8 +65,17 @@ export const SearchPage: React.FC = () => {
     if (inputRef.current) inputRef.current.focus();
   };
 
-  const handleSelectRecent = (term: string) => {
+  const handleSelectTag = (term: string) => {
     setQuery(term);
+    saveRecentSearch(term);
+  };
+
+  const saveRecentSearch = (term: string) => {
+    if (!term.trim()) return;
+    const clean = term.trim();
+    const updated = [clean, ...recentSearches.filter((item) => item.toLowerCase() !== clean.toLowerCase())].slice(0, 8);
+    setRecentSearches(updated);
+    localStorage.setItem('ml_recent_searches', JSON.stringify(updated));
   };
 
   const handleRemoveRecent = (term: string, e: React.MouseEvent) => {
@@ -47,6 +83,13 @@ export const SearchPage: React.FC = () => {
     const updated = recentSearches.filter((item) => item !== term);
     setRecentSearches(updated);
     localStorage.setItem('ml_recent_searches', JSON.stringify(updated));
+  };
+
+  const handleWhatsAppQuickChat = () => {
+    const text = encodeURIComponent(
+      `Hello Manikandan Lathe Works! I am looking for custom gates, grills, lathe works or repair service.`
+    );
+    window.open(`https://wa.me/919659286268?text=${text}`, '_blank');
   };
 
   // Filter products live based on English title, Tamil title, or Category
@@ -57,7 +100,14 @@ export const SearchPage: React.FC = () => {
         const titleTa = (p.name_ta || '').toLowerCase();
         const catName = (p.category_name || '').toLowerCase();
         const categoryId = (p.category_id || '').toLowerCase();
-        return titleEn.includes(q) || titleTa.includes(q) || catName.includes(q) || categoryId.includes(q);
+        const materials = (p.materials || '').toLowerCase();
+        return (
+          titleEn.includes(q) ||
+          titleTa.includes(q) ||
+          catName.includes(q) ||
+          categoryId.includes(q) ||
+          materials.includes(q)
+        );
       })
     : [];
 
@@ -66,7 +116,7 @@ export const SearchPage: React.FC = () => {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
         
         {/* Top Floating Search Header Bar */}
-        <div className="flex items-center gap-2.5 bg-white p-2 sm:p-2.5 rounded-full border border-warm-border shadow-card">
+        <div className="flex items-center gap-2.5 bg-white p-2 sm:p-2.5 rounded-full border-2 border-brand-300 focus-within:border-brand-600 shadow-card transition-colors">
           <button
             onClick={() => navigate(-1)}
             className="p-2 text-charcoal-600 hover:text-brand-600 rounded-full hover:bg-warm-bg transition-colors"
@@ -82,6 +132,11 @@ export const SearchPage: React.FC = () => {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && query.trim()) {
+                  saveRecentSearch(query.trim());
+                }
+              }}
               placeholder={t('search_placeholder')}
               className="w-full bg-transparent text-xs sm:text-sm font-extrabold text-charcoal-900 focus:outline-none placeholder:text-charcoal-400"
             />
@@ -99,11 +154,11 @@ export const SearchPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsVoiceOpen(true)}
-              className="p-2 text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors mr-1 shrink-0 flex items-center justify-center"
+              className="p-2 text-white bg-gradient-to-r from-brand-500 to-amber-500 hover:from-brand-600 hover:to-amber-600 rounded-full transition-all mr-1 shrink-0 flex items-center justify-center shadow-md active:scale-95"
               title="Tamil & English Voice Search"
               aria-label="Voice Search"
             >
-              <Mic className="w-4 h-4 animate-pulse-subtle" />
+              <Mic className="w-4 h-4 animate-pulse" />
             </button>
           )}
         </div>
@@ -114,46 +169,192 @@ export const SearchPage: React.FC = () => {
           onClose={() => setIsVoiceOpen(false)}
           onTranscript={(spokenText) => {
             setQuery(spokenText);
+            saveRecentSearch(spokenText);
           }}
         />
 
-        {/* Recent Searches Pills */}
-        {!query && recentSearches.length > 0 && (
-          <div className="bg-white rounded-3xl p-5 border border-warm-border shadow-card space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-charcoal-900 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-brand-600" />
-                <span>{isTamil ? 'சமீபத்திய தேடல்கள்' : 'Recent Searches'}</span>
-              </span>
+        {/* SMART FEATURE DISCOVERY CARDS (Shown when query is empty) */}
+        {!query && (
+          <div className="space-y-4">
+            
+            {/* 1. Voice Search Hero Feature Card */}
+            <div
+              onClick={() => setIsVoiceOpen(true)}
+              className="bg-gradient-to-r from-slate-900 via-charcoal-900 to-slate-800 text-white rounded-3xl p-4 sm:p-5 border border-slate-700 shadow-xl cursor-pointer hover:border-brand-400 transition-all group flex items-center justify-between gap-4"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-500 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-110 transition-transform">
+                  <Mic className="w-6 h-6 animate-pulse" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-500/20 px-2 py-0.2 rounded-full border border-amber-500/30">
+                      {isTamil ? 'புதிய குரல் தேடல்' : 'Voice Search'}
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black text-white group-hover:text-amber-200 transition-colors">
+                    {isTamil ? 'மைக்கை அழுத்தி தமிழில் தேடவும்' : 'Tap to Speak in Tamil or English'}
+                  </h3>
+                  <p className="text-[11px] text-slate-300 font-medium">
+                    {isTamil ? 'எ.கா: "7 கலப்பை", "மெயின் கேட்", "கிரில்"' : 'Speak "Main Gate", "7 Kallapai", "Safety Grill"'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-brand-600 group-hover:bg-brand-500 text-white px-3.5 py-2 rounded-xl text-xs font-black shrink-0 flex items-center gap-1 shadow-sm">
+                <span>{isTamil ? 'பேசுக' : 'Speak'}</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {recentSearches.map((term) => (
-                <div
-                  key={term}
-                  onClick={() => handleSelectRecent(term)}
-                  className="inline-flex items-center gap-2 bg-warm-bg hover:bg-brand-50 border border-warm-border hover:border-brand-300 px-3.5 py-1.5 rounded-full text-xs font-bold text-charcoal-800 cursor-pointer transition-colors"
-                >
-                  <span>{term}</span>
-                  <button
-                    onClick={(e) => handleRemoveRecent(term, e)}
-                    className="text-charcoal-400 hover:text-red-500 rounded-full"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+            {/* 2. Feature Quick Action Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              
+              {/* Machining & Repair Requests */}
+              <Link
+                to="/repair"
+                className="bg-white rounded-3xl p-4 border border-warm-border shadow-card hover:shadow-warm-md hover:border-brand-400 transition-all flex flex-col justify-between space-y-3 group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-2.5 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 group-hover:scale-105 transition-transform">
+                    <Wrench className="w-5 h-5" />
+                  </div>
+                  <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                    {isTamil ? 'பழுது சேவை' : 'Repair Form'}
+                  </span>
                 </div>
-              ))}
+                <div>
+                  <h4 className="text-xs font-black text-charcoal-900 group-hover:text-brand-600 transition-colors">
+                    {isTamil ? 'லேத் & ARC பழுது சேவை' : 'Machining & ARC Repair'}
+                  </h4>
+                  <p className="text-[11px] text-charcoal-500 font-medium mt-0.5 line-clamp-2">
+                    {isTamil ? 'டிராக்டர் கலப்பை, ஷாப்ட், கேட் கிரில் பழுதுக்கு மதிப்பீடு பெற' : 'Request repair estimate for tractor parts, bent axles & welding'}
+                  </p>
+                </div>
+              </Link>
+
+              {/* Direct WhatsApp Quote */}
+              <button
+                type="button"
+                onClick={handleWhatsAppQuickChat}
+                className="bg-white rounded-3xl p-4 border border-warm-border shadow-card hover:shadow-warm-md hover:border-emerald-400 transition-all flex flex-col justify-between space-y-3 text-left group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 group-hover:scale-105 transition-transform">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <span className="text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                    {isTamil ? 'வாட்ஸ்அப்' : 'WhatsApp'}
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-charcoal-900 group-hover:text-emerald-700 transition-colors">
+                    {isTamil ? 'உடனடி வாட்ஸ்அப் மதிப்பீடு' : 'Instant WhatsApp Quote'}
+                  </h4>
+                  <p className="text-[11px] text-charcoal-500 font-medium mt-0.5 line-clamp-2">
+                    {isTamil ? 'பட்டறை பொறுப்பாளருடன் நேரடி வாட்ஸ்அப் உரையாடல்' : 'Chat with shop craftsman directly for custom size price'}
+                  </p>
+                </div>
+              </button>
+
+              {/* Track Orders & Invoices */}
+              <Link
+                to="/orders"
+                className="bg-white rounded-3xl p-4 border border-warm-border shadow-card hover:shadow-warm-md hover:border-blue-400 transition-all flex flex-col justify-between space-y-3 group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-2.5 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 group-hover:scale-105 transition-transform">
+                    <ShoppingBag className="w-5 h-5" />
+                  </div>
+                  <span className="text-[9px] font-black uppercase bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                    {isTamil ? 'ஆர்டர்கள்' : 'Orders'}
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-charcoal-900 group-hover:text-blue-700 transition-colors">
+                    {isTamil ? 'ஆர்டர் & இன்வாய்ஸ் அறிதல்' : 'Live Orders & Invoices'}
+                  </h4>
+                  <p className="text-[11px] text-charcoal-500 font-medium mt-0.5 line-clamp-2">
+                    {isTamil ? 'தயாரிப்பு நிலை அறிதல் & ஜிஎஸ்டி ரசீது பதிவிறக்கம்' : 'Track fabrication progress & download digital invoices'}
+                  </p>
+                </div>
+              </Link>
+
             </div>
+
+            {/* Popular Search Tags / Suggestions */}
+            <div className="bg-white rounded-3xl p-5 border border-warm-border shadow-card space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-charcoal-900 flex items-center gap-1.5">
+                  <TrendingUp className="w-4 h-4 text-brand-600" />
+                  <span>{isTamil ? 'பிரபலமான தேடல்கள்' : 'Trending Search Terms'}</span>
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {POPULAR_SEARCH_TAGS.map((tag, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelectTag(tag.en)}
+                    className="inline-flex items-center gap-1.5 bg-warm-bg hover:bg-brand-50 hover:border-brand-400 border border-warm-border px-3.5 py-1.5 rounded-full text-xs font-bold text-charcoal-800 transition-all cursor-pointer shadow-xs active:scale-95"
+                  >
+                    <span>{isTamil ? tag.ta : tag.en}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent Searches List */}
+            {recentSearches.length > 0 && (
+              <div className="bg-white rounded-3xl p-5 border border-warm-border shadow-card space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-charcoal-900 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-brand-600" />
+                    <span>{isTamil ? 'சமீபத்திய தேடல்கள்' : 'Recent Searches'}</span>
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {recentSearches.map((term) => (
+                    <div
+                      key={term}
+                      onClick={() => handleSelectTag(term)}
+                      className="inline-flex items-center gap-2 bg-warm-bg hover:bg-brand-50 border border-warm-border hover:border-brand-300 px-3.5 py-1.5 rounded-full text-xs font-bold text-charcoal-800 cursor-pointer transition-colors"
+                    >
+                      <span>{term}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleRemoveRecent(term, e)}
+                        className="text-charcoal-400 hover:text-red-500 rounded-full"
+                        aria-label="Remove search"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
           </div>
         )}
 
-        {/* Search Results Display */}
+        {/* SEARCH RESULTS DISPLAY (When query has text) */}
         {query && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-extrabold text-charcoal-600">
                 {filteredProducts.length} {isTamil ? 'முடிவுகள் கண்டறியப்பட்டன' : 'products found'} for "{query}"
               </span>
+
+              <button
+                type="button"
+                onClick={handleClear}
+                className="text-xs font-bold text-brand-600 hover:underline"
+              >
+                {isTamil ? 'அனைத்தையும் நீக்குக' : 'Clear search'}
+              </button>
             </div>
 
             {filteredProducts.length > 0 ? (
@@ -163,14 +364,37 @@ export const SearchPage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="bg-white rounded-3xl p-8 text-center border border-warm-border shadow-card space-y-2">
-                <Sparkles className="w-8 h-8 text-brand-600 mx-auto" />
-                <h3 className="text-sm font-black text-charcoal-900">
-                  {isTamil ? 'முடிவுகள் ஏதும் கிடைக்கவில்லை' : 'No matching products found'}
-                </h3>
-                <p className="text-xs text-charcoal-500 font-medium">
-                  {isTamil ? 'வேறு வார்த்தைகளைப் பயன்படுத்தி மீண்டும் தேடவும்' : 'Try searching for chair, gate, grill, or lathe work'}
-                </p>
+              <div className="bg-white rounded-3xl p-8 text-center border border-warm-border shadow-card space-y-4">
+                <Sparkles className="w-10 h-10 text-brand-600 mx-auto" />
+                <div>
+                  <h3 className="text-sm font-black text-charcoal-900">
+                    {isTamil ? 'பொருட்கள் ஏதும் கிடைக்கவில்லை' : 'No matching products found'}
+                  </h3>
+                  <p className="text-xs text-charcoal-500 font-medium mt-1">
+                    {isTamil
+                      ? 'உங்கள் விருப்பத்திற்கேற்ப புதிய தயாரிப்பை உருவாக்க அல்லது பழுது பார்க்க எங்களை நேரடியாக தொடர்பு கொள்ளலாம்.'
+                      : 'Looking for a custom metal size or repair work? Request a machining quote directly.'}
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+                  <Link
+                    to="/repair"
+                    className="inline-flex items-center justify-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs shadow-md transition-colors"
+                  >
+                    <Wrench className="w-3.5 h-3.5" />
+                    <span>{isTamil ? 'பழுது / புதிய வேலை கோரிக்கை' : 'Request Machining / Repair'}</span>
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={handleWhatsAppQuickChat}
+                    className="inline-flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold px-4 py-2.5 rounded-xl text-xs border border-emerald-200 transition-colors"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>{isTamil ? 'வாட்ஸ்அப்பில் கேளுங்கள்' : 'Ask on WhatsApp'}</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -180,3 +404,5 @@ export const SearchPage: React.FC = () => {
     </div>
   );
 };
+
+export default SearchPage;

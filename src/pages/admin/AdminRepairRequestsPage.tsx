@@ -104,6 +104,7 @@ export const AdminRepairRequestsPage: React.FC = () => {
       const list = (dbEnquiries || []).filter((e: any) => {
         const pName = String(e.product_name || e.productName || '').toLowerCase();
         const num = String(e.enquiry_number || e.number || e.id || '').toLowerCase();
+        const notes = String(e.custom_notes || '').toLowerCase();
         return (
           pName.includes('repair') ||
           pName.includes('machining') ||
@@ -111,7 +112,9 @@ export const AdminRepairRequestsPage: React.FC = () => {
           pName.includes('shaft') ||
           pName.includes('டிராக்டர்') ||
           pName.includes('welding') ||
-          num.includes('rep')
+          pName.includes('arc') ||
+          num.includes('rep') ||
+          notes.includes('repair')
         );
       });
 

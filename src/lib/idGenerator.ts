@@ -93,3 +93,58 @@ export const getNextEnquiryId = async (): Promise<string> => {
   return `MNK-ENQ-${nextNum}`;
 };
 
+// Generate sequential unique human-readable Repair Ticket IDs starting from MNK-REP-1001
+export const getNextRepairTicketId = async (): Promise<string> => {
+  const existingNumbers = new Set<string>();
+  let maxNumeric = 1000;
+
+  // 1. Scan from Supabase enquiries table
+  try {
+    const { data: dbEnqs } = await supabase
+      .from('enquiries')
+      .select('enquiry_number, product_name');
+
+    (dbEnqs || []).forEach((e: any) => {
+      const numStr = String(e.enquiry_number || '').trim().toUpperCase();
+      if (numStr) {
+        existingNumbers.add(numStr);
+        if (numStr.startsWith('MNK-REP-')) {
+          const match = numStr.match(/MNK-REP-(\d+)/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num > maxNumeric) maxNumeric = num;
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.warn('DB repair ticket scan error:', e);
+  }
+
+  // 2. Scan from LocalStorage cache
+  try {
+    const localEnqs: any[] = JSON.parse(localStorage.getItem('ml_enquiries') || '[]');
+    localEnqs.forEach((e: any) => {
+      const numStr = String(e.enquiry_number || '').trim().toUpperCase();
+      if (numStr) {
+        existingNumbers.add(numStr);
+        if (numStr.startsWith('MNK-REP-')) {
+          const match = numStr.match(/MNK-REP-(\d+)/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num > maxNumeric) maxNumeric = num;
+          }
+        }
+      }
+    });
+  } catch (e) {}
+
+  let nextNum = maxNumeric + 1;
+  while (existingNumbers.has(`MNK-REP-${nextNum}`)) {
+    nextNum++;
+  }
+
+  return `MNK-REP-${nextNum}`;
+};
+
+

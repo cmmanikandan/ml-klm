@@ -28,6 +28,7 @@ import { supabase } from '../../lib/supabase';
 export const AdminLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingEnquiriesCount, setPendingEnquiriesCount] = useState<number>(0);
+  const [pendingRepairsCount, setPendingRepairsCount] = useState<number>(0);
   const [activeOrdersCount, setActiveOrdersCount] = useState<number>(0);
 
   const { user, isAdmin, signOut } = useAuth();
@@ -71,7 +72,7 @@ export const AdminLayout: React.FC = () => {
 
   const fetchCounts = async () => {
     try {
-      // 1. Pending Enquiries Count
+      // 1. Pending Enquiries & Repair Requests Count
       const { data: dbEnquiries } = await supabase
         .from('enquiries')
         .select('*')
@@ -85,10 +86,31 @@ export const AdminLayout: React.FC = () => {
       });
 
       const actualPending = (dbEnquiries || []).filter(
-        (e: any) => !orderLinkedSet.has(e.id) && !orderLinkedSet.has(e.enquiry_number) && !e.converted_order_id
+        (e: any) => !orderLinkedSet.has(e.id) && !orderLinkedSet.has(e.enquiry_number) && !e.converted_order_id && e.status !== 'rejected'
       );
 
-      setPendingEnquiriesCount(actualPending.length);
+      const isRepairItem = (e: any) => {
+        const pName = String(e.product_name || e.productName || '').toLowerCase();
+        const num = String(e.enquiry_number || e.number || e.id || '').toLowerCase();
+        const notes = String(e.custom_notes || '').toLowerCase();
+        return (
+          pName.includes('repair') ||
+          pName.includes('machining') ||
+          pName.includes('பழுது') ||
+          pName.includes('shaft') ||
+          pName.includes('டிராக்டர்') ||
+          pName.includes('welding') ||
+          pName.includes('arc') ||
+          num.includes('rep') ||
+          notes.includes('repair')
+        );
+      };
+
+      const repairPendingList = actualPending.filter(isRepairItem);
+      const productEnquiriesPendingList = actualPending.filter((e: any) => !isRepairItem(e));
+
+      setPendingRepairsCount(repairPendingList.length);
+      setPendingEnquiriesCount(productEnquiriesPendingList.length);
 
       // 2. Active Orders Count (excluding delivered and cancelled)
       const { data: dbOrders } = await supabase
@@ -111,7 +133,7 @@ export const AdminLayout: React.FC = () => {
   const adminNavItems = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
     { to: '/admin/pos', label: 'POS Counter', icon: Calculator, badge: 'POS' },
-    { to: '/admin/repairs', label: 'Repair & Machining', icon: Wrench, badge: null },
+    { to: '/admin/repairs', label: 'Repair & Machining', icon: Wrench, badge: pendingRepairsCount > 0 ? String(pendingRepairsCount) : null },
     { to: '/admin/enquiries', label: 'Enquiries', icon: MessageSquare, badge: pendingEnquiriesCount > 0 ? String(pendingEnquiriesCount) : null },
     { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, badge: activeOrdersCount > 0 ? String(activeOrdersCount) : null },
     { to: '/admin/customers', label: 'Customers', icon: Users, badge: null },

@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Heart, ShoppingBag, Globe, HelpCircle, LogOut, ChevronRight, Bell, Camera, LayoutDashboard, ShieldCheck, Smartphone } from 'lucide-react';
+import { User, Heart, ShoppingBag, Globe, HelpCircle, LogOut, ChevronRight, Bell, Camera, LayoutDashboard, ShieldCheck, Smartphone, Wrench, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNetworkStatus } from '../context/NetworkStatusContext';
+import { FeatureSpotlightModal } from '../components/common/FeatureSpotlightModal';
 
 export const ProfilePage: React.FC = () => {
   const { user, isAdmin, signOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const { isInstalled, openInstallModal } = useNetworkStatus();
   const navigate = useNavigate();
+  const [showFeaturesModal, setShowFeaturesModal] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -94,6 +96,34 @@ export const ProfilePage: React.FC = () => {
         {/* Options List */}
         <div className="bg-white rounded-3xl border border-warm-border shadow-card divide-y divide-warm-muted overflow-hidden">
           
+          {/* Machining, ARC Welding & Repair Requests (Direct Page Link) */}
+          <Link
+            to="/repair"
+            className="flex items-center justify-between p-4 hover:bg-warm-hover transition-colors group bg-gradient-to-r from-brand-50/40 via-white to-white"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-brand-600 to-amber-500 text-white shadow-sm group-hover:scale-105 transition-transform">
+                <Wrench className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black text-charcoal-900 block">
+                    {language === 'ta' ? 'லேத் & ARC வெல்டிங் பழுது பார்க்கும் சேவை' : 'Machining & ARC Welding Repair'}
+                  </span>
+                  <span className="bg-brand-100 text-brand-700 text-[9px] font-extrabold px-2 py-0.2 rounded-full uppercase">
+                    {language === 'ta' ? 'நேரடி சேவை' : 'Full Page'}
+                  </span>
+                </div>
+                <span className="text-[11px] text-charcoal-500 font-medium line-clamp-1">
+                  {language === 'ta'
+                    ? 'டிராக்டர் கலப்பை, கேட் கிரில் விரிசல், ஷாப்ட் வளைவு பழுது கோரிக்கை விடுக்க'
+                    : 'Submit repair request for tractor implements, gates, grills & bent axles'}
+                </span>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-brand-600 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+
           {/* My Details & Profile DP */}
           <Link
             to="/profile/details"
@@ -174,6 +204,27 @@ export const ProfilePage: React.FC = () => {
             <ChevronRight className="w-4 h-4 text-charcoal-400" />
           </Link>
 
+          {/* What's New & App Features Tour Trigger */}
+          <button
+            onClick={() => setShowFeaturesModal(true)}
+            className="w-full flex items-center justify-between p-4 hover:bg-warm-hover transition-colors text-left"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="p-2 rounded-xl bg-purple-100 text-purple-600">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-sm font-bold text-charcoal-900 block">
+                  {language === 'ta' ? 'புதிய வசதிகள் & வழிகாட்டி' : "What's New & App Features"}
+                </span>
+                <span className="text-[11px] text-charcoal-500 font-medium">
+                  {language === 'ta' ? 'குரல் தேடல், பழுது கோரிக்கை மற்றும் இன்வாய்ஸ் அம்சங்கள்' : 'Explore voice search, repair requests & POS invoice features'}
+                </span>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-charcoal-400" />
+          </button>
+
           {/* Install Mobile App (PWA) - Only visible when NOT already installed */}
           {!isInstalled && (
             <button
@@ -224,6 +275,12 @@ export const ProfilePage: React.FC = () => {
 
         </div>
       </div>
+
+      {/* Feature Spotlight Modal */}
+      <FeatureSpotlightModal
+        isOpen={showFeaturesModal}
+        onClose={() => setShowFeaturesModal(false)}
+      />
     </div>
   );
 };

@@ -20,6 +20,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, DEFAULT_SHOP_INFO } from '../../lib/supabase';
 import { uploadFileToCloudinary } from '../../lib/cloudinary';
+import { getNextRepairTicketId } from '../../lib/idGenerator';
 
 interface RepairServiceModalProps {
   isOpen: boolean;
@@ -138,7 +139,7 @@ export const RepairServiceModal: React.FC<RepairServiceModalProps> = ({
 
     const serviceObj = REPAIR_SERVICES.find((s) => s.id === selectedService) || REPAIR_SERVICES[0];
     const serviceTitle = isTamil ? serviceObj.title_ta : serviceObj.title_en;
-    const ticketId = `MNK-REP-${Date.now().toString().slice(-4)}`;
+    const ticketId = await getNextRepairTicketId();
 
     const repairPayload = {
       id: crypto.randomUUID(),
