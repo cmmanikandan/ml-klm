@@ -462,7 +462,7 @@ export const AdminOrdersPage: React.FC = () => {
       <div className="bg-white rounded-3xl border border-warm-border shadow-card overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-xs font-bold text-charcoal-500 animate-pulse">
-            Syncing live customer orders from Supabase DB...
+            Loading live customer orders...
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="p-12 text-center space-y-2">

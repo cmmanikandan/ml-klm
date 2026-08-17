@@ -86,7 +86,17 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF9F2] flex flex-col justify-between p-4 relative">
+    <div
+      className="min-h-screen bg-[#FFF9F2] flex flex-col justify-between p-4 relative"
+      style={{
+        backgroundColor: '#FFF9F2',
+        backgroundImage: `
+          linear-gradient(to right, rgba(234, 88, 12, 0.045) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(234, 88, 12, 0.045) 1px, transparent 1px)
+        `,
+        backgroundSize: '36px 36px'
+      }}
+    >
       {/* Top Bar with Back to Website Button */}
       <div className="max-w-md w-full mx-auto flex items-center justify-between pt-2">
         <Link

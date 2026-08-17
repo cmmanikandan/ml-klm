@@ -372,8 +372,13 @@ export const OrderDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-warm-bg pt-12 pb-24 text-center">
-        <p className="text-xs font-bold text-charcoal-500 animate-pulse">Loading order details from Supabase DB...</p>
+      <div className="min-h-screen bg-warm-bg flex items-center justify-center p-4">
+        <div className="text-center space-y-3 bg-white p-8 rounded-3xl border border-warm-border shadow-card max-w-xs w-full animate-fade-in">
+          <div className="animate-spin rounded-full h-8 w-8 border-3 border-brand-500 border-t-transparent mx-auto" />
+          <p className="text-xs font-bold text-charcoal-700">
+            {isTamil ? 'ஆர்டர் விவரங்கள் ஏற்றப்படுகின்றன...' : 'Loading order details...'}
+          </p>
+        </div>
       </div>
     );
   }

@@ -319,7 +319,7 @@ export const AdminEnquiriesPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {loading ? (
           <div className="col-span-full bg-white p-8 text-center rounded-3xl border border-warm-border text-xs font-bold text-charcoal-500 animate-pulse">
-            Syncing live customer enquiries with Supabase DB...
+            Loading customer enquiries...
           </div>
         ) : filteredEnquiries.length === 0 ? (
           <div className="col-span-full bg-white p-12 text-center rounded-3xl border border-warm-border space-y-2">

@@ -382,7 +382,7 @@ export const AdminPaymentsPage: React.FC = () => {
       <div className="bg-white rounded-3xl border border-warm-border shadow-card overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-xs font-bold text-charcoal-500 animate-pulse">
-            Syncing payment audit ledger from Supabase DB...
+            Loading payment audit ledger...
           </div>
         ) : filteredPayments.length === 0 ? (
           <div className="p-12 text-center space-y-2">

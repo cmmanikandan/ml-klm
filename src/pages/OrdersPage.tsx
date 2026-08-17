@@ -202,8 +202,11 @@ export const OrdersPage: React.FC = () => {
         {activeTab === 'orders' && (
           <div className="space-y-4">
             {loading ? (
-              <div className="bg-white p-8 text-center rounded-3xl border border-warm-border">
-                <p className="text-xs text-charcoal-500 font-bold animate-pulse">Syncing orders with Supabase DB...</p>
+              <div className="bg-white p-8 text-center rounded-3xl border border-warm-border space-y-2">
+                <div className="animate-spin rounded-full h-8 w-8 border-3 border-brand-500 border-t-transparent mx-auto" />
+                <p className="text-xs text-charcoal-700 font-bold">
+                  {isTamil ? 'ஆர்டர்கள் ஏற்றப்படுகின்றன...' : 'Loading your orders...'}
+                </p>
               </div>
             ) : orders.length === 0 ? (
               <div className="bg-white p-8 text-center rounded-3xl border border-warm-border space-y-3">

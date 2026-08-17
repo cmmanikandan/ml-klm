@@ -645,8 +645,8 @@ export const AdminOrderDetailPage: React.FC = () => {
     setShowGeneratedQr(false);
     setNotifyModal({
       isOpen: true,
-      title: 'Payment Recorded in Database',
-      message: `₹${customPayAmount.toLocaleString('en-IN')} recorded successfully in Supabase DB as ${mode}! Visible on all logged-in devices. Remaining due: ₹${updatedRemaining.toLocaleString('en-IN')}`,
+      title: 'Payment Recorded',
+      message: `₹${customPayAmount.toLocaleString('en-IN')} recorded successfully as ${mode}! Remaining due: ₹${updatedRemaining.toLocaleString('en-IN')}`,
       type: 'success'
     });
   };
@@ -807,8 +807,8 @@ export const AdminOrderDetailPage: React.FC = () => {
 
     setNotifyModal({
       isOpen: true,
-      title: 'Cash Payment Recorded in Database',
-      message: `₹${amount.toLocaleString('en-IN')} Cash payment saved to Supabase DB! Available on all devices. Remaining due: ₹${updatedRemaining.toLocaleString('en-IN')}`,
+      title: 'Cash Payment Recorded',
+      message: `₹${amount.toLocaleString('en-IN')} Cash payment recorded successfully! Remaining due: ₹${updatedRemaining.toLocaleString('en-IN')}`,
       type: 'success'
     });
   };

@@ -684,7 +684,7 @@ export const AdminProductEditPage: React.FC = () => {
         {/* Multi-Image Manager */}
         <div className="space-y-3 pt-4 border-t border-warm-muted">
           <label className="block text-xs font-bold text-charcoal-700 uppercase tracking-wider">
-            Product Images Management (Cloudinary & Web Image URLs)
+            Product Images Management (Upload & Web Image URLs)
           </label>
 
           <div className="flex flex-col sm:flex-row gap-2">
@@ -709,7 +709,7 @@ export const AdminProductEditPage: React.FC = () => {
                     setNotifyModal({
                       isOpen: true,
                       title: result.format === 'pdf' ? 'PDF Uploaded' : 'Image Uploaded',
-                      message: `File uploaded to Cloudinary successfully!`,
+                      message: `File uploaded successfully!`,
                       type: 'success'
                     });
                   } catch (err: any) {
@@ -717,7 +717,7 @@ export const AdminProductEditPage: React.FC = () => {
                     setNotifyModal({
                       isOpen: true,
                       title: 'Upload Failed',
-                      message: err?.message || 'Cloudinary upload failed. Ensure your upload preset is set to Unsigned.',
+                      message: err?.message || 'Upload failed. Please check file format.',
                       type: 'error'
                     });
                   }
@@ -730,7 +730,7 @@ export const AdminProductEditPage: React.FC = () => {
                 <div className="mt-2 space-y-1">
                   <div className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-brand-600 border-t-transparent shrink-0" />
-                    <span className="text-xs font-bold text-brand-700">Uploading to Cloudinary... {uploadProgress}%</span>
+                    <span className="text-xs font-bold text-brand-700">Uploading file... {uploadProgress}%</span>
                   </div>
                   <div className="w-full bg-warm-border rounded-full h-1.5">
                     <div
