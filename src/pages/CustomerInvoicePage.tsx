@@ -488,36 +488,15 @@ export const CustomerInvoicePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div 
-        className="min-h-screen flex flex-col items-center justify-center p-6 text-center animate-fade-in select-none"
-        style={{
-          backgroundColor: '#0F172A',
-          backgroundImage: 'radial-gradient(ellipse 80% 80% at 50% -20%, rgba(245, 102, 0, 0.2), rgba(255, 255, 255, 0))'
-        }}
-      >
-        <div className="relative p-8 bg-slate-900/90 rounded-3xl border border-brand-500/40 shadow-2xl backdrop-blur-md max-w-sm w-full text-center space-y-5">
-          {/* Logo */}
-          <div className="w-16 h-16 rounded-2xl bg-white p-2.5 mx-auto shadow-lg border border-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#FFF9F2] flex items-center justify-center p-4">
+        <div className="text-center space-y-3.5 bg-white p-8 rounded-3xl border border-warm-border shadow-card max-w-xs w-full animate-fade-in">
+          <div className="w-12 h-12 rounded-2xl bg-warm-bg p-2 mx-auto border border-warm-border flex items-center justify-center">
             <img src="/logo.png" alt="Manikandan Lathe" className="w-full h-full object-contain" />
           </div>
-
-          {/* Animated Spinner with Spark Center */}
-          <div className="relative w-12 h-12 mx-auto flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full border-3 border-slate-700" />
-            <div className="absolute inset-0 rounded-full border-3 border-transparent border-t-brand-500 border-r-amber-400 animate-spin" />
-            <div className="w-4 h-4 rounded-full bg-brand-500 shadow-md animate-pulse" />
-          </div>
-
-          <div className="space-y-1.5">
-            <h3 className="text-base font-black text-white">
-              Loading Tax Invoice
-            </h3>
-            <span className="text-xs font-mono font-bold text-brand-400 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700 inline-block">
-              {formattedDisplayId}
-            </span>
-            <p className="text-[11px] text-slate-400 font-medium pt-1">
-              Verifying invoice ledger & fabrication breakdown...
-            </p>
+          <div className="animate-spin rounded-full h-8 w-8 border-3 border-brand-500 border-t-transparent mx-auto"></div>
+          <div>
+            <p className="text-xs font-black text-charcoal-900">Loading Official Tax Invoice</p>
+            <p className="text-[11px] font-mono font-bold text-brand-600 mt-0.5">{formattedDisplayId}</p>
           </div>
         </div>
       </div>
