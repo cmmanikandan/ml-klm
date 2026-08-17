@@ -18,7 +18,8 @@ import {
   Sparkles,
   Calculator,
   LogOut,
-  Globe
+  Globe,
+  Wrench
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { useAuth } from '../../context/AuthContext';
@@ -110,6 +111,7 @@ export const AdminLayout: React.FC = () => {
   const adminNavItems = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
     { to: '/admin/pos', label: 'POS Counter', icon: Calculator, badge: 'POS' },
+    { to: '/admin/repairs', label: 'Repair & Machining', icon: Wrench, badge: null },
     { to: '/admin/enquiries', label: 'Enquiries', icon: MessageSquare, badge: pendingEnquiriesCount > 0 ? String(pendingEnquiriesCount) : null },
     { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, badge: activeOrdersCount > 0 ? String(activeOrdersCount) : null },
     { to: '/admin/customers', label: 'Customers', icon: Users, badge: null },
