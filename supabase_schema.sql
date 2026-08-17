@@ -221,6 +221,7 @@ ALTER TABLE public.enquiries ADD COLUMN IF NOT EXISTS customer_phone TEXT DEFAUL
 ALTER TABLE public.enquiries ADD COLUMN IF NOT EXISTS product_name TEXT DEFAULT '';
 ALTER TABLE public.enquiries ADD COLUMN IF NOT EXISTS quote_price NUMERIC(10, 2) DEFAULT 0.00;
 ALTER TABLE public.enquiries ADD COLUMN IF NOT EXISTS converted_order_id TEXT DEFAULT '';
+ALTER TABLE public.enquiries ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
 
 -- ====================================================================
 -- 8. ORDERS TABLE
