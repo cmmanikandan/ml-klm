@@ -16,6 +16,7 @@ dist-ssr/
 # Environment Variables
 .env
 .env.*
+!.env.example
 .env.vercel
 .env.local
 .env.production
