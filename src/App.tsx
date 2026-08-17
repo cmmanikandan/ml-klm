@@ -35,6 +35,7 @@ import { ContactPage } from './pages/ContactPage';
 import { InvoicePage } from './pages/InvoicePage';
 import { CustomerInvoicePage } from './pages/CustomerInvoicePage';
 import { RepairServicePage } from './pages/RepairServicePage';
+import { RepairDetailPage } from './pages/RepairDetailPage';
 
 // Admin Components & Pages
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -199,6 +200,8 @@ export const App: React.FC = () => {
                     
                     {/* Machining & Lathe Repair Service Request Routes */}
                     <Route path="/repair" element={<RepairServicePage />} />
+                    <Route path="/repair/:id" element={<RepairDetailPage />} />
+                    <Route path="/repairs/:id" element={<RepairDetailPage />} />
                     <Route path="/machining" element={<RepairServicePage />} />
 
                     {/* Customer Public Invoice Preview Link */}

@@ -586,7 +586,8 @@ export const RepairServicePage: React.FC = () => {
                 return (
                   <div
                     key={req.id}
-                    className="bg-white rounded-3xl p-4 sm:p-5 border border-warm-border shadow-card space-y-3 animate-fade-in"
+                    onClick={() => navigate(`/repair/${ticketId}`)}
+                    className="group bg-white rounded-3xl p-4 sm:p-5 border border-warm-border/80 shadow-card hover:shadow-warm-lg hover:border-brand-300 transition-all space-y-3 animate-fade-in cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-2 border-b border-warm-muted pb-3">
                       <div>
@@ -598,7 +599,7 @@ export const RepairServicePage: React.FC = () => {
                             {req.created_at ? req.created_at.slice(0, 10) : 'Recent'}
                           </span>
                         </div>
-                        <h3 className="text-sm font-black text-charcoal-900 mt-1">
+                        <h3 className="text-sm font-black text-charcoal-900 mt-1 group-hover:text-brand-600 transition-colors">
                           {serviceTitle}
                         </h3>
                       </div>
@@ -619,7 +620,7 @@ export const RepairServicePage: React.FC = () => {
                     </div>
 
                     {req.custom_notes && (
-                      <p className="text-xs text-charcoal-600 font-medium bg-warm-bg p-2.5 rounded-xl border border-warm-border leading-relaxed">
+                      <p className="text-xs text-charcoal-600 font-medium bg-warm-bg p-2.5 rounded-xl border border-warm-border leading-relaxed line-clamp-2">
                         {req.custom_notes}
                       </p>
                     )}
@@ -644,40 +645,40 @@ export const RepairServicePage: React.FC = () => {
                     )}
 
                     {/* Actions Bar */}
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenWhatsApp({
-                          ticketId,
-                          serviceTitle,
-                          customerName: req.customer_name,
-                          customerPhone: req.customer_phone,
-                          location: req.delivery_location,
-                          description: req.custom_notes
-                        })}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 px-3 rounded-xl text-xs shadow-xs transition-colors"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>{isTamil ? 'வாட்ஸ்அப்' : 'WhatsApp Shop'}</span>
-                      </button>
-
-                      <a
-                        href={`tel:${DEFAULT_SHOP_INFO.phone}`}
-                        className="inline-flex items-center justify-center gap-1.5 bg-warm-bg hover:bg-brand-50 text-charcoal-800 font-bold py-2.5 px-3 rounded-xl text-xs border border-warm-border transition-colors"
-                      >
-                        <Phone className="w-3.5 h-3.5 text-brand-600" />
-                        <span>{isTamil ? 'அழைக்க' : 'Call'}</span>
-                      </a>
-
-                      {isConverted && (
-                        <Link
-                          to={`/orders`}
-                          className="inline-flex items-center justify-center gap-1 bg-brand-50 text-brand-700 font-extrabold py-2.5 px-3 rounded-xl text-xs border border-brand-200 hover:bg-brand-100 transition-colors"
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-warm-muted/60" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenWhatsApp({
+                            ticketId,
+                            serviceTitle,
+                            customerName: req.customer_name,
+                            customerPhone: req.customer_phone,
+                            location: req.delivery_location,
+                            description: req.custom_notes
+                          })}
+                          className="inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2 px-3 rounded-xl text-xs shadow-xs transition-colors"
                         >
-                          <span>{isTamil ? 'ஆர்டர் அறிதல்' : 'Track Order'}</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </Link>
-                      )}
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>{isTamil ? 'வாட்ஸ்அப்' : 'WhatsApp'}</span>
+                        </button>
+
+                        <a
+                          href={`tel:${DEFAULT_SHOP_INFO.phone}`}
+                          className="inline-flex items-center justify-center gap-1.5 bg-warm-bg hover:bg-brand-50 text-charcoal-800 font-bold py-2 px-3 rounded-xl text-xs border border-warm-border transition-colors"
+                        >
+                          <Phone className="w-3.5 h-3.5 text-brand-600" />
+                          <span>{isTamil ? 'அழைக்க' : 'Call'}</span>
+                        </a>
+                      </div>
+
+                      <div 
+                        onClick={() => navigate(`/repair/${ticketId}`)}
+                        className="inline-flex items-center gap-1 text-xs font-extrabold text-brand-600 hover:text-brand-700 hover:translate-x-0.5 transition-all cursor-pointer"
+                      >
+                        <span>{isTamil ? 'விவரம் பார்க்க' : 'View Details'}</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
                     </div>
                   </div>
                 );

@@ -110,6 +110,19 @@ export const AdminEnquiriesPage: React.FC = () => {
 
       if (error) throw error;
 
+      // Filter OUT repair enquiries so only standard product fabrication enquiries appear here
+      const standardEnquiries = (data || []).filter((enq: any) => {
+        const pName = String(enq.product_name || enq.productName || '').toLowerCase();
+        const num = String(enq.enquiry_number || enq.number || enq.id || '').toLowerCase();
+        const isRepair = 
+          pName.includes('[repair service]') ||
+          pName.includes('repair') ||
+          pName.includes('பழுது') ||
+          num.includes('rep-') ||
+          num.startsWith('mnk-rep');
+        return !isRepair;
+      });
+
       // Cross-check with orders table so any converted enquiry is accurately marked as CONVERTED
       const { data: dbOrders } = await supabase.from('orders').select('*');
       const orderLinkedEnquiries = new Map<string, any>();
@@ -123,7 +136,7 @@ export const AdminEnquiriesPage: React.FC = () => {
         }
       });
 
-      const checkedEnquiries = (data || []).map((enq: any) => {
+      const checkedEnquiries = standardEnquiries.map((enq: any) => {
         const pName = getProductName(enq).toLowerCase();
         const cName = (enq.customer_name || enq.customerName || '').toLowerCase();
         const key = `${cName}_${pName}`;
