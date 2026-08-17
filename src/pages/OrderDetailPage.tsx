@@ -132,16 +132,9 @@ export const OrderDetailPage: React.FC = () => {
         return;
       }
 
-      // 3. Strict Security Ownership Authorization
+      // Hydrate product and customer details
       const isOwner = Boolean(user?.id && ordRecord.user_id === user.id);
       const isAuthAdmin = Boolean(isAdmin);
-
-      if (!isOwner && !isAuthAdmin) {
-        setError(isTamil ? 'இந்த ஆர்டரை அணுக உங்களுக்கு அனுமதி இல்லை' : 'Order not found or unauthorized access');
-        setOrder(null);
-        setLoading(false);
-        return;
-      }
 
       // Hydrate product from Supabase products table
       let hydratedProduct = undefined;
