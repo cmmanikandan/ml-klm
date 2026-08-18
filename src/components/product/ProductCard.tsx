@@ -23,7 +23,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const category = isTamil
     ? product.category_name || 'பொதுவானது'
     : product.category_name || 'General';
-  const featuresText = product.materials || product.available_sizes || (isTamil ? '304 ஸ்டெயின்லெஸ் ஸ்டீல்' : 'Grade 304 Stainless Steel');
 
   const imageUrl =
     product.primary_image ||
@@ -133,11 +132,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <h3 className="text-xs sm:text-sm font-bold text-charcoal-900 group-hover:text-brand-600 transition-colors line-clamp-2 leading-snug">
             {title}
           </h3>
-          {featuresText && (
-            <span className="inline-block mt-1 text-[10px] font-extrabold text-charcoal-500 bg-warm-bg px-2 py-0.5 rounded-md border border-warm-border/60 truncate max-w-full">
-              {featuresText}
-            </span>
-          )}
         </div>
 
         {/* Action Trigger Link */}

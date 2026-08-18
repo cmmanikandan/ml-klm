@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, X, Sparkles, Volume2, Globe } from 'lucide-react';
+import { Mic, MicOff, X, Sparkles, Volume2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 interface VoiceSearchModalProps {
@@ -30,6 +30,18 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
     }
   }, [language]);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
       startListening();
@@ -51,7 +63,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
     if (!SpeechRecognition) {
       setErrorMsg(
         language === 'ta'
-          ? 'உங்கள் உலாவியில் குரல் தேடல் வசதி ஆதரிக்கப்படவில்லை.'
+          ? 'உங்கள் உலாவியில் குரல் தேடல் வசதி ஆதரிக்கப்படவில்லை. Chrome அல்லது Edge உலாவியைப் பயன்படுத்தவும்.'
           : 'Voice search is not supported on this browser. Try Chrome or Edge.'
       );
       return;
@@ -87,7 +99,7 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
             setTimeout(() => {
               onTranscript(finalClean);
               onClose();
-            }, 500);
+            }, 400);
           }
         }
       };
@@ -134,10 +146,17 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in select-none">
-      <div className="bg-slate-900 text-white rounded-3xl max-w-sm w-full p-6 sm:p-7 border border-slate-700 shadow-2xl relative text-center space-y-6 animate-slide-up">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 select-none animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-slate-900 text-white rounded-3xl max-w-sm sm:max-w-md w-full p-6 sm:p-8 border border-slate-700 shadow-2xl relative text-center space-y-5 animate-slide-up my-auto"
+      >
         {/* Close Button */}
         <button
+          type="button"
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
           aria-label="Close"
@@ -146,15 +165,15 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
         </button>
 
         {/* Title */}
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-500/20 text-brand-400 text-[11px] font-black uppercase tracking-wider mb-2">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-500/20 text-brand-400 text-[11px] font-black uppercase tracking-wider mb-1">
             <Sparkles className="w-3.5 h-3.5" />
             <span>{selectedLang === 'ta-IN' ? 'தமிழ் குரல் தேடல்' : 'Voice Search'}</span>
           </div>
-          <h3 className="text-lg font-black text-white">
+          <h3 className="text-lg sm:text-xl font-black text-white leading-tight">
             {selectedLang === 'ta-IN' ? 'பொருளின் பெயரைப் பேசவும்' : 'Speak to Search Products'}
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-400">
             {selectedLang === 'ta-IN'
               ? 'எ.கா: "7 கலப்பை", "ரோலிங் ஷட்டர்", "மெயின் கேட்"'
               : 'e.g., "7 Kallapai", "Rolling Shutter", "Gate Design"'}
@@ -188,10 +207,10 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
         </div>
 
         {/* Central Animated Mic Sphere */}
-        <div className="relative w-28 h-28 mx-auto flex items-center justify-center my-4">
+        <div className="relative w-28 h-28 mx-auto flex items-center justify-center my-2">
           {isListening && (
             <>
-              <div className="absolute inset-0 rounded-full bg-brand-500/20 animate-ping opacity-75" />
+              <div className="absolute inset-0 rounded-full bg-brand-500/25 animate-ping opacity-75" />
               <div className="absolute -inset-2 rounded-full border-2 border-brand-500/40 animate-pulse" />
             </>
           )}
@@ -206,9 +225,9 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
             }`}
           >
             {isListening ? (
-              <Mic className="w-9 h-9 animate-bounce-subtle" />
+              <Mic className="w-9 h-9 animate-bounce-subtle text-white" />
             ) : (
-              <MicOff className="w-8 h-8" />
+              <MicOff className="w-8 h-8 text-slate-400" />
             )}
           </button>
         </div>
@@ -216,9 +235,9 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
         {/* Live Detected Speech or Instructions */}
         <div className="min-h-[48px] flex items-center justify-center px-2">
           {errorMsg ? (
-            <p className="text-xs text-rose-400 font-semibold">{errorMsg}</p>
+            <p className="text-xs text-rose-400 font-semibold leading-relaxed">{errorMsg}</p>
           ) : interimText ? (
-            <p className="text-sm font-extrabold text-amber-300 bg-slate-800/80 px-4 py-2 rounded-2xl border border-amber-500/30">
+            <p className="text-sm font-extrabold text-amber-300 bg-slate-800/90 px-4 py-2 rounded-2xl border border-amber-500/30 shadow-inner">
               "{interimText}"
             </p>
           ) : isListening ? (
