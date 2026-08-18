@@ -271,44 +271,77 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* GET IN TOUCH & LOCATION SECTION */}
-      <section className="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-warm-border shadow-card space-y-6">
-          <div className="flex items-center gap-2">
-            <span className="bg-brand-100 text-brand-700 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full border border-brand-200">
-              {isTamil ? 'எங்களை தொடர்பு கொள்ள' : 'GET IN TOUCH & LOCATION'}
+      {/* GET IN TOUCH & WORKSHOP LOCATION SECTION - Mobile Optimized */}
+      <section className="py-8 sm:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-3xl p-5 sm:p-8 border border-warm-border shadow-card space-y-6">
+          
+          {/* Section Header */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="bg-brand-100 text-brand-700 text-[11px] font-black uppercase tracking-wider px-3.5 py-1 rounded-full border border-brand-200">
+              📍 {isTamil ? 'நேரடி பட்டறை & தொடர்பு' : 'DIRECT WORKSHOP & LOCATION'}
+            </span>
+            <span className="text-[11px] font-bold text-charcoal-500">
+              {isTamil ? 'திண்டுக்கல் மாவட்டம்' : 'Dindigul District'}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+            
+            {/* Left Main Details */}
+            <div className="lg:col-span-7 space-y-4 text-left">
               <h3 className="text-xl sm:text-2xl font-black text-charcoal-900 leading-tight">
                 {isTamil
                   ? 'கள்ளிமந்தையம் பட்டறைக்கு நேரில் வருகை தாருங்கள்'
                   : 'Visit Our Workshop in Kallimandhayam or Connect Directly'}
               </h3>
+              
               <p className="text-xs sm:text-sm text-charcoal-600 font-medium leading-relaxed">
                 {isTamil
                   ? 'நேரடி தயாரிப்பு பார்வைக்கு விவசாய ஏர் கலப்பைகள் மற்றும் கேட் மாதிரிகள் வைக்கப்பட்டுள்ளன. புதிய ஆர்டர்கள் மற்றும் தனிப்பயன் அளவுகளுக்கு எங்களை தொடர்பு கொள்ளவும்.'
                   : 'Ready stock of heavy duty Kallapai cultivators, entrance gates, and safety grills available for inspection at our workshop counter.'}
               </p>
 
-              <div className="space-y-2.5 text-xs text-charcoal-700 font-bold pt-1">
-                <div className="flex items-start gap-2.5">
-                  <MapPin className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />
-                  <span>{DEFAULT_SHOP_INFO.address}</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <Clock className="w-4 h-4 text-brand-600 shrink-0" />
-                  <span>{isTamil ? DEFAULT_SHOP_INFO.working_hours_ta : DEFAULT_SHOP_INFO.working_hours_en}</span>
+              {/* Address & Hours Info Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                <a
+                  href={DEFAULT_SHOP_INFO.google_maps_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-warm-bg hover:bg-brand-50/60 p-3.5 rounded-2xl border border-warm-border transition-colors flex items-start gap-3 group"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-wider block">
+                      {isTamil ? 'பட்டறை முகவரி' : 'WORKSHOP ADDRESS'}
+                    </span>
+                    <span className="text-xs font-bold text-charcoal-900 leading-snug block mt-0.5">
+                      {DEFAULT_SHOP_INFO.address}
+                    </span>
+                  </div>
+                </a>
+
+                <div className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black text-charcoal-400 uppercase tracking-wider block">
+                      {isTamil ? 'வேலை நேரம்' : 'WORKING HOURS'}
+                    </span>
+                    <span className="text-xs font-bold text-charcoal-900 leading-snug block mt-0.5">
+                      {isTamil ? DEFAULT_SHOP_INFO.working_hours_ta : DEFAULT_SHOP_INFO.working_hours_en}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              {/* Mobile-First 3 Quick Action Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
                 <a
                   href={`tel:${DEFAULT_SHOP_INFO.phone}`}
-                  className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-black px-5 py-3 rounded-2xl shadow-md text-xs transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-black py-3.5 px-4 rounded-2xl shadow-md text-xs sm:text-sm transition-all active:scale-95"
                 >
                   <Phone className="w-4 h-4" />
                   <span>Call: {DEFAULT_SHOP_INFO.phone}</span>
@@ -318,7 +351,7 @@ export const LandingPage: React.FC = () => {
                   href={`https://wa.me/${DEFAULT_SHOP_INFO.whatsapp}?text=${encodeURIComponent('வணக்கம் மணிகண்டன் லேத் பட்டறை, எனக்கு லேத் / கலப்பை பற்றிய விபரம் தேவை.')}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 py-3 rounded-2xl shadow-md text-xs transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 px-4 rounded-2xl shadow-md text-xs sm:text-sm transition-all active:scale-95"
                 >
                   <MessageSquare className="w-4 h-4" />
                   <span>WhatsApp Chat</span>
@@ -328,36 +361,39 @@ export const LandingPage: React.FC = () => {
                   href={DEFAULT_SHOP_INFO.google_maps_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-charcoal-900 font-black px-5 py-3 rounded-2xl border border-slate-300 text-xs transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-black py-3.5 px-4 rounded-2xl shadow-md text-xs sm:text-sm transition-all active:scale-95"
                 >
-                  <Navigation className="w-4 h-4 text-brand-600" />
-                  <span>Google Maps Directions</span>
+                  <Navigation className="w-4 h-4 text-brand-400" />
+                  <span>Google Maps</span>
                 </a>
               </div>
             </div>
 
-            {/* Visual Workshop Map Preview / Badge Card */}
-            <div className="bg-warm-bg rounded-3xl p-6 border border-warm-border text-center space-y-3">
-              <div className="w-16 h-16 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center mx-auto shadow-sm">
-                <ShieldCheck className="w-8 h-8" />
+            {/* Right Badge / Trust Card */}
+            <div className="lg:col-span-5 bg-gradient-to-b from-warm-bg to-brand-50/50 rounded-3xl p-5 sm:p-6 border border-warm-border text-center space-y-3.5 flex flex-col items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-md">
+                <ShieldCheck className="w-7 h-7" />
               </div>
-              <h4 className="text-base font-black text-charcoal-900">
-                {isTamil ? '25+ வருட பாரம்பரியம் மிக்க உள்ளூர் பட்டறை' : '25+ Years of Precision Engineering'}
-              </h4>
-              <p className="text-xs text-charcoal-500 font-medium max-w-sm mx-auto">
-                {isTamil
-                  ? 'திண்டுக்கல், திருப்பூர் மற்றும் ஈரோடு மாவட்ட விவசாயிகளுக்கு நம்பகமான சேவை.'
-                  : 'Proudly serving thousands of farmers and contractors across Dindigul, Tiruppur & Erode districts.'}
-              </p>
-              <div className="pt-2">
+              <div className="space-y-1">
+                <h4 className="text-base font-black text-charcoal-900">
+                  {isTamil ? '25+ வருட பாரம்பரியம் மிக்க உள்ளூர் பட்டறை' : '25+ Years of Precision Engineering'}
+                </h4>
+                <p className="text-xs text-charcoal-500 font-medium max-w-xs mx-auto leading-relaxed">
+                  {isTamil
+                    ? 'திண்டுக்கல், திருப்பூர் மற்றும் ஈரோடு மாவட்ட விவசாயிகளுக்கு நம்பகமான சேவை.'
+                    : 'Serving thousands of farmers and contractors across Dindigul, Tiruppur & Erode districts with precision tolerances.'}
+                </p>
+              </div>
+              <div className="pt-1">
                 <Link
                   to="/terms"
-                  className="text-xs font-black text-brand-600 hover:underline"
+                  className="inline-flex items-center gap-1 text-xs font-black text-brand-600 hover:text-brand-700 bg-white px-4 py-2 rounded-xl border border-warm-border shadow-xs hover:shadow-sm transition-all"
                 >
-                  {isTamil ? 'சேவை விதிமுறைகள் & கொள்கைகள் →' : 'View Workshop Terms & Policies →'}
+                  <span>{isTamil ? 'சேவை விதிமுறைகள் & கொள்கைகள் →' : 'Workshop Terms & Policies →'}</span>
                 </Link>
               </div>
             </div>
+
           </div>
         </div>
       </section>

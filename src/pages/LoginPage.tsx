@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, Sparkles, ShieldCheck, Search, FileText, Phone, ArrowRight, Wrench } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, Sparkles, ShieldCheck, Search, FileText, Phone, ArrowRight, Wrench, Receipt, ChevronRight, X } from 'lucide-react';
 import { Logo } from '../components/common/Logo';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -35,6 +35,7 @@ export const LoginPage: React.FC = () => {
   const [trackQuery, setTrackQuery] = useState('');
   const [isSearchingOrder, setIsSearchingOrder] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
+  const [foundOrders, setFoundOrders] = useState<any[]>([]);
 
   // Sync redirect into sessionStorage for persistence across multi-step auth / Google popup
   useEffect(() => {
@@ -56,29 +57,44 @@ export const LoginPage: React.FC = () => {
 
     setIsSearchingOrder(true);
     setTrackError(null);
+    setFoundOrders([]);
 
     try {
-      // 1. Search by order number or customer phone
-      const { data: dbOrders } = await supabase
+      // 1. Search all matching orders by order number or customer phone
+      const { data: dbOrders, error } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
 
-      const found = (dbOrders || []).find((o: any) => {
-        const orderNum = String(o.order_number || o.id || '').toLowerCase();
+      if (error) {
+        throw error;
+      }
+
+      const cleanQ = query.toLowerCase().replace(/[^0-9a-z]/g, '');
+      const matched = (dbOrders || []).filter((o: any) => {
+        const orderNum = String(o.order_number || o.id || '').toLowerCase().replace(/[^0-9a-z]/g, '');
         const phone = String(o.customer_phone || '').replace(/[^0-9]/g, '');
-        const cleanQ = query.toLowerCase().replace(/[^0-9a-z]/g, '');
-        return orderNum.includes(cleanQ) || (phone.length >= 4 && phone.includes(cleanQ));
+        const custName = String(o.customer_name || '').toLowerCase();
+        return (
+          orderNum.includes(cleanQ) ||
+          (cleanQ.length >= 4 && phone.includes(cleanQ)) ||
+          (cleanQ.length >= 4 && custName.includes(cleanQ))
+        );
       });
 
-      if (found) {
-        navigate(`/invoice/${found.order_number || found.id}`);
-      } else {
+      if (matched.length === 0) {
         setTrackError(
           isTamil
             ? 'இந்த எண் அல்லது மொபைல் எண்ணில் ஆர்டர் கிடைக்கவில்லை. தயவுசெய்து எண்களைச் சரிபார்க்கவும்.'
             : 'No active order found with this order number or phone. Please verify and try again.'
         );
+        setFoundOrders([]);
+      } else if (matched.length === 1 && (cleanQ.startsWith('mnk') || cleanQ === String(matched[0].order_number || '').toLowerCase())) {
+        // Direct jump if exact order number was typed
+        navigate(`/invoice/${matched[0].order_number || matched[0].id}`);
+      } else {
+        // Show all matched orders so customer can pick which invoice to view
+        setFoundOrders(matched);
       }
     } catch (err) {
       setTrackError(isTamil ? 'ஆர்டர் தேடுவதில் பிழை ஏற்பட்டது.' : 'Failed to lookup order.');
@@ -437,17 +453,17 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* QUICK GUEST ORDER TRACKING & INVOICE LOOKUP CARD */}
-      <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-warm-border shadow-lg p-5 sm:p-6 max-w-md w-full mx-auto space-y-3 mb-6">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center font-bold">
+      <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-warm-border shadow-lg p-5 sm:p-6 max-w-md w-full mx-auto space-y-3 mb-6">
+        <div className="flex items-center gap-2 text-left">
+          <div className="w-8 h-8 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center font-bold shrink-0">
             <Search className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-xs sm:text-sm font-black text-charcoal-900">
-              {isTamil ? 'கடவுச்சொல் தேவையில்லை — ஆர்டர் நிலை அறிய' : 'Quick Order & Bill Lookup (No Password)'}
+              {isTamil ? 'கடவுச்சொல் தேவையில்லை — ஆர்டர் & பில் பார்க்க' : 'Quick Order & Bill Lookup (No Password)'}
             </h3>
             <span className="text-[10px] text-charcoal-500 font-medium">
-              {isTamil ? 'ஆர்டர் எண் அல்லது போன் நம்பர் உள்ளிடவும்' : 'Enter Order Number or Registered Mobile Number'}
+              {isTamil ? 'ஆர்டர் எண் அல்லது பதிவு செய்த போன் நம்பர்' : 'Enter Order Number or Registered Mobile Number'}
             </span>
           </div>
         </div>
@@ -460,6 +476,7 @@ export const LoginPage: React.FC = () => {
               onChange={(e) => {
                 setTrackQuery(e.target.value);
                 setTrackError(null);
+                if (foundOrders.length > 0) setFoundOrders([]);
               }}
               placeholder={isTamil ? 'எ.கா. MNK-ORD-1 அல்லது 9659286268' : 'e.g. MNK-ORD-1 or Mobile Number'}
               className="w-full px-3.5 py-2.5 text-xs font-bold border border-warm-border rounded-xl bg-warm-bg/50 focus:bg-white focus:ring-2 focus:ring-brand-500 font-mono text-charcoal-900"
@@ -481,11 +498,113 @@ export const LoginPage: React.FC = () => {
           </div>
 
           {trackError && (
-            <p className="text-[11px] font-bold text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-200">
+            <p className="text-[11px] font-bold text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-200 text-left">
               {trackError}
             </p>
           )}
         </form>
+
+        {/* MULTIPLE INVOICES / ORDERS MATCHED LIST */}
+        {foundOrders.length > 0 && (
+          <div className="space-y-3 pt-3 border-t border-warm-border animate-fade-in text-left">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Receipt className="w-4 h-4 text-brand-600" />
+                <span className="text-xs font-black text-charcoal-900">
+                  {isTamil
+                    ? `${foundOrders.length} ரசீதுகள் / ஆர்டர்கள் கண்டறியப்பட்டன`
+                    : `Found ${foundOrders.length} Invoices / Orders`}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFoundOrders([])}
+                className="text-[11px] font-bold text-charcoal-400 hover:text-charcoal-700 flex items-center gap-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>{isTamil ? 'அடை' : 'Close'}</span>
+              </button>
+            </div>
+
+            <p className="text-[11px] text-charcoal-500 font-medium leading-tight">
+              {isTamil
+                ? 'கீழே உள்ள ரசீதுகளில் நீங்கள் பார்க்க விரும்பும் ஆர்டரைத் தேர்வு செய்யவும்:'
+                : 'Select the invoice you want to view & track below:'}
+            </p>
+
+            <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+              {foundOrders.map((ord: any) => {
+                const orderId = ord.order_number || ord.id;
+                const total = Number(ord.total_amount || 0);
+                const productName = ord.productName || ord.product_name || (isTamil ? 'லேத் தயாரிப்பு' : 'Lathe Item');
+                const createdDate = ord.created_at ? new Date(ord.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+                const isPaid = ord.payment_status === 'paid';
+                const isPartial = ord.payment_status === 'partially_paid';
+
+                return (
+                  <div
+                    key={ord.id}
+                    onClick={() => navigate(`/invoice/${orderId}`)}
+                    className="group cursor-pointer bg-warm-bg/70 hover:bg-brand-50/80 p-3.5 rounded-2xl border border-warm-border hover:border-brand-300 transition-all shadow-xs space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-black text-brand-700 bg-brand-100 px-2 py-0.5 rounded-md">
+                          #{orderId}
+                        </span>
+                        {createdDate && (
+                          <span className="text-[10px] font-medium text-charcoal-400">
+                            {createdDate}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Payment Pill */}
+                      <span
+                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                          isPaid
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : isPartial
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : 'bg-slate-100 text-slate-700 border border-slate-300'
+                        }`}
+                      >
+                        {isPaid ? (isTamil ? 'செலுத்தப்பட்டது' : 'Paid') : isPartial ? (isTamil ? 'முன்பணம்' : 'Advance Paid') : (isTamil ? 'நிலுவை' : 'Pending')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs font-extrabold text-charcoal-900 group-hover:text-brand-600 truncate transition-colors">
+                          {productName}
+                        </h4>
+                        {ord.customer_name && (
+                          <span className="text-[10px] text-charcoal-500 font-medium block truncate">
+                            {ord.customer_name} {ord.customer_phone ? `• ${ord.customer_phone}` : ''}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-black text-charcoal-900 font-mono block">
+                          ₹{total.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-1 flex items-center justify-between text-[11px] font-bold text-brand-600 group-hover:underline border-t border-warm-border/60">
+                      <span className="flex items-center gap-1">
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>{isTamil ? 'டிஜிட்டல் பில் / ரசீது பார்' : 'View Digital Bill & Receipt'}</span>
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="pb-2 text-center text-xs text-charcoal-400 font-bold">
