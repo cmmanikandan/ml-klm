@@ -166,7 +166,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pro
             <img
               src={product.primary_image || (product.images && product.images[0]) || ''}
               alt={title}
-              className="w-14 h-14 rounded-lg object-cover border border-warm-border"
+              className="w-14 h-14 rounded-lg object-contain bg-white p-0.5 border border-warm-border"
             />
             <div>
               <span className="text-[11px] font-extrabold text-brand-600 uppercase tracking-wider block">

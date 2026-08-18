@@ -112,15 +112,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         )}
       </div>
 
-      {/* Product Image Showcase */}
-      <div className="block relative aspect-square overflow-hidden bg-warm-bg">
+      {/* Product Image Showcase - Uncropped Full Product View */}
+      <div className="block relative aspect-square overflow-hidden bg-white p-2.5 sm:p-3 flex items-center justify-center border-b border-warm-border/50">
         <img
           src={imageUrl}
           alt={title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300 select-none"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
       </div>
 
       {/* Product Details & Specifications */}
