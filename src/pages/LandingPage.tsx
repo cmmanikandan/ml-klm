@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Phone, ArrowRight, Sparkles, Flame, PackageX, Wrench } from 'lucide-react';
+import { Phone, ArrowRight, Sparkles, Flame, PackageX, Wrench, ShieldCheck, MapPin, Clock, MessageSquare, Navigation, CheckCircle2 } from 'lucide-react';
 import { Logo } from '../components/common/Logo';
 import { ProductCard } from '../components/product/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
@@ -201,6 +201,155 @@ export const LandingPage: React.FC = () => {
               </p>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* EMERGENCY LATHE REPAIR & MACHINING SERVICE BANNER */}
+      <section className="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-gradient-to-br from-slate-900 via-charcoal-900 to-slate-950 text-white rounded-3xl p-6 sm:p-10 border border-slate-800 shadow-2xl relative overflow-hidden space-y-6">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-brand-500/15 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="space-y-3 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 text-xs font-black uppercase tracking-wider">
+                <Wrench className="w-3.5 h-3.5 text-amber-400" />
+                <span>{isTamil ? 'பழுதுபார்ப்பு & லேத் டர்னிங் சேவை' : 'LATHE MACHINING & BREAKDOWN REPAIR'}</span>
+              </div>
+
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                {isTamil
+                  ? 'டிராக்டர் பாகங்கள், ஷாஃப்ட் & விவசாய கருவிகள் பழுதா? உடனடியாக சரிசெய்கிறோம்!'
+                  : 'Broken Tractor Shaft, Machine Parts, or Cultivators? Fast Precision Repairs.'}
+              </h2>
+
+              <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
+                {isTamil
+                  ? 'கள்ளிமந்தையம் பட்டறைக்கு உடைந்த பாகங்களைக் கொண்டு வரவும். எங்களின் அனுபவமிக்க லேத் கைவினைஞர்கள் துல்லியமாக லேத் டர்னிங் & வெல்டிங் செய்து தருவார்கள்.'
+                  : 'Submit a photo of the damaged machine part online or bring it directly to our Kallimandhayam workshop. Fast turnaround with extreme tolerance precision.'}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-4 text-xs text-amber-300 font-bold pt-1">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>{isTamil ? 'அவசர பழுதுபார்ப்பு (Same-Day / 24h)' : 'Emergency Same-Day Service'}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>{isTamil ? '100% உறுதியான வெல்டிங்' : 'High-Strength ARC Welding'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
+              <Link
+                to="/repair"
+                className="inline-flex items-center justify-center gap-2.5 bg-brand-600 hover:bg-brand-700 text-white font-black px-6 py-4 rounded-2xl shadow-xl shadow-brand-600/40 transition-all text-sm active:scale-95 border border-brand-400/40"
+              >
+                <Wrench className="w-4 h-4" />
+                <span>{isTamil ? 'பழுது விபரம் பதிவு செய்க' : 'Book Repair Service'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+
+              <a
+                href={`tel:${DEFAULT_SHOP_INFO.phone}`}
+                className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-extrabold px-5 py-3.5 rounded-2xl border border-white/20 transition-all text-xs"
+              >
+                <Phone className="w-4 h-4 text-brand-400" />
+                <span>Call Workshop ({DEFAULT_SHOP_INFO.phone})</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* GET IN TOUCH & LOCATION SECTION */}
+      <section className="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-warm-border shadow-card space-y-6">
+          <div className="flex items-center gap-2">
+            <span className="bg-brand-100 text-brand-700 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full border border-brand-200">
+              {isTamil ? 'எங்களை தொடர்பு கொள்ள' : 'GET IN TOUCH & LOCATION'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            <div className="space-y-4">
+              <h3 className="text-xl sm:text-2xl font-black text-charcoal-900 leading-tight">
+                {isTamil
+                  ? 'கள்ளிமந்தையம் பட்டறைக்கு நேரில் வருகை தாருங்கள்'
+                  : 'Visit Our Workshop in Kallimandhayam or Connect Directly'}
+              </h3>
+              <p className="text-xs sm:text-sm text-charcoal-600 font-medium leading-relaxed">
+                {isTamil
+                  ? 'நேரடி தயாரிப்பு பார்வைக்கு விவசாய ஏர் கலப்பைகள் மற்றும் கேட் மாதிரிகள் வைக்கப்பட்டுள்ளன. புதிய ஆர்டர்கள் மற்றும் தனிப்பயன் அளவுகளுக்கு எங்களை தொடர்பு கொள்ளவும்.'
+                  : 'Ready stock of heavy duty Kallapai cultivators, entrance gates, and safety grills available for inspection at our workshop counter.'}
+              </p>
+
+              <div className="space-y-2.5 text-xs text-charcoal-700 font-bold pt-1">
+                <div className="flex items-start gap-2.5">
+                  <MapPin className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />
+                  <span>{DEFAULT_SHOP_INFO.address}</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Clock className="w-4 h-4 text-brand-600 shrink-0" />
+                  <span>{isTamil ? DEFAULT_SHOP_INFO.working_hours_ta : DEFAULT_SHOP_INFO.working_hours_en}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <a
+                  href={`tel:${DEFAULT_SHOP_INFO.phone}`}
+                  className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-black px-5 py-3 rounded-2xl shadow-md text-xs transition-all"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span>Call: {DEFAULT_SHOP_INFO.phone}</span>
+                </a>
+
+                <a
+                  href={`https://wa.me/${DEFAULT_SHOP_INFO.whatsapp}?text=${encodeURIComponent('வணக்கம் மணிகண்டன் லேத் பட்டறை, எனக்கு லேத் / கலப்பை பற்றிய விபரம் தேவை.')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 py-3 rounded-2xl shadow-md text-xs transition-all"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>WhatsApp Chat</span>
+                </a>
+
+                <a
+                  href={DEFAULT_SHOP_INFO.google_maps_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-charcoal-900 font-black px-5 py-3 rounded-2xl border border-slate-300 text-xs transition-all"
+                >
+                  <Navigation className="w-4 h-4 text-brand-600" />
+                  <span>Google Maps Directions</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Visual Workshop Map Preview / Badge Card */}
+            <div className="bg-warm-bg rounded-3xl p-6 border border-warm-border text-center space-y-3">
+              <div className="w-16 h-16 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center mx-auto shadow-sm">
+                <ShieldCheck className="w-8 h-8" />
+              </div>
+              <h4 className="text-base font-black text-charcoal-900">
+                {isTamil ? '25+ வருட பாரம்பரியம் மிக்க உள்ளூர் பட்டறை' : '25+ Years of Precision Engineering'}
+              </h4>
+              <p className="text-xs text-charcoal-500 font-medium max-w-sm mx-auto">
+                {isTamil
+                  ? 'திண்டுக்கல், திருப்பூர் மற்றும் ஈரோடு மாவட்ட விவசாயிகளுக்கு நம்பகமான சேவை.'
+                  : 'Proudly serving thousands of farmers and contractors across Dindigul, Tiruppur & Erode districts.'}
+              </p>
+              <div className="pt-2">
+                <Link
+                  to="/terms"
+                  className="text-xs font-black text-brand-600 hover:underline"
+                >
+                  {isTamil ? 'சேவை விதிமுறைகள் & கொள்கைகள் →' : 'View Workshop Terms & Policies →'}
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>

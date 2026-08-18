@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, Sparkles, ShieldCheck, Search, FileText, Phone, ArrowRight } from 'lucide-react';
 import { Logo } from '../components/common/Logo';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { supabase } from '../lib/supabase';
 
 export const LoginPage: React.FC = () => {
   const { user, isAdmin, needsOnboarding, signInWithGoogle, signInWithEmail, signUpWithEmail, loading } = useAuth();
@@ -22,6 +23,49 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Guest Quick Order Lookup State
+  const [trackQuery, setTrackQuery] = useState('');
+  const [isSearchingOrder, setIsSearchingOrder] = useState(false);
+  const [trackError, setTrackError] = useState<string | null>(null);
+
+  const handleQuickTrackOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = trackQuery.trim();
+    if (!query) return;
+
+    setIsSearchingOrder(true);
+    setTrackError(null);
+
+    try {
+      // 1. Search by order number or customer phone
+      const { data: dbOrders } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      const found = (dbOrders || []).find((o: any) => {
+        const orderNum = String(o.order_number || o.id || '').toLowerCase();
+        const phone = String(o.customer_phone || '').replace(/[^0-9]/g, '');
+        const cleanQ = query.toLowerCase().replace(/[^0-9a-z]/g, '');
+        return orderNum.includes(cleanQ) || (phone.length >= 4 && phone.includes(cleanQ));
+      });
+
+      if (found) {
+        navigate(`/invoice/${found.order_number || found.id}`);
+      } else {
+        setTrackError(
+          isTamil
+            ? 'இந்த எண் அல்லது மொபைல் எண்ணில் ஆர்டர் கிடைக்கவில்லை. தயவுசெய்து எண்களைச் சரிபார்க்கவும்.'
+            : 'No active order found with this order number or phone. Please verify and try again.'
+        );
+      }
+    } catch (err) {
+      setTrackError(isTamil ? 'ஆர்டர் தேடுவதில் பிழை ஏற்பட்டது.' : 'Failed to lookup order.');
+    } finally {
+      setIsSearchingOrder(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -346,6 +390,58 @@ export const LoginPage: React.FC = () => {
         <div className="border-t border-slate-100 pt-3 text-[11px] text-charcoal-400 font-medium text-center">
           <p>{isTamil ? '256-பிட் பாதுகாப்பான குறியாக்கம்' : '256-Bit SSL Encrypted & Verified'}</p>
         </div>
+      </div>
+
+      {/* QUICK GUEST ORDER TRACKING & INVOICE LOOKUP CARD */}
+      <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-warm-border shadow-lg p-5 sm:p-6 max-w-md w-full mx-auto space-y-3 mb-6">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center font-bold">
+            <Search className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-xs sm:text-sm font-black text-charcoal-900">
+              {isTamil ? 'கடவுச்சொல் தேவையில்லை — ஆர்டர் நிலை அறிய' : 'Quick Order & Bill Lookup (No Password)'}
+            </h3>
+            <span className="text-[10px] text-charcoal-500 font-medium">
+              {isTamil ? 'ஆர்டர் எண் அல்லது போன் நம்பர் உள்ளிடவும்' : 'Enter Order Number or Registered Mobile Number'}
+            </span>
+          </div>
+        </div>
+
+        <form onSubmit={handleQuickTrackOrder} className="space-y-2.5 pt-1">
+          <div className="relative">
+            <input
+              type="text"
+              value={trackQuery}
+              onChange={(e) => {
+                setTrackQuery(e.target.value);
+                setTrackError(null);
+              }}
+              placeholder={isTamil ? 'எ.கா. MNK-ORD-1 அல்லது 9659286268' : 'e.g. MNK-ORD-1 or Mobile Number'}
+              className="w-full px-3.5 py-2.5 text-xs font-bold border border-warm-border rounded-xl bg-warm-bg/50 focus:bg-white focus:ring-2 focus:ring-brand-500 font-mono text-charcoal-900"
+            />
+            <button
+              type="submit"
+              disabled={isSearchingOrder || !trackQuery.trim()}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-black px-3 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow-xs"
+            >
+              {isSearchingOrder ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <>
+                  <span>{isTamil ? 'பார்' : 'Track'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
+          </div>
+
+          {trackError && (
+            <p className="text-[11px] font-bold text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-200">
+              {trackError}
+            </p>
+          )}
+        </form>
       </div>
 
       <div className="pb-2 text-center text-xs text-charcoal-400 font-bold">
