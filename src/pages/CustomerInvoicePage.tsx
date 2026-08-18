@@ -22,9 +22,13 @@ import { InvoiceDocument } from '../components/invoice/InvoiceDocument';
 import { Logo } from '../components/common/Logo';
 import { supabase } from '../lib/supabase';
 import { fetchActiveProducts } from '../lib/productsStore';
+import { useLanguage } from '../context/LanguageContext';
+import { generateInvoiceWhatsAppText, sendToWhatsApp } from '../lib/whatsappHelper';
 import confetti from 'canvas-confetti';
 
 export const CustomerInvoicePage: React.FC = () => {
+  const { language, setLanguage, t } = useLanguage();
+  const isTamil = language === 'ta';
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -273,9 +277,22 @@ export const CustomerInvoicePage: React.FC = () => {
   };
 
   const handleShareWhatsApp = () => {
-    const invNum = order?.order_number || order?.id || 'MNK-ORD-1';
-    const text = `🧾 *Official Tax Invoice — Manikandan Lathe Works*\nInvoice No: *#${invNum}*\nTotal: ₹${order?.total_amount?.toLocaleString('en-IN') || '40,000'}\n\nView & Download your official invoice here: ${window.location.href}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+    if (!order) return;
+    const msg = generateInvoiceWhatsAppText(
+      {
+        order_number: order.order_number || order.id,
+        id: order.id,
+        customer_name: order.customerName,
+        productName: order.productName,
+        quantity: order.quantity,
+        total_amount: order.total_amount,
+        advance_amount: order.advance_amount,
+        remaining_amount: order.remaining_amount,
+        payment_status: order.payment_status
+      },
+      isTamil ? 'ta' : 'en'
+    );
+    sendToWhatsApp(order.customerPhone || '', msg);
   };
 
 
@@ -425,7 +442,7 @@ export const CustomerInvoicePage: React.FC = () => {
           </div>
           <div className="animate-spin rounded-full h-8 w-8 border-3 border-brand-500 border-t-transparent mx-auto"></div>
           <div>
-            <p className="text-xs font-black text-charcoal-900">Loading Official Tax Invoice</p>
+            <p className="text-xs font-black text-charcoal-900">{isTamil ? 'அதிகாரப்பூர்வ பில் ஏற்றப்படுகிறது' : 'Loading Official Invoice Bill'}</p>
             <p className="text-[11px] font-mono font-bold text-brand-600 mt-0.5">{formattedDisplayId}</p>
           </div>
         </div>
@@ -447,7 +464,7 @@ export const CustomerInvoicePage: React.FC = () => {
             </Link>
 
             <span className="hidden sm:inline-block font-mono text-xs font-black text-charcoal-700 bg-warm-bg px-3 py-1 rounded-full border border-warm-border">
-              Tax Invoice #{invoiceNo}
+              {isTamil ? `பில் எண் #${invoiceNo}` : `Invoice Bill #${invoiceNo}`}
             </span>
           </div>
 
@@ -478,8 +495,6 @@ export const CustomerInvoicePage: React.FC = () => {
               </button>
             </div>
 
-
-
             {/* Primary Download PDF Action Button */}
             <button
               onClick={handleDownloadPdf}
@@ -489,12 +504,12 @@ export const CustomerInvoicePage: React.FC = () => {
               {isPdfGenerating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>Downloading...</span>
+                  <span>{isTamil ? 'பதிவிறக்குகிறது...' : 'Downloading...'}</span>
                 </>
               ) : (
                 <>
                   <Download className="w-4 h-4" />
-                  <span>Download PDF</span>
+                  <span>{isTamil ? 'PDF பதிவிறக்கு' : 'Download PDF'}</span>
                 </>
               )}
             </button>
@@ -513,7 +528,7 @@ export const CustomerInvoicePage: React.FC = () => {
 
             <div>
               <h3 className="text-base font-black text-charcoal-900">
-                Generating Tax Invoice PDF
+                {isTamil ? 'PDF ரசீது தயாராகிறது' : 'Generating Invoice Bill PDF'}
               </h3>
               <p className="text-xs font-bold text-charcoal-500 mt-1">
                 {downloadStep}
@@ -529,13 +544,13 @@ export const CustomerInvoicePage: React.FC = () => {
                 />
               </div>
               <div className="flex justify-between text-[11px] font-mono font-bold text-charcoal-400">
-                <span>Invoice #{invoiceNo}</span>
+                <span>Bill #{invoiceNo}</span>
                 <span>{downloadProgress}%</span>
               </div>
             </div>
 
             <p className="text-[11px] text-charcoal-400 font-medium">
-              Please wait while we render your verified document...
+              {isTamil ? 'தயவுசெய்து காத்திருக்கவும்...' : 'Please wait while we render your verified document...'}
             </p>
           </div>
         </div>
@@ -561,10 +576,10 @@ export const CustomerInvoicePage: React.FC = () => {
 
             <div className="space-y-1">
               <h3 className="text-lg font-black text-charcoal-900">
-                Tax Invoice Downloaded!
+                {isTamil ? 'ரசீது பதிவிறக்கம் முடிந்தது!' : 'Invoice Bill Downloaded!'}
               </h3>
               <p className="text-xs text-charcoal-500 font-medium">
-                Your official PDF invoice has been saved to your device downloads folder.
+                {isTamil ? 'உங்கள் சாதனத்தின் Downloads கோப்புறையில் சேமிக்கப்பட்டது.' : 'Your official PDF bill has been saved to your device downloads folder.'}
               </p>
             </div>
 
@@ -576,7 +591,7 @@ export const CustomerInvoicePage: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-charcoal-900">
-                    Tax_Invoice_{invoiceNo}.pdf
+                    Invoice_{invoiceNo}.pdf
                   </h4>
                   <span className="text-[10px] font-bold text-emerald-600">
                     Official Signed A4 Document
@@ -597,7 +612,7 @@ export const CustomerInvoicePage: React.FC = () => {
                 className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-4 rounded-xl text-xs shadow-md transition-all active:scale-95"
               >
                 <ExternalLink className="w-4 h-4" />
-                <span>Open / View PDF</span>
+                <span>{isTamil ? 'PDF ஐப் பார்க்க' : 'Open / View PDF'}</span>
               </button>
 
               {/* Share WhatsApp & Done */}
@@ -607,14 +622,14 @@ export const CustomerInvoicePage: React.FC = () => {
                   className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold py-3 px-3 rounded-xl text-xs border border-emerald-200 transition-colors"
                 >
                   <Share2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Share WhatsApp</span>
+                  <span>WhatsApp</span>
                 </button>
 
                 <button
                   onClick={() => setShowSuccessModal(false)}
                   className="flex-1 bg-charcoal-900 hover:bg-charcoal-800 text-white font-bold py-3 px-3 rounded-xl text-xs transition-colors"
                 >
-                  Done
+                  {isTamil ? 'முடிந்தது' : 'Done'}
                 </button>
               </div>
             </div>
@@ -651,12 +666,12 @@ export const CustomerInvoicePage: React.FC = () => {
       {/* 3. SUBTLE FOOTER NOTIFICATION BAR */}
       <footer className="no-print bg-white border-t border-warm-border px-4 py-3 text-center text-xs font-bold text-charcoal-500">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Official Verified Tax Invoice Document • Manikandan Lathe Works</span>
+          <span>Official Verified Invoice Document • Manikandan Lathe Works</span>
           <div className="flex items-center gap-3">
             {pdfDownloaded ? (
               <span className="text-emerald-700 font-black flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>PDF Downloaded Successfully!</span>
+                <span>{isTamil ? 'PDF பதிவிறக்கம் முடிந்தது!' : 'PDF Downloaded Successfully!'}</span>
               </span>
             ) : pdfError ? (
               <span className="text-rose-600 font-bold flex items-center gap-1">

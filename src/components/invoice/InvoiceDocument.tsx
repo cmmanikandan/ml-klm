@@ -125,10 +125,10 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
 
           <div style={{ textAlign: 'right' }}>
             <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '-0.5px' }}>
-              TAX INVOICE
+              INVOICE BILL
             </h2>
             <p style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: 800, color: '#ea580c', fontFamily: 'monospace' }}>
-              Invoice No: {invoiceNo}
+              Bill No: {invoiceNo}
             </p>
             <p style={{ margin: '2px 0 0 0', fontSize: '12px', fontWeight: 700, color: '#64748b' }}>
               Date: {orderDate}
@@ -359,7 +359,7 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({ order, id = 'a
         </div>
 
         <div style={{ textAlign: 'center', fontSize: '10px', color: '#64748b', fontWeight: 700, borderTop: '1px solid #f1f5f9', paddingTop: '6px', textTransform: 'uppercase' }}>
-          Tax Invoice Document • MANIKANDAN LATHE WORKS, Kallimandhayam - 624616, Dindigul District, Tamil Nadu
+          Official Invoice Bill & Work Order • MANIKANDAN LATHE WORKS, Kallimandhayam - 624616, Dindigul District, Tamil Nadu
         </div>
       </div>
     </div>

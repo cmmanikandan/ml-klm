@@ -2239,6 +2239,24 @@ export const AdminOrderDetailPage: React.FC = () => {
                       <Send className="w-3.5 h-3.5 text-brand-600" />
                       <span>Status Update</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => sendStatusUpdateWhatsApp(order, 'Ready for Workshop Counter Pickup')}
+                      className="bg-purple-50 hover:bg-purple-100 text-purple-800 font-extrabold p-2 rounded-xl text-[11px] border border-purple-200 transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Package className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Ready for Pickup</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => sendPaymentReminderWhatsApp(order, Number(order.remaining_amount) || Number(order.total_amount) || 5000)}
+                      className="bg-amber-50 hover:bg-amber-100 text-amber-800 font-extrabold p-2 rounded-xl text-[11px] border border-amber-200 transition-colors flex items-center justify-center gap-1"
+                    >
+                      <DollarSign className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Payment Alert</span>
+                    </button>
                   </div>
                 </div>
               </div>

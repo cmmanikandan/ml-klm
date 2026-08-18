@@ -31,6 +31,8 @@ import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
 import { Product, Profile, Order } from '../../types';
+import { useLanguage } from '../../context/LanguageContext';
+import { generateInvoiceWhatsAppText, sendToWhatsApp, formatINR } from '../../lib/whatsappHelper';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -49,6 +51,9 @@ interface CartItem {
 export const AdminPOSPage: React.FC = () => {
   const navigate = useNavigate();
 
+  const { language, t } = useLanguage();
+  const isTamil = language === 'ta';
+
   // Active Tab: 'pos' | 'history'
   const [activeTab, setActiveTab] = useState<'pos' | 'history'>('pos');
   // Mobile POS View Tab: 'products' | 'cart'
@@ -63,6 +68,7 @@ export const AdminPOSPage: React.FC = () => {
   // New Walk-in Customer Form State
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [customerVillage, setCustomerVillage] = useState('');
 
   // Products & Search State
   const [products, setProducts] = useState<Product[]>([]);
@@ -76,6 +82,14 @@ export const AdminPOSPage: React.FC = () => {
   const [paymentMode, setPaymentMode] = useState<'cash' | 'upi'>('cash');
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [posNotes, setPosNotes] = useState<string>('Counter POS Sale');
+
+  // Modal for Custom Lathe / Welding Work in POS
+  const [showCustomItemModal, setShowCustomItemModal] = useState<boolean>(false);
+  const [customItemName, setCustomItemName] = useState<string>('');
+  const [customItemPrice, setCustomItemPrice] = useState<number | ''>('');
+  const [customItemQty, setCustomItemQty] = useState<number>(1);
+  const [customItemCategory, setCustomItemCategory] = useState<string>('Lathe Machining');
+  const [customItemNotes, setCustomItemNotes] = useState<string>('');
 
   // Modal for Weight Calculation in POS
   const [weightModalProduct, setWeightModalProduct] = useState<Product | null>(null);
@@ -95,6 +109,9 @@ export const AdminPOSPage: React.FC = () => {
 
   // UPI QR Payment Modal State
   const [showUpiModal, setShowUpiModal] = useState<boolean>(false);
+
+  // Thermal Slip Modal State
+  const [showThermalModal, setShowThermalModal] = useState<boolean>(false);
 
   // POS History State
   const [posOrdersHistory, setPosOrdersHistory] = useState<any[]>([]);
@@ -390,6 +407,66 @@ export const AdminPOSPage: React.FC = () => {
   const cartSubtotal = cart.reduce((sum, item) => sum + item.line_total, 0);
   const finalCartGrandTotal = Math.max(0, cartSubtotal - cartDiscount);
 
+  // Add Custom Lathe / Machining / Welding Item to Cart
+  const handleAddCustomLatheItem = () => {
+    if (!customItemName.trim()) {
+      setNotifyModal({
+        isOpen: true,
+        title: isTamil ? 'வேலை விவரம் தேவை' : 'Job Description Required',
+        message: isTamil ? 'தயவுசெய்து லேத் / பழுது வேலையின் பெயரை உள்ளிடவும்.' : 'Please enter custom lathe/welding job description.',
+        type: 'warning'
+      });
+      return;
+    }
+    const price = Number(customItemPrice) || 0;
+    if (price <= 0) {
+      setNotifyModal({
+        isOpen: true,
+        title: isTamil ? 'விலை தேவை' : 'Valid Rate Required',
+        message: isTamil ? 'சரியான கட்டணத் தொகையை உள்ளிடவும்.' : 'Please enter a valid price/rate for this custom work.',
+        type: 'warning'
+      });
+      return;
+    }
+
+    const qty = Math.max(1, customItemQty);
+    const lineTot = price * qty;
+
+    const pseudoProduct: Product = {
+      id: `custom_job_${Date.now()}`,
+      name_en: customItemName.trim(),
+      name_ta: customItemName.trim(),
+      category_name: customItemCategory,
+      pricing_type: 'fixed',
+      admin_price: price,
+      is_active: true,
+      is_best_selling: false,
+      is_new: false,
+      images: ['https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=600&auto=format&fit=crop&q=80'],
+      primary_image: 'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=600&auto=format&fit=crop&q=80'
+    };
+
+    setCart([
+      ...cart,
+      {
+        id: `cart_cust_${Date.now()}`,
+        product: pseudoProduct,
+        quantity: qty,
+        unit_price: price,
+        pricing_type: 'fixed',
+        discount: 0,
+        line_total: lineTot
+      }
+    ]);
+
+    setCustomItemName('');
+    setCustomItemPrice('');
+    setCustomItemQty(1);
+    setCustomItemNotes('');
+    setShowCustomItemModal(false);
+    setMobilePosTab('cart');
+  };
+
   // Change / Balance Math
   const changeBalance = amountPaid > 0 ? (amountPaid - finalCartGrandTotal) : 0;
 
@@ -400,10 +477,12 @@ export const AdminPOSPage: React.FC = () => {
     setAmountPaid(0);
     setCustomerPhone('');
     setCustomerName('');
+    setCustomerVillage('');
     setSelectedCustomer(null);
     setCustomerSearch('');
     setPosNotes('Counter POS Sale');
     setShowUpiModal(false);
+    setShowThermalModal(false);
     setMobilePosTab('products');
   };
 
@@ -412,8 +491,8 @@ export const AdminPOSPage: React.FC = () => {
     if (!customerPhone.trim()) {
       setNotifyModal({
         isOpen: true,
-        title: 'Customer Mobile Required',
-        message: 'Please enter Customer Mobile Number before completing the POS receipt.',
+        title: isTamil ? 'மொபைல் எண் தேவை' : 'Customer Mobile Required',
+        message: isTamil ? 'பில் தயாரிக்க வாடிக்கையாளர் மொபைல் எண்ணைப் பதிவு செய்யவும்.' : 'Please enter Customer Mobile Number before completing the POS receipt.',
         type: 'warning'
       });
       setMobilePosTab('cart');
@@ -422,8 +501,8 @@ export const AdminPOSPage: React.FC = () => {
     if (cart.length === 0) {
       setNotifyModal({
         isOpen: true,
-        title: 'POS Cart Empty',
-        message: 'Cart is empty! Click any product on the catalog to add items.',
+        title: isTamil ? 'பொருட்கள் சேர்க்கவும்' : 'POS Cart Empty',
+        message: isTamil ? 'பட்டியலில் இருந்து பொருட்களை அல்லது புதிய லேத் வேலையை சேர்க்கவும்.' : 'Cart is empty! Click any product or add custom lathe work.',
         type: 'info'
       });
       setMobilePosTab('products');
@@ -438,11 +517,19 @@ export const AdminPOSPage: React.FC = () => {
     const orderId = crypto.randomUUID();
 
     const mainItem = cart[0];
-    const customerDisplayName = customerName.trim() || 'Walk-in Counter Customer';
+    const customerDisplayName = customerName.trim() || (isTamil ? 'நேரடி கவுண்டர் வாடிக்கையாளர்' : 'Walk-in Counter Customer');
+    const customerAddressText = customerVillage.trim() ? `${customerVillage.trim()}, Direct Workshop Counter Pickup` : 'Direct Workshop Counter Pickup (Kallimandhayam)';
 
     const paid = amountPaid > 0 ? amountPaid : finalCartGrandTotal;
     const remaining = Math.max(0, finalCartGrandTotal - paid);
     const isPaid = remaining === 0;
+
+    const itemsSummaryList = cart.map(i => ({
+      name: isTamil ? (i.product.name_ta || i.product.name_en) : i.product.name_en,
+      quantity: i.quantity,
+      price: i.unit_price,
+      total: i.line_total
+    }));
 
     const posOrderObj: Order = {
       id: orderId,
@@ -450,7 +537,7 @@ export const AdminPOSPage: React.FC = () => {
       user_id: selectedCustomer?.id || 'pos_customer',
       customerName: customerDisplayName,
       customerPhone: customerPhone.trim(),
-      customerAddress: 'Counter Sale (Shop Walk-in)',
+      customerAddress: customerAddressText,
       product_id: mainItem.product.id,
       productName: cart.length > 1 ? `${mainItem.product.name_en} (+${cart.length - 1} items)` : mainItem.product.name_en,
       productImage: mainItem.product.primary_image || (mainItem.product.images && mainItem.product.images[0]),
@@ -484,6 +571,7 @@ export const AdminPOSPage: React.FC = () => {
       created_at: new Date().toISOString(),
       status: 'completed'
     };
+
     // Try Supabase Insert with full cross-device sync fields
     try {
       const dbPayload = {
@@ -492,7 +580,7 @@ export const AdminPOSPage: React.FC = () => {
         user_id: selectedCustomer?.id || 'pos_customer',
         customer_name: customerDisplayName,
         customer_phone: customerPhone.trim(),
-        customer_address: 'Direct Workshop Counter Pickup (Kallimandhayam)',
+        customer_address: customerAddressText,
         product_id: mainItem.product.id && UUID_REGEX.test(mainItem.product.id) ? mainItem.product.id : null,
         product_name: posOrderObj.productName,
         quantity: posOrderObj.quantity,
@@ -507,7 +595,7 @@ export const AdminPOSPage: React.FC = () => {
         weight_calculation: mainItem.weight_calculation || mainItem.sqft_calculation,
         admin_notes: posOrderObj.admin_notes,
         specifications: posOrderObj.productName,
-        delivery_location: 'Direct Workshop Counter Pickup (Kallimandhayam)',
+        delivery_location: customerAddressText,
         created_at: new Date().toISOString()
       };
 
@@ -529,31 +617,33 @@ export const AdminPOSPage: React.FC = () => {
     }
 
     setShowUpiModal(false);
-    setLastCreatedOrder(posOrderObj);
+    setLastCreatedOrder({
+      ...posOrderObj,
+      items: itemsSummaryList
+    });
     handleResetNewBill();
     loadPOSHistory();
   };
 
-  // WhatsApp Share Generator for POS Bill
+  // WhatsApp Share Generator for POS Bill using helper
   const handleShareWhatsAppBill = (ord: any) => {
-    const rawPhone = (ord.customerPhone || '').replace(/[^0-9]/g, '');
-    const phone = rawPhone ? (rawPhone.startsWith('91') ? rawPhone : `91${rawPhone}`) : DEFAULT_SHOP_INFO.whatsapp;
-    const targetInvoiceNo = ord.order_number || ord.id;
-    
-    const text = encodeURIComponent(
-      `*MANIKANDAN LATHE WORKS - COUNTER POS BILL*\n` +
-      `--------------------------------------\n` +
-      `🧾 *Bill No:* ${ord.order_number}\n` +
-      `👤 *Customer:* ${ord.customerName || 'Valued Customer'}\n` +
-      `🛠️ *Items:* ${ord.productName}\n` +
-      `💰 *Total Amount:* ₹${(ord.total_amount || 0).toLocaleString('en-IN')}\n` +
-      `💵 *Amount Paid:* ₹${(ord.advance_amount || ord.total_amount || 0).toLocaleString('en-IN')} (PAID IN FULL)\n` +
-      `💳 *Payment Mode:* POS Counter Sale\n` +
-      `📄 *View / Download Invoice PDF:* ${window.location.origin}/invoice/${targetInvoiceNo}\n` +
-      `--------------------------------------\n` +
-      `Thank you for your business! Visit us again at K. Keeranur Road, Kallimandhayam.`
+    const message = generateInvoiceWhatsAppText(
+      {
+        order_number: ord.order_number || ord.id,
+        id: ord.id,
+        customer_name: ord.customer_name || ord.customerName,
+        items: ord.items,
+        productName: ord.product_name || ord.productName,
+        quantity: ord.quantity,
+        total_amount: ord.total_amount,
+        advance_amount: ord.advance_amount,
+        remaining_amount: ord.remaining_amount,
+        payment_status: ord.payment_status
+      },
+      isTamil ? 'ta' : 'en'
     );
-    window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+
+    sendToWhatsApp(ord.customer_phone || ord.customerPhone || DEFAULT_SHOP_INFO.whatsapp, message);
   };
 
   // SMS Share Generator for POS Bill
@@ -782,11 +872,11 @@ export const AdminPOSPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Direct Mobile & Name Inputs */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* Direct Mobile, Name & Town Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                   <div>
                     <label className="block text-[11px] font-extrabold text-charcoal-700 mb-1">
-                      Mobile Number * <span className="text-rose-500">(Required for Bill)</span>
+                      {isTamil ? 'மொபைல் எண் *' : 'Mobile Number *'} <span className="text-rose-500">({isTamil ? 'அவசியம்' : 'Required'})</span>
                     </label>
                     <div className="relative">
                       <Phone className="w-3.5 h-3.5 text-brand-600 absolute left-3 top-3" />
@@ -803,26 +893,49 @@ export const AdminPOSPage: React.FC = () => {
 
                   <div>
                     <label className="block text-[11px] font-extrabold text-charcoal-700 mb-1">
-                      Customer Name <span className="text-charcoal-400">(Optional)</span>
+                      {isTamil ? 'வாடிக்கையாளர் பெயர்' : 'Customer Name'} <span className="text-charcoal-400">({isTamil ? 'விருப்பத்தின்பேரில்' : 'Optional'})</span>
                     </label>
                     <input
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="e.g. Manikandan Prabhu"
+                      placeholder={isTamil ? 'எ.கா: மணிகண்டன்' : 'e.g. Manikandan Prabhu'}
+                      className="w-full px-3 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-extrabold text-charcoal-700 mb-1">
+                      {isTamil ? 'ஊர் / கிராமம்' : 'Village / Town'} <span className="text-charcoal-400">({isTamil ? 'விருப்பத்தின்பேரில்' : 'Optional'})</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customerVillage}
+                      onChange={(e) => setCustomerVillage(e.target.value)}
+                      placeholder={isTamil ? 'எ.கா: கள்ளிமந்தையம்' : 'e.g. Kallimandhayam'}
                       className="w-full px-3 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Product Selection Catalog */}
+              {/* Product Selection Catalog & Custom Lathe Work Header */}
               <div className="bg-white rounded-3xl p-6 border border-warm-border shadow-card space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <span className="text-xs font-black text-brand-600 uppercase tracking-widest flex items-center gap-1.5">
-                    <Package className="w-4 h-4" />
-                    <span>Select Product (Click Card to Add)</span>
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-brand-600 uppercase tracking-widest flex items-center gap-1.5">
+                      <Package className="w-4 h-4" />
+                      <span>{isTamil ? 'பொருட்கள் & சேவைகள்' : 'Catalog & Lathe Services'}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomItemModal(true)}
+                      className="bg-brand-600 hover:bg-brand-700 text-white font-black text-[11px] px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{isTamil ? 'புதிய லேத் வேலை' : 'Add Custom Lathe Work'}</span>
+                    </button>
+                  </div>
 
                   <div className="relative w-full sm:w-64">
                     <Search className="w-3.5 h-3.5 text-charcoal-400 absolute left-3 top-2.5" />
@@ -830,7 +943,7 @@ export const AdminPOSPage: React.FC = () => {
                       type="text"
                       value={productSearch}
                       onChange={(e) => setProductSearch(e.target.value)}
-                      placeholder="Search products..."
+                      placeholder={isTamil ? 'பொருட்களைத் தேடுக...' : 'Search products...'}
                       className="w-full pl-8 pr-3 py-1.5 text-xs font-bold border border-warm-border rounded-xl bg-warm-bg"
                     />
                   </div>
@@ -872,7 +985,7 @@ export const AdminPOSPage: React.FC = () => {
                         <img
                           src={prod.primary_image || (prod.images && prod.images[0]) || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600'}
                           alt={prod.name_en}
-                          className="w-14 h-14 rounded-xl object-cover border border-warm-border shrink-0 group-hover:scale-105 transition-transform"
+                          className="w-14 h-14 rounded-xl object-contain bg-white p-1 border border-warm-border shrink-0 group-hover:scale-105 transition-transform"
                         />
 
                         <div className="flex-1 min-w-0">
@@ -892,7 +1005,7 @@ export const AdminPOSPage: React.FC = () => {
                           className={`font-extrabold px-3 py-2 rounded-xl text-[11px] shadow-sm shrink-0 flex items-center gap-1 transition-colors ${btnColorClass}`}
                         >
                           {iconElement}
-                          <span>{pType === 'fixed' ? '+ Add Item' : pType === 'weight' ? 'Calc Weight' : 'Calc SqFt'}</span>
+                          <span>{pType === 'fixed' ? (isTamil ? 'பொருளைச் சேர்' : 'Add Item') : pType === 'weight' ? (isTamil ? 'எடை கணக்கீடு' : 'Calc Weight') : (isTamil ? 'அளவு கணக்கீடு' : 'Calc SqFt')}</span>
                         </button>
                       </div>
                     );
@@ -1017,26 +1130,42 @@ export const AdminPOSPage: React.FC = () => {
 
                 {/* Overall Bill Discount */}
                 {cart.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-warm-muted">
+                  <div className="space-y-3 pt-2 border-t border-warm-muted">
                     <div>
                       <label className="block text-[11px] font-extrabold text-rose-700 uppercase">
-                        Overall Bill Discount Amount (₹)
+                        {isTamil ? 'தள்ளுபடி தொகை (₹)' : 'Overall Bill Discount (₹)'}
                       </label>
                       <input
                         type="number"
                         value={cartDiscount || ''}
                         onChange={(e) => setCartDiscount(parseFloat(e.target.value) || 0)}
-                        placeholder="Enter discount amount e.g. 500"
+                        placeholder="e.g. 500"
                         className="w-full px-3 py-2 text-xs font-mono font-black border border-rose-300 rounded-xl bg-rose-50/50 text-rose-700 focus:ring-2 focus:ring-rose-500"
                       />
                     </div>
                   </div>
                 )}
 
+                {/* Subtotal & Breakdown Ledger */}
+                {cart.length > 0 && (
+                  <div className="bg-warm-bg p-3 rounded-2xl border border-warm-border space-y-1.5 text-xs">
+                    <div className="flex justify-between font-bold text-charcoal-700">
+                      <span>{isTamil ? 'கூட்டுத்தொகை' : 'Subtotal'}:</span>
+                      <span className="font-mono">₹{cartSubtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    {cartDiscount > 0 && (
+                      <div className="flex justify-between font-bold text-rose-600">
+                        <span>{isTamil ? 'தள்ளுபடி' : 'Discount'}:</span>
+                        <span className="font-mono">-₹{cartDiscount.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Payment Mode Selection */}
                 <div className="space-y-3 pt-2 border-t border-warm-muted">
                   <label className="block text-[11px] font-black text-charcoal-800 uppercase tracking-wider">
-                    Payment Method
+                    {isTamil ? 'பணம் செலுத்தும் முறை' : 'Payment Method'}
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1048,7 +1177,7 @@ export const AdminPOSPage: React.FC = () => {
                           : 'bg-warm-bg text-charcoal-700 border-warm-border hover:bg-warm-hover'
                       }`}
                     >
-                      💵 Cash Payment
+                      💵 {isTamil ? 'ரொக்கம்' : 'Cash Payment'}
                     </button>
 
                     <button
@@ -1063,7 +1192,7 @@ export const AdminPOSPage: React.FC = () => {
                           : 'bg-warm-bg text-charcoal-700 border-warm-border hover:bg-warm-hover'
                       }`}
                     >
-                      📲 UPI QR Code
+                      📲 {isTamil ? 'UPI QR ஸ்கேன்' : 'UPI QR Code'}
                     </button>
                   </div>
 
@@ -1071,7 +1200,7 @@ export const AdminPOSPage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[10px] font-black text-charcoal-700 uppercase mb-1">
-                        Cash Received (₹)
+                        {isTamil ? 'பெற்ற தொகை / முன்பணம் (₹)' : 'Advance / Cash Received (₹)'}
                       </label>
                       <input
                         type="number"
@@ -1084,7 +1213,7 @@ export const AdminPOSPage: React.FC = () => {
 
                     <div>
                       <label className="block text-[10px] font-black text-charcoal-700 uppercase mb-1">
-                        Change / Return (₹)
+                        {changeBalance >= 0 ? (isTamil ? 'மீதி கொடுக்க (₹)' : 'Change / Return (₹)') : (isTamil ? 'மீதி வசூலிக்க (₹)' : 'Balance Due (₹)')}
                       </label>
                       <div className={`px-3 py-2 rounded-xl border font-mono font-black text-xs text-center ${
                         changeBalance >= 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
@@ -1098,7 +1227,9 @@ export const AdminPOSPage: React.FC = () => {
                 {/* Total & Complete Sale Button */}
                 <div className="pt-3 border-t border-warm-muted space-y-3">
                   <div className="flex justify-between items-center bg-brand-50 p-3.5 rounded-2xl border border-brand-200">
-                    <span className="text-xs font-black text-brand-900 uppercase">Grand Total Bill</span>
+                    <span className="text-xs font-black text-brand-900 uppercase">
+                      {isTamil ? 'மொத்த பில் தொகை' : 'Grand Total Bill'}
+                    </span>
                     <span className="text-2xl font-black font-mono text-brand-600">₹{finalCartGrandTotal.toLocaleString('en-IN')}</span>
                   </div>
 
@@ -1112,7 +1243,7 @@ export const AdminPOSPage: React.FC = () => {
                       icon={<QrCode className="w-4 h-4" />}
                       className="py-3 text-sm font-black rounded-2xl shadow-lg bg-emerald-600 hover:bg-emerald-700"
                     >
-                      Show UPI QR & Complete Sale
+                      {isTamil ? 'QR குறியீட்டைக் காட்டி முடி' : 'Show UPI QR & Complete Sale'}
                     </Button>
                   ) : (
                     <Button
@@ -1124,7 +1255,7 @@ export const AdminPOSPage: React.FC = () => {
                       icon={<Printer className="w-4 h-4" />}
                       className="py-3 text-sm font-black rounded-2xl shadow-lg"
                     >
-                      Complete Sale & Print Bill
+                      {isTamil ? 'பில் அச்சிட்டு முடிக்க' : 'Complete Sale & Print Bill'}
                     </Button>
                   )}
                 </div>
@@ -1582,12 +1713,122 @@ export const AdminPOSPage: React.FC = () => {
         </Modal>
       )}
 
+      {/* CUSTOM LATHE / MACHINING / WELDING WORK MODAL */}
+      {showCustomItemModal && (
+        <Modal
+          isOpen={showCustomItemModal}
+          onClose={() => setShowCustomItemModal(false)}
+          title={isTamil ? 'தனிப்பயன் லேத் / பழுது வேலை சேர்க்க' : 'Add Custom Lathe / Machining Work'}
+          maxWidth="sm"
+        >
+          <div className="space-y-4 py-2 text-xs">
+            {/* Quick Suggestion Chips */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block">
+                {isTamil ? 'விரைவு தேர்வுகள்:' : 'Quick Presets:'}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { en: 'Tractor Shaft Turning', ta: 'டிராக்டர் ஷாப்ட் டர்னிங்', rate: 450 },
+                  { en: 'Bush & Pin Fitting', ta: 'புஷ் & பின் மாட்டுதல்', rate: 300 },
+                  { en: 'Boring & Keyway Cutting', ta: 'போரிங் & கீவே வெட்டுதல்', rate: 600 },
+                  { en: 'Gate Hinge Welding', ta: 'கேட் கீல் வெல்டிங்', rate: 250 },
+                  { en: 'Safety Grill Repair', ta: 'பாதுகாப்பு கிரில் பழுது', rate: 500 }
+                ].map((preset, pIdx) => (
+                  <button
+                    key={pIdx}
+                    type="button"
+                    onClick={() => {
+                      setCustomItemName(isTamil ? preset.ta : preset.en);
+                      setCustomItemPrice(preset.rate);
+                    }}
+                    className="bg-warm-bg hover:bg-brand-50 text-charcoal-800 hover:text-brand-700 font-bold px-2.5 py-1 rounded-lg border border-warm-border text-[11px] transition-colors"
+                  >
+                    + {isTamil ? preset.ta : preset.en}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Job Description Input */}
+            <div>
+              <label className="block text-[11px] font-extrabold text-charcoal-700 mb-1">
+                {isTamil ? 'வேலை / பொருளின் பெயர் *' : 'Job / Service Description *'}
+              </label>
+              <input
+                type="text"
+                value={customItemName}
+                onChange={(e) => setCustomItemName(e.target.value)}
+                placeholder={isTamil ? 'எ.கா: டிராக்டர் ஷாப்ட் லேத் டர்னிங்' : 'e.g. Tractor Shaft Turning'}
+                className="w-full px-3 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            {/* Rate & Qty */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-extrabold text-charcoal-700 mb-1">
+                  {isTamil ? 'கட்டணம் / விலை (₹) *' : 'Rate / Price (₹) *'}
+                </label>
+                <input
+                  type="number"
+                  value={customItemPrice}
+                  onChange={(e) => setCustomItemPrice(e.target.value ? parseFloat(e.target.value) : '')}
+                  placeholder="₹ 500"
+                  className="w-full px-3 py-2 text-xs font-mono font-black border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-extrabold text-charcoal-700 mb-1">
+                  {isTamil ? 'எண்ணிக்கை' : 'Quantity'}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={customItemQty}
+                  onChange={(e) => setCustomItemQty(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full px-3 py-2 text-xs font-mono font-black border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+
+            {/* Category Selection */}
+            <div>
+              <label className="block text-[11px] font-extrabold text-charcoal-700 mb-1">
+                {isTamil ? 'பிரிவு' : 'Service Category'}
+              </label>
+              <select
+                value={customItemCategory}
+                onChange={(e) => setCustomItemCategory(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white"
+              >
+                <option value="Lathe Machining">{isTamil ? 'துல்லிய லேத் வேலைகள்' : 'Lathe Machining & Turning'}</option>
+                <option value="ARC Welding">{isTamil ? 'ஆர்க் வெல்டிங் வேலைகள்' : 'ARC & Gas Welding Works'}</option>
+                <option value="Repair Service">{isTamil ? 'பழுது பார்த்தல் & பராமரிப்பு' : 'Repair & Maintenance'}</option>
+                <option value="Gate & Grill">{isTamil ? 'கேட் & கிரில் வேலைகள்' : 'Gate & Grill Custom'}</option>
+                <option value="General Fabrication">{isTamil ? 'பொது மெட்டல் ஃபேப்ரிகேஷன்' : 'General Metal Fabrication'}</option>
+              </select>
+            </div>
+
+            <div className="pt-2 flex gap-2">
+              <Button type="button" onClick={() => setShowCustomItemModal(false)} variant="secondary" fullWidth>
+                {isTamil ? 'ரத்து' : 'Cancel'}
+              </Button>
+              <Button type="button" onClick={handleAddCustomLatheItem} variant="primary" fullWidth icon={<Plus className="w-4 h-4" />}>
+                {isTamil ? 'கார்ட்டில் சேர்க்க' : 'Add to POS Cart'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* POS SALE SUCCESSFUL MODAL WITH PRINT & WHATSAPP & NEW BILL */}
       {lastCreatedOrder && (
         <Modal
           isOpen={Boolean(lastCreatedOrder)}
           onClose={() => setLastCreatedOrder(null)}
-          title="POS Counter Sale Completed Successfully!"
+          title={isTamil ? 'கவுண்டர் பில் வெற்றிகரமாக உருவாக்கப்பட்டது!' : 'POS Counter Sale Completed Successfully!'}
           maxWidth="sm"
         >
           <div className="text-center py-4 space-y-5">
@@ -1603,7 +1844,7 @@ export const AdminPOSPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex flex-col gap-2.5 pt-2">
+            <div className="flex flex-col gap-2 pt-2">
               <Button
                 onClick={() => {
                   const targetId = lastCreatedOrder.order_number || lastCreatedOrder.id;
@@ -1614,26 +1855,130 @@ export const AdminPOSPage: React.FC = () => {
                 icon={<Printer className="w-4 h-4" />}
                 className="py-3 text-xs font-black rounded-2xl shadow-md"
               >
-                Print POS Receipt / Bill Now
+                {isTamil ? 'முழு A4 பில் அச்சிடு (A4 Invoice)' : 'Print Full A4 Invoice'}
               </Button>
+
+              <button
+                type="button"
+                onClick={() => setShowThermalModal(true)}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-2.5 px-4 rounded-2xl text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <Printer className="w-4 h-4 text-amber-400" />
+                <span>{isTamil ? '3-இன்ச் தெர்மல் ரசீது அச்சிடு' : 'Print 3-Inch Thermal Slip'}</span>
+              </button>
 
               <Button
                 onClick={() => handleShareWhatsAppBill(lastCreatedOrder)}
                 variant="secondary"
                 fullWidth
                 icon={<MessageSquare className="w-4 h-4 text-emerald-600" />}
-                className="py-3 text-xs font-black rounded-2xl"
+                className="py-2.5 text-xs font-black rounded-2xl"
               >
-                Share Bill via WhatsApp
+                {isTamil ? 'வாட்ஸ்அப்பில் ரசீது அனுப்பு' : 'Share Bill via WhatsApp'}
               </Button>
 
               <button
-                onClick={() => setLastCreatedOrder(null)}
+                onClick={() => {
+                  setLastCreatedOrder(null);
+                  setShowThermalModal(false);
+                }}
                 className="w-full bg-warm-bg hover:bg-warm-hover text-charcoal-700 font-extrabold py-2.5 px-4 rounded-2xl text-xs border border-warm-border transition-colors flex items-center justify-center gap-1.5"
               >
                 <RefreshCw className="w-4 h-4 text-brand-600" />
-                <span>Start New Bill</span>
+                <span>{isTamil ? 'புதிய பில் தொடங்க' : 'Start New Bill'}</span>
               </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* 3-INCH THERMAL SLIP PREVIEW & DIRECT PRINT MODAL */}
+      {showThermalModal && lastCreatedOrder && (
+        <Modal
+          isOpen={showThermalModal}
+          onClose={() => setShowThermalModal(false)}
+          title={isTamil ? '3-இன்ச் தெர்மல் ரசீது' : '3-Inch Thermal Slip Preview'}
+          maxWidth="sm"
+        >
+          <div className="space-y-4 py-2">
+            {/* Thermal Printable Slip Area */}
+            <div id="thermal-pos-slip" className="bg-white p-4 border border-charcoal-300 rounded-xl shadow-inner text-charcoal-900 font-mono text-[11px] leading-relaxed max-w-[280px] mx-auto text-center">
+              <h3 className="font-black text-sm uppercase tracking-wider">MANIKANDAN LATHE</h3>
+              <p className="text-[10px] text-charcoal-600">Welding & Lathe Works</p>
+              <p className="text-[10px] text-charcoal-500">Kallimandhayam - 624616</p>
+              <p className="text-[10px] text-charcoal-500">Ph: 9659286268</p>
+              <div className="border-b border-dashed border-charcoal-400 my-2"></div>
+              
+              <div className="text-left space-y-0.5 text-[10px]">
+                <p><strong>Bill #:</strong> {lastCreatedOrder.order_number}</p>
+                <p><strong>Date:</strong> {new Date().toLocaleDateString('en-IN')}</p>
+                <p><strong>Cust:</strong> {lastCreatedOrder.customerName}</p>
+                <p><strong>Phone:</strong> {lastCreatedOrder.customerPhone}</p>
+              </div>
+
+              <div className="border-b border-dashed border-charcoal-400 my-2"></div>
+
+              {/* Items List */}
+              <div className="text-left space-y-1">
+                {lastCreatedOrder.items && lastCreatedOrder.items.length > 0 ? (
+                  lastCreatedOrder.items.map((it: any, iIdx: number) => (
+                    <div key={iIdx} className="flex justify-between">
+                      <span className="truncate max-w-[170px]">{iIdx + 1}. {it.name} (x{it.quantity})</span>
+                      <span className="font-black">₹{it.total}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex justify-between">
+                    <span>1. {lastCreatedOrder.productName}</span>
+                    <span className="font-black">₹{lastCreatedOrder.total_amount}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-b border-dashed border-charcoal-400 my-2"></div>
+
+              {/* Total & Paid */}
+              <div className="text-left space-y-0.5 font-bold">
+                <div className="flex justify-between text-xs font-black">
+                  <span>TOTAL:</span>
+                  <span>₹{lastCreatedOrder.total_amount?.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between text-emerald-700">
+                  <span>PAID:</span>
+                  <span>₹{(lastCreatedOrder.advance_amount || lastCreatedOrder.total_amount)?.toLocaleString('en-IN')}</span>
+                </div>
+                {Number(lastCreatedOrder.remaining_amount) > 0 && (
+                  <div className="flex justify-between text-rose-700 font-black">
+                    <span>BALANCE DUE:</span>
+                    <span>₹{lastCreatedOrder.remaining_amount?.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-b border-dashed border-charcoal-400 my-2"></div>
+              <p className="text-[9px] text-charcoal-500 font-bold">Counter Pickup (Kallimandhayam)</p>
+              <p className="text-[9px] text-charcoal-400">*** Thank You! Visit Again ***</p>
+            </div>
+
+            {/* Print Trigger */}
+            <div className="flex gap-2 pt-1">
+              <Button
+                type="button"
+                onClick={() => window.print()}
+                variant="primary"
+                fullWidth
+                icon={<Printer className="w-4 h-4" />}
+              >
+                {isTamil ? 'அச்சிடு (Print Slip)' : 'Print Thermal Slip'}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setShowThermalModal(false)}
+                variant="secondary"
+                fullWidth
+              >
+                {isTamil ? 'மூடு' : 'Close'}
+              </Button>
             </div>
           </div>
         </Modal>
