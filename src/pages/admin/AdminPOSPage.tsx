@@ -22,7 +22,8 @@ import {
   RefreshCw,
   Tag,
   QrCode,
-  ArrowLeft
+  ArrowLeft,
+  Wrench
 } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
@@ -409,21 +410,13 @@ export const AdminPOSPage: React.FC = () => {
 
   // Add Custom Lathe / Machining / Welding Item to Cart
   const handleAddCustomLatheItem = () => {
-    if (!customItemName.trim()) {
-      setNotifyModal({
-        isOpen: true,
-        title: isTamil ? 'வேலை விவரம் தேவை' : 'Job Description Required',
-        message: isTamil ? 'தயவுசெய்து லேத் / பழுது வேலையின் பெயரை உள்ளிடவும்.' : 'Please enter custom lathe/welding job description.',
-        type: 'warning'
-      });
-      return;
-    }
+    const finalName = customItemName.trim() || (isTamil ? 'தனிப்பயன் லேத் வேலை' : 'Custom Lathe Work');
     const price = Number(customItemPrice) || 0;
     if (price <= 0) {
       setNotifyModal({
         isOpen: true,
-        title: isTamil ? 'விலை தேவை' : 'Valid Rate Required',
-        message: isTamil ? 'சரியான கட்டணத் தொகையை உள்ளிடவும்.' : 'Please enter a valid price/rate for this custom work.',
+        title: isTamil ? 'தொகை தேவை' : 'Enter Amount',
+        message: isTamil ? 'தயவுசெய்து கட்டணத் தொகையை உள்ளிடவும்.' : 'Please enter a valid amount (₹) for this custom work.',
         type: 'warning'
       });
       return;
@@ -434,8 +427,8 @@ export const AdminPOSPage: React.FC = () => {
 
     const pseudoProduct: Product = {
       id: `custom_job_${Date.now()}`,
-      name_en: customItemName.trim(),
-      name_ta: customItemName.trim(),
+      name_en: finalName,
+      name_ta: finalName,
       category_name: customItemCategory,
       pricing_type: 'fixed',
       admin_price: price,
@@ -927,14 +920,6 @@ export const AdminPOSPage: React.FC = () => {
                       <Package className="w-4 h-4" />
                       <span>{isTamil ? 'பொருட்கள் & சேவைகள்' : 'Catalog & Lathe Services'}</span>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowCustomItemModal(true)}
-                      className="bg-brand-600 hover:bg-brand-700 text-white font-black text-[11px] px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>{isTamil ? 'புதிய லேத் வேலை' : 'Add Custom Lathe Work'}</span>
-                    </button>
                   </div>
 
                   <div className="relative w-full sm:w-64">
@@ -950,7 +935,48 @@ export const AdminPOSPage: React.FC = () => {
                 </div>
 
                 {/* Product Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-1 pb-24 sm:pb-2">
+                  
+                  {/* 1. SPECIAL CUSTOM LATHE / MACHINING / REPAIR WORK CARD (Vibrant Purple / Violet Theme) */}
+                  <div
+                    onClick={() => {
+                      setCustomItemName('');
+                      setCustomItemPrice('');
+                      setShowCustomItemModal(true);
+                    }}
+                    className="bg-gradient-to-br from-purple-50 via-indigo-50/70 to-purple-100/80 hover:from-purple-100 hover:to-indigo-100 p-3.5 rounded-2xl border-2 border-dashed border-purple-400 hover:border-purple-600 cursor-pointer flex items-center gap-3 transition-all shadow-sm group relative overflow-hidden"
+                  >
+                    <div className="w-14 h-14 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                      <Wrench className="w-7 h-7" />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-purple-700 bg-purple-200/80 px-2 py-0.5 rounded-md inline-block mb-0.5">
+                        ⚡ {isTamil ? 'தனிப்பயன் வேலை' : 'Custom Lathe Work'}
+                      </span>
+                      <h4 className="text-xs font-black text-purple-950 truncate">
+                        {isTamil ? 'தனிப்பயன் லேத் / பழுது வேலை' : 'Custom Lathe / Repair Work'}
+                      </h4>
+                      <span className="text-[11px] font-bold text-purple-700 mt-0.5 block">
+                        {isTamil ? 'விலை நிர்ணயித்து சேர்க்க' : 'Set custom price & add'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCustomItemName('');
+                        setCustomItemPrice('');
+                        setShowCustomItemModal(true);
+                      }}
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold px-3 py-2 rounded-xl text-[11px] shadow-sm shrink-0 flex items-center gap-1 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{isTamil ? 'சேர்க்க' : 'Add Custom'}</span>
+                    </button>
+                  </div>
+
                   {filteredProducts.map((prod) => {
                     const pType = getProductPricingType(prod);
                     
@@ -1010,6 +1036,11 @@ export const AdminPOSPage: React.FC = () => {
                       </div>
                     );
                   })}
+
+                  {/* Spacer for Mobile Floating Cart Bar */}
+                  {cart.length > 0 && (
+                    <div className="col-span-full h-16 lg:hidden pointer-events-none"></div>
+                  )}
                 </div>
               </div>
 
@@ -1713,113 +1744,63 @@ export const AdminPOSPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* CUSTOM LATHE / MACHINING / WELDING WORK MODAL */}
+      {/* CUSTOM LATHE / MACHINING / WELDING WORK MODAL (Clean Name & Amount Only) */}
       {showCustomItemModal && (
         <Modal
           isOpen={showCustomItemModal}
           onClose={() => setShowCustomItemModal(false)}
-          title={isTamil ? 'தனிப்பயன் லேத் / பழுது வேலை சேர்க்க' : 'Add Custom Lathe / Machining Work'}
-          maxWidth="sm"
+          title={isTamil ? 'தனிப்பயன் லேத் வேலை' : 'Custom Lathe / Repair Work'}
+          maxWidth="xs"
         >
-          <div className="space-y-4 py-2 text-xs">
-            {/* Quick Suggestion Chips */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-black text-charcoal-500 uppercase tracking-wider block">
-                {isTamil ? 'விரைவு தேர்வுகள்:' : 'Quick Presets:'}
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { en: 'Tractor Shaft Turning', ta: 'டிராக்டர் ஷாப்ட் டர்னிங்', rate: 450 },
-                  { en: 'Bush & Pin Fitting', ta: 'புஷ் & பின் மாட்டுதல்', rate: 300 },
-                  { en: 'Boring & Keyway Cutting', ta: 'போரிங் & கீவே வெட்டுதல்', rate: 600 },
-                  { en: 'Gate Hinge Welding', ta: 'கேட் கீல் வெல்டிங்', rate: 250 },
-                  { en: 'Safety Grill Repair', ta: 'பாதுகாப்பு கிரில் பழுது', rate: 500 }
-                ].map((preset, pIdx) => (
-                  <button
-                    key={pIdx}
-                    type="button"
-                    onClick={() => {
-                      setCustomItemName(isTamil ? preset.ta : preset.en);
-                      setCustomItemPrice(preset.rate);
-                    }}
-                    className="bg-warm-bg hover:bg-brand-50 text-charcoal-800 hover:text-brand-700 font-bold px-2.5 py-1 rounded-lg border border-warm-border text-[11px] transition-colors"
-                  >
-                    + {isTamil ? preset.ta : preset.en}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Job Description Input */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddCustomLatheItem();
+            }}
+            className="space-y-4 py-2"
+          >
+            {/* 1. Job Description / Name Input (Optional) */}
             <div>
-              <label className="block text-[11px] font-extrabold text-charcoal-700 mb-1">
-                {isTamil ? 'வேலை / பொருளின் பெயர் *' : 'Job / Service Description *'}
+              <label className="block text-xs font-black text-charcoal-700 mb-1">
+                {isTamil ? 'வேலையின் பெயர் (விருப்பத்திற்குரியது)' : 'Item / Job Name (Optional)'}
               </label>
               <input
                 type="text"
                 value={customItemName}
                 onChange={(e) => setCustomItemName(e.target.value)}
-                placeholder={isTamil ? 'எ.கா: டிராக்டர் ஷாப்ட் லேத் டர்னிங்' : 'e.g. Tractor Shaft Turning'}
-                className="w-full px-3 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                placeholder={isTamil ? 'தனிப்பயன் லேத் வேலை' : 'Custom Lathe Work'}
+                className="w-full px-3.5 py-2.5 text-xs font-bold border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-purple-600"
               />
             </div>
 
-            {/* Rate & Qty */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-extrabold text-charcoal-700 mb-1">
-                  {isTamil ? 'கட்டணம் / விலை (₹) *' : 'Rate / Price (₹) *'}
-                </label>
+            {/* 2. Amount Input (Required) */}
+            <div>
+              <label className="block text-xs font-black text-purple-900 mb-1">
+                {isTamil ? 'தொகை / கட்டணம் (₹) *' : 'Amount / Rate (₹) *'}
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-2.5 font-bold font-mono text-purple-700 text-base">₹</span>
                 <input
                   type="number"
+                  autoFocus
+                  required
                   value={customItemPrice}
                   onChange={(e) => setCustomItemPrice(e.target.value ? parseFloat(e.target.value) : '')}
-                  placeholder="₹ 500"
-                  className="w-full px-3 py-2 text-xs font-mono font-black border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
+                  placeholder="500"
+                  className="w-full pl-8 pr-3.5 py-2.5 text-base font-mono font-black border-2 border-purple-400 rounded-xl bg-purple-50/40 text-purple-950 focus:ring-2 focus:ring-purple-600 focus:bg-white"
                 />
               </div>
-
-              <div>
-                <label className="block text-[11px] font-extrabold text-charcoal-700 mb-1">
-                  {isTamil ? 'எண்ணிக்கை' : 'Quantity'}
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={customItemQty}
-                  onChange={(e) => setCustomItemQty(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full px-3 py-2 text-xs font-mono font-black border border-warm-border rounded-xl bg-white focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-            </div>
-
-            {/* Category Selection */}
-            <div>
-              <label className="block text-[11px] font-extrabold text-charcoal-700 mb-1">
-                {isTamil ? 'பிரிவு' : 'Service Category'}
-              </label>
-              <select
-                value={customItemCategory}
-                onChange={(e) => setCustomItemCategory(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white"
-              >
-                <option value="Lathe Machining">{isTamil ? 'துல்லிய லேத் வேலைகள்' : 'Lathe Machining & Turning'}</option>
-                <option value="ARC Welding">{isTamil ? 'ஆர்க் வெல்டிங் வேலைகள்' : 'ARC & Gas Welding Works'}</option>
-                <option value="Repair Service">{isTamil ? 'பழுது பார்த்தல் & பராமரிப்பு' : 'Repair & Maintenance'}</option>
-                <option value="Gate & Grill">{isTamil ? 'கேட் & கிரில் வேலைகள்' : 'Gate & Grill Custom'}</option>
-                <option value="General Fabrication">{isTamil ? 'பொது மெட்டல் ஃபேப்ரிகேஷன்' : 'General Metal Fabrication'}</option>
-              </select>
             </div>
 
             <div className="pt-2 flex gap-2">
               <Button type="button" onClick={() => setShowCustomItemModal(false)} variant="secondary" fullWidth>
                 {isTamil ? 'ரத்து' : 'Cancel'}
               </Button>
-              <Button type="button" onClick={handleAddCustomLatheItem} variant="primary" fullWidth icon={<Plus className="w-4 h-4" />}>
-                {isTamil ? 'கார்ட்டில் சேர்க்க' : 'Add to POS Cart'}
+              <Button type="submit" variant="primary" fullWidth icon={<Plus className="w-4 h-4" />} className="bg-purple-600 hover:bg-purple-700">
+                {isTamil ? 'பில்லில் சேர்க்க' : 'Add to Bill'}
               </Button>
             </div>
-          </div>
+          </form>
         </Modal>
       )}
 
