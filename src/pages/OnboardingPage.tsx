@@ -279,13 +279,21 @@ export const OnboardingPage: React.FC = () => {
 
             <div className="pt-2">
               <Button
-                onClick={() => navigate('/home')}
+                onClick={() => {
+                  const stored = sessionStorage.getItem('ml_auth_redirect') || '/home';
+                  try {
+                    sessionStorage.removeItem('ml_auth_redirect');
+                  } catch (e) {}
+                  navigate(stored, { replace: true });
+                }}
                 variant="primary"
                 size="lg"
                 fullWidth
                 icon={<ArrowRight className="w-4 h-4" />}
               >
-                {selectedLang === 'ta' ? 'கடைக்கு செல்லவும்' : 'Go to Workshop Home'}
+                {sessionStorage.getItem('ml_auth_redirect') === '/repair'
+                  ? (selectedLang === 'ta' ? 'பழுது படிவத்திற்கு செல்க' : 'Continue to Repair Form')
+                  : (selectedLang === 'ta' ? 'கடைக்கு செல்லவும்' : 'Go to Workshop Home')}
               </Button>
             </div>
           </div>

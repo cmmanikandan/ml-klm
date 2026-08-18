@@ -184,15 +184,37 @@ export const RepairServicePage: React.FC = () => {
             {isTamil ? 'லேத் & ARC பழுது பார்க்கும் சேவை' : 'Machining & ARC Repair Service'}
           </h1>
           <p className="text-[11px] text-charcoal-500 font-medium mt-0.5">
-            {isTamil ? 'பழுது விபரங்களை பதிவு செய்யவும்' : 'Fill details for instant workshop quote'}
+            {isTamil ? 'பழுது விபரங்களை பதிவு செய்து உடனடி மதிப்பீட்டைப் பெறுங்கள்' : 'Submit broken parts details for instant workshop quote'}
           </p>
         </div>
+
+        {/* Authenticated Customer Info Card */}
+        {user && (
+          <div className="bg-brand-50/70 rounded-2xl p-3.5 border border-brand-200 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-brand-600 text-white font-black flex items-center justify-center text-xs shrink-0 shadow-xs">
+                {(user.full_name || 'C').charAt(0).toUpperCase()}
+              </div>
+              <div className="truncate">
+                <span className="font-extrabold text-charcoal-900 block truncate">
+                  {user.full_name || 'Customer'}
+                </span>
+                <span className="text-[11px] text-charcoal-500 font-mono font-semibold">
+                  {user.phone || user.email}
+                </span>
+              </div>
+            </div>
+            <span className="bg-brand-100 text-brand-800 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-brand-300 shrink-0">
+              {isTamil ? 'சரிபார்க்கப்பட்டது' : 'Verified'}
+            </span>
+          </div>
+        )}
 
         {/* REPAIR REQUEST FORM */}
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-5 sm:p-6 border border-warm-border shadow-card space-y-5 animate-fade-in">
 
-          {/* Guest Phone — only if not logged in */}
-          {!user && (
+          {/* Contact Phone if missing in profile */}
+          {(!user || !user.phone) && (
             <div>
               <label className="block text-xs font-black text-charcoal-900 uppercase tracking-wider mb-1.5">
                 {isTamil ? 'உங்கள் மொபைல் எண் *' : 'Your Contact Number *'}

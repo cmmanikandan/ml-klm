@@ -135,6 +135,26 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
+// Route Guard for Authenticated Customer Pages (Redirects to Login if not logged in)
+const AuthGuard: React.FC<{ children: React.ReactNode; redirect?: string }> = ({ children, redirect }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <SplashScreen />;
+  }
+
+  if (!user) {
+    const target = redirect || location.pathname + location.search;
+    try {
+      sessionStorage.setItem('ml_auth_redirect', target);
+    } catch (e) {}
+    return <Navigate to={`/login?redirect=${encodeURIComponent(target)}`} state={{ from: target }} replace />;
+  }
+
+  return <>{children}</>;
+};
+
 // Route Guard for Profile Onboarding
 const OnboardingGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { needsOnboarding } = useAuth();
@@ -200,23 +220,113 @@ export const App: React.FC = () => {
                     <Route path="/products" element={<ProductsPage />} />
                     <Route path="/products/:id" element={<ProductDetailPage />} />
                     <Route path="/search" element={<SearchPage />} />
-                    <Route path="/wishlist" element={<WishlistPage />} />
-                    <Route path="/orders" element={<OrdersPage />} />
-                    <Route path="/orders/:id" element={<OrderDetailPage />} />
+                    <Route
+                      path="/wishlist"
+                      element={
+                        <AuthGuard>
+                          <OnboardingGuard>
+                            <WishlistPage />
+                          </OnboardingGuard>
+                        </AuthGuard>
+                      }
+                    />
+                    <Route
+                      path="/orders"
+                      element={
+                        <AuthGuard>
+                          <OnboardingGuard>
+                            <OrdersPage />
+                          </OnboardingGuard>
+                        </AuthGuard>
+                      }
+                    />
+                    <Route
+                      path="/orders/:id"
+                      element={
+                        <AuthGuard>
+                          <OnboardingGuard>
+                            <OrderDetailPage />
+                          </OnboardingGuard>
+                        </AuthGuard>
+                      }
+                    />
                     
-                    {/* Machining & Lathe Repair Service Request Routes */}
-                    <Route path="/repair" element={<RepairServicePage />} />
-                    <Route path="/repair/:id" element={<RepairDetailPage />} />
-                    <Route path="/repairs/:id" element={<RepairDetailPage />} />
-                    <Route path="/machining" element={<RepairServicePage />} />
+                    {/* Machining & Lathe Repair Service Request Routes - Requires Login */}
+                    <Route
+                      path="/repair"
+                      element={
+                        <AuthGuard>
+                          <OnboardingGuard>
+                            <RepairServicePage />
+                          </OnboardingGuard>
+                        </AuthGuard>
+                      }
+                    />
+                    <Route
+                      path="/repair/:id"
+                      element={
+                        <AuthGuard>
+                          <OnboardingGuard>
+                            <RepairDetailPage />
+                          </OnboardingGuard>
+                        </AuthGuard>
+                      }
+                    />
+                    <Route
+                      path="/repairs/:id"
+                      element={
+                        <AuthGuard>
+                          <OnboardingGuard>
+                            <RepairDetailPage />
+                          </OnboardingGuard>
+                        </AuthGuard>
+                      }
+                    />
+                    <Route
+                      path="/machining"
+                      element={
+                        <AuthGuard>
+                          <OnboardingGuard>
+                            <RepairServicePage />
+                          </OnboardingGuard>
+                        </AuthGuard>
+                      }
+                    />
 
                     {/* Customer Public Invoice Preview Link */}
                     <Route path="/invoice/:id" element={<CustomerInvoicePage />} />
                     <Route path="/view-invoice/:id" element={<CustomerInvoicePage />} />
 
-                    <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="/profile/details" element={<ProfileDetailsPage />} />
-                    <Route path="/notifications" element={<NotificationsPage />} />
+                    <Route
+                      path="/profile"
+                      element={
+                        <AuthGuard>
+                          <OnboardingGuard>
+                            <ProfilePage />
+                          </OnboardingGuard>
+                        </AuthGuard>
+                      }
+                    />
+                    <Route
+                      path="/profile/details"
+                      element={
+                        <AuthGuard>
+                          <OnboardingGuard>
+                            <ProfileDetailsPage />
+                          </OnboardingGuard>
+                        </AuthGuard>
+                      }
+                    />
+                    <Route
+                      path="/notifications"
+                      element={
+                        <AuthGuard>
+                          <OnboardingGuard>
+                            <NotificationsPage />
+                          </OnboardingGuard>
+                        </AuthGuard>
+                      }
+                    />
                     <Route path="/help" element={<HelpPage />} />
 
                     {/* Separate Admin Routes */}

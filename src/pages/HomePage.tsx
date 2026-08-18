@@ -304,6 +304,43 @@ export const HomePage: React.FC = () => {
           </div>
         )}
 
+        {/* EMERGENCY LATHE REPAIR & MACHINING SERVICE BANNER */}
+        <div className="bg-gradient-to-br from-slate-900 via-charcoal-900 to-slate-950 text-white rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-2xl relative overflow-hidden space-y-5">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/15 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <div className="space-y-2.5 max-w-xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 text-xs font-black uppercase tracking-wider">
+                <Wrench className="w-3.5 h-3.5 text-amber-400" />
+                <span>{isTamil ? 'பழுதுபார்ப்பு & லேத் டர்னிங் சேவை' : 'LATHE MACHINING & BREAKDOWN REPAIR'}</span>
+              </div>
+
+              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                {isTamil
+                  ? 'டிராக்டர் பாகங்கள், ஷாஃப்ட் & விவசாய கருவிகள் பழுதா? சரிசெய்கிறோம்!'
+                  : 'Broken Tractor Shaft, Motor, or Cultivators? Fast Precision Repairs.'}
+              </h3>
+
+              <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
+                {isTamil
+                  ? 'உடைந்த பாகங்களின் புகைப்படத்தைப் பதிவேற்றி உடனடி மதிப்பீட்டைப் பெறுங்கள் அல்லது நேரடியாக எங்கள் பட்டறைக்கு கொண்டு வரவும்.'
+                  : 'Submit a photo of your damaged machine part online for an instant workshop estimate and quick turnaround.'}
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
+              <Link
+                to="/repair"
+                className="inline-flex items-center justify-center gap-2.5 bg-brand-600 hover:bg-brand-700 text-white font-black px-6 py-3.5 rounded-2xl shadow-xl shadow-brand-600/40 transition-all text-xs sm:text-sm active:scale-95 border border-brand-400/40"
+              >
+                <Wrench className="w-4 h-4" />
+                <span>{isTamil ? 'பழுது விபரம் பதிவு செய்க' : 'Book Repair Service'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
         {/* GET IN TOUCH & WORKSHOP LOCATION CARD */}
         <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-2xl space-y-6 relative overflow-hidden mt-6">
           <div className="absolute top-0 right-0 w-72 h-72 bg-brand-500/15 rounded-full blur-3xl pointer-events-none" />

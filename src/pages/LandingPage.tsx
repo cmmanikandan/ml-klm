@@ -4,6 +4,7 @@ import { Phone, ArrowRight, Sparkles, Flame, PackageX, Wrench, ShieldCheck, MapP
 import { Logo } from '../components/common/Logo';
 import { ProductCard } from '../components/product/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { DEFAULT_SHOP_INFO, supabase, INITIAL_CATEGORIES } from '../lib/supabase';
 import { Product, Category } from '../types';
 import { fetchActiveProducts, getCachedProducts } from '../lib/productsStore';
@@ -11,6 +12,7 @@ import { fetchActiveCategories, getCachedCategories } from '../lib/categoriesSto
 
 export const LandingPage: React.FC = () => {
   const { language, t } = useLanguage();
+  const { user } = useAuth();
   const isTamil = language === 'ta';
 
   const [categories, setCategories] = useState<Category[]>(() => getCachedCategories());
@@ -242,7 +244,14 @@ export const LandingPage: React.FC = () => {
 
             <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
               <Link
-                to="/repair"
+                to={user ? "/repair" : "/login?redirect=/repair"}
+                onClick={() => {
+                  if (!user) {
+                    try {
+                      sessionStorage.setItem('ml_auth_redirect', '/repair');
+                    } catch (e) {}
+                  }
+                }}
                 className="inline-flex items-center justify-center gap-2.5 bg-brand-600 hover:bg-brand-700 text-white font-black px-6 py-4 rounded-2xl shadow-xl shadow-brand-600/40 transition-all text-sm active:scale-95 border border-brand-400/40"
               >
                 <Wrench className="w-4 h-4" />

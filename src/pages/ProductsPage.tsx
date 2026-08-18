@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { Filter, Search, X, ArrowUpDown, PackageX, Mic } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
 import { VoiceSearchModal } from '../components/common/VoiceSearchModal';
@@ -175,12 +175,12 @@ export const ProductsPage: React.FC = () => {
             ))}
 
             {/* Special Repair & Machining Service Link */}
-            <a
-              href="/repair"
+            <Link
+              to="/repair"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-extrabold transition-all whitespace-nowrap border bg-gradient-to-r from-brand-50 to-amber-50 text-brand-700 border-brand-300 hover:from-brand-100 hover:to-amber-100 shadow-xs"
             >
               🔧 {isTamil ? 'பழுது & இயந்திர சேவை' : 'Repair & Machining'}
-            </a>
+            </Link>
           </div>
         )}
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, Sparkles, ShieldCheck, Search, FileText, Phone, ArrowRight } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, CheckCircle2, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, Sparkles, ShieldCheck, Search, FileText, Phone, ArrowRight, Wrench } from 'lucide-react';
 import { Logo } from '../components/common/Logo';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,8 +10,15 @@ export const LoginPage: React.FC = () => {
   const { user, isAdmin, needsOnboarding, signInWithGoogle, signInWithEmail, signUpWithEmail, loading } = useAuth();
   const { language } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isTamil = language === 'ta';
+
+  // Read target redirect url from URL query params, location state, or sessionStorage
+  const searchParams = new URLSearchParams(location.search);
+  const redirectParam = searchParams.get('redirect');
+  const redirectFromState = (location.state as any)?.from;
+  const redirectUrl = redirectParam || redirectFromState || sessionStorage.getItem('ml_auth_redirect') || '';
 
   // Auth Mode: 'signin' | 'signup'
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
@@ -28,6 +35,19 @@ export const LoginPage: React.FC = () => {
   const [trackQuery, setTrackQuery] = useState('');
   const [isSearchingOrder, setIsSearchingOrder] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
+
+  // Sync redirect into sessionStorage for persistence across multi-step auth / Google popup
+  useEffect(() => {
+    if (redirectParam) {
+      try {
+        sessionStorage.setItem('ml_auth_redirect', redirectParam);
+      } catch (e) {}
+    } else if (redirectFromState) {
+      try {
+        sessionStorage.setItem('ml_auth_redirect', redirectFromState);
+      } catch (e) {}
+    }
+  }, [redirectParam, redirectFromState]);
 
   const handleQuickTrackOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,10 +94,15 @@ export const LoginPage: React.FC = () => {
       } else if (needsOnboarding) {
         navigate('/onboarding', { replace: true });
       } else {
-        navigate('/home', { replace: true });
+        const storedRedirect = sessionStorage.getItem('ml_auth_redirect');
+        const target = redirectParam || redirectFromState || storedRedirect || '/home';
+        try {
+          sessionStorage.removeItem('ml_auth_redirect');
+        } catch (e) {}
+        navigate(target, { replace: true });
       }
     }
-  }, [user, isAdmin, needsOnboarding, navigate]);
+  }, [user, isAdmin, needsOnboarding, navigate, redirectParam, redirectFromState]);
 
   const handleEmailAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,6 +199,25 @@ export const LoginPage: React.FC = () => {
               : (isTamil ? 'உங்கள் விவரங்களைப் பதிவு செய்து நொடியில் தொடங்கவும்.' : 'Enter your details below to create an account.')}
           </p>
         </div>
+
+        {/* Repair Service Redirect Alert */}
+        {redirectUrl.includes('/repair') && (
+          <div className="bg-amber-50 border-2 border-amber-300 p-3.5 rounded-2xl flex items-center gap-3 text-xs text-amber-950 shadow-sm animate-fade-in text-left">
+            <div className="w-9 h-9 rounded-xl bg-amber-200/80 text-amber-800 flex items-center justify-center shrink-0 shadow-xs">
+              <Wrench className="w-5 h-5 text-brand-700" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="block font-black text-amber-950 text-xs">
+                {isTamil ? 'பழுது விபரம் பதிவு செய்ய உள்நுழைக' : 'Sign In to Book Lathe Repair'}
+              </span>
+              <span className="text-[11px] text-amber-800 font-medium leading-tight block">
+                {isTamil
+                  ? 'உள்நுழைந்ததும் நீங்கள் நேரடியாக பழுது பார்க்கும் படிவத்திற்கு அழைத்துச் செல்லப்படுவீர்கள்.'
+                  : 'You will be redirected straight to the Repair Form once logged in.'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Razorpay Merchant Verification Auto-Fill Helper Banner */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-3 rounded-2xl flex items-center justify-between gap-2 shadow-xs">
