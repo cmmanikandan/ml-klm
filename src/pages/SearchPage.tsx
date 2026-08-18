@@ -15,7 +15,8 @@ import { ProductCard } from '../components/product/ProductCard';
 import { VoiceSearchModal } from '../components/common/VoiceSearchModal';
 import { useLanguage } from '../context/LanguageContext';
 import { Product } from '../types';
-import { fetchActiveProducts } from '../lib/productsStore';
+import { fetchActiveProducts, getCachedProducts } from '../lib/productsStore';
+import { filterProductsSmartly } from '../lib/searchHelper';
 
 const POPULAR_SEARCH_TAGS = [
   { en: '7-Kallapai', ta: '7-ஏர் கலப்பை' },
@@ -36,7 +37,7 @@ export const SearchPage: React.FC = () => {
 
   const [query, setQuery] = useState('');
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => getCachedProducts());
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     const saved = localStorage.getItem('ml_recent_searches');
     return saved ? JSON.parse(saved) : ['7-Kallapai', 'Main Gate', 'Safety Grill', 'Lathe Work'];
@@ -86,23 +87,9 @@ export const SearchPage: React.FC = () => {
     window.open(`https://wa.me/919659286268?text=${text}`, '_blank');
   };
 
-  // Filter products live based on English title, Tamil title, or Category
+  // Filter products live using smart phonetic, multi-keyword, and fuzzy matching
   const filteredProducts: Product[] = query.trim()
-    ? products.filter((p) => {
-        const q = query.toLowerCase();
-        const titleEn = (p.name_en || '').toLowerCase();
-        const titleTa = (p.name_ta || '').toLowerCase();
-        const catName = (p.category_name || '').toLowerCase();
-        const categoryId = (p.category_id || '').toLowerCase();
-        const materials = (p.materials || '').toLowerCase();
-        return (
-          titleEn.includes(q) ||
-          titleTa.includes(q) ||
-          catName.includes(q) ||
-          categoryId.includes(q) ||
-          materials.includes(q)
-        );
-      })
+    ? filterProductsSmartly(products, query)
     : [];
 
   return (

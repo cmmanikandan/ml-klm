@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, X, Sparkles, Volume2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { normalizeSpeechTranscript } from '../../lib/searchHelper';
 
 interface VoiceSearchModalProps {
   isOpen: boolean;
@@ -96,8 +97,9 @@ export const VoiceSearchModal: React.FC<VoiceSearchModalProps> = ({
         if (event.results[0].isFinal) {
           const finalClean = currentTranscript.trim();
           if (finalClean) {
+            const normalized = normalizeSpeechTranscript(finalClean);
             setTimeout(() => {
-              onTranscript(finalClean);
+              onTranscript(normalized || finalClean);
               onClose();
             }, 400);
           }

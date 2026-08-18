@@ -15,7 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { DEFAULT_SHOP_INFO, supabase } from '../lib/supabase';
 import { uploadFileToCloudinary } from '../lib/cloudinary';
 import { getNextRepairTicketId } from '../lib/idGenerator';
-import { fetchActiveCategories } from '../lib/categoriesStore';
+import { fetchActiveCategories, getCachedCategories } from '../lib/categoriesStore';
 
 export const RepairServicePage: React.FC = () => {
   const { language } = useLanguage();
@@ -23,11 +23,14 @@ export const RepairServicePage: React.FC = () => {
   const navigate = useNavigate();
   const isTamil = language === 'ta';
 
-  // Admin-created categories from Supabase
-  const [categories, setCategories] = useState<any[]>([]);
+  // Admin-created categories with instant cache hydration
+  const [categories, setCategories] = useState<any[]>(() => getCachedCategories());
 
   // Form state
-  const [selectedService, setSelectedService] = useState('');
+  const [selectedService, setSelectedService] = useState(() => {
+    const cached = getCachedCategories();
+    return cached.length > 0 ? String(cached[0].id) : '';
+  });
   const [urgency, setUrgency] = useState<'normal' | 'urgent' | 'emergency'>('urgent');
   const [guestPhone, setGuestPhone] = useState('');
   const [description, setDescription] = useState('');
@@ -212,38 +215,47 @@ export const RepairServicePage: React.FC = () => {
             </label>
 
             {categories.length === 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="flex items-center gap-4 overflow-x-auto pb-2 pt-1 scrollbar-none">
                 {[1, 2, 3, 4].map((n) => (
-                  <div key={n} className="h-24 rounded-2xl bg-warm-bg border border-warm-border animate-pulse" />
+                  <div key={n} className="shrink-0 flex flex-col items-center gap-2">
+                    <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-full bg-warm-bg border border-warm-border animate-pulse" />
+                    <div className="w-14 h-3 bg-warm-bg rounded animate-pulse" />
+                  </div>
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="flex items-start gap-3 sm:gap-4 overflow-x-auto pb-3 pt-1 scrollbar-none snap-x snap-mandatory -mx-2 px-2 sm:mx-0 sm:px-0">
                 {categories.map((cat: any) => {
                   const catId = String(cat.id);
                   const isSelected = selectedService === catId;
                   const catName = isTamil ? (cat.name_ta || cat.name_en) : cat.name_en;
-                  const catImage = cat.primary_image || cat.image_url || '';
+                  const catImage = cat.image_url || cat.primary_image || '';
                   return (
                     <button
                       key={catId}
                       type="button"
                       onClick={() => setSelectedService(catId)}
-                      className={`p-2 rounded-2xl border text-center transition-all flex flex-col items-center justify-between gap-1.5 cursor-pointer ${
-                        isSelected
-                          ? 'border-brand-600 bg-brand-50/70 ring-2 ring-brand-500 shadow-xs'
-                          : 'border-warm-border bg-white hover:bg-warm-bg'
-                      }`}
+                      className="snap-start shrink-0 flex flex-col items-center text-center group cursor-pointer w-20 sm:w-22 focus:outline-none transition-transform active:scale-95"
                     >
-                      <div className="w-14 h-14 aspect-square rounded-full overflow-hidden bg-warm-bg border border-brand-300 shadow-xs flex items-center justify-center mx-auto">
+                      {/* Perfect Circle Avatar with Active Border / Badge */}
+                      <div className={`w-18 h-18 sm:w-20 sm:h-20 aspect-square rounded-full overflow-hidden transition-all duration-300 relative flex items-center justify-center bg-brand-50 border-2 ${
+                        isSelected
+                          ? 'border-brand-600 ring-4 ring-brand-500/30 shadow-lg scale-105 bg-brand-100'
+                          : 'border-warm-border hover:border-brand-300 shadow-xs'
+                      }`}>
                         {catImage ? (
-                          <img src={catImage} alt={catName} className="w-full h-full rounded-full object-cover" />
+                          <img src={catImage} alt={catName} className="w-full h-full rounded-full object-cover group-hover:scale-108 transition-transform duration-300" />
                         ) : (
-                          <Wrench className="w-6 h-6 text-brand-600" />
+                          <Wrench className={`w-7 h-7 ${isSelected ? 'text-brand-600' : 'text-charcoal-500'}`} />
+                        )}
+                        {isSelected && (
+                          <div className="absolute top-0.5 right-0.5 w-5 h-5 bg-brand-600 rounded-full border-2 border-white flex items-center justify-center text-white text-[10px] font-black shadow-sm">
+                            ✓
+                          </div>
                         )}
                       </div>
-                      <span className={`text-[11px] font-black leading-tight line-clamp-2 text-center ${
-                        isSelected ? 'text-brand-900' : 'text-charcoal-800'
+                      <span className={`mt-2 text-[11px] sm:text-xs font-black line-clamp-2 leading-tight text-center max-w-[80px] sm:max-w-[88px] ${
+                        isSelected ? 'text-brand-700' : 'text-charcoal-800 group-hover:text-brand-600'
                       }`}>
                         {catName}
                       </span>

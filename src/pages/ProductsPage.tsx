@@ -8,6 +8,7 @@ import { Product, Category } from '../types';
 import { supabase } from '../lib/supabase';
 import { fetchActiveProducts, getCachedProducts } from '../lib/productsStore';
 import { fetchActiveCategories, getCachedCategories } from '../lib/categoriesStore';
+import { filterProductsSmartly } from '../lib/searchHelper';
 
 export const ProductsPage: React.FC = () => {
   const { language, t } = useLanguage();
@@ -52,15 +53,9 @@ export const ProductsPage: React.FC = () => {
         return cat ? p.category_id === cat.id : true;
       });
 
-  // 2. Filter by search query
+  // 2. Filter by search query using smart fuzzy, phonetic, and keyword token matching
   if (searchQuery.trim()) {
-    const q = searchQuery.toLowerCase();
-    processedProducts = processedProducts.filter((p) => {
-      const titleEn = (p.name_en || '').toLowerCase();
-      const titleTa = (p.name_ta || '').toLowerCase();
-      const mat = (p.materials || '').toLowerCase();
-      return titleEn.includes(q) || titleTa.includes(q) || mat.includes(q);
-    });
+    processedProducts = filterProductsSmartly(processedProducts, searchQuery);
   }
 
   // 3. Sort products by price / best seller / date
