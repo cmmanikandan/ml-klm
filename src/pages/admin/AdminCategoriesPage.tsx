@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit, Trash2, CheckCircle2, Upload, Camera } from 'lucide-react';
+import { Plus, Edit, Trash2, CheckCircle2, Upload, Camera, AlertCircle } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { CircularImageCropModal } from '../../components/common/CircularImageCropModal';
@@ -9,6 +9,8 @@ import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 
 export const AdminCategoriesPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cropObjectUrlRef = useRef<string | null>(null);
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,10 +26,21 @@ export const AdminCategoriesPage: React.FC = () => {
   const [isCropperOpen, setIsCropperOpen] = useState(false);
   const [cropSourceImage, setCropSourceImage] = useState<string | null>(null);
 
+  // File Validation Error Modal state
+  const [invalidFileError, setInvalidFileError] = useState<string | null>(null);
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadCategories();
+
+    return () => {
+      // Cleanup any pending object URL on unmount
+      if (cropObjectUrlRef.current) {
+        URL.revokeObjectURL(cropObjectUrlRef.current);
+        cropObjectUrlRef.current = null;
+      }
+    };
   }, []);
 
   const showToast = (msg: string) => {
@@ -91,25 +104,53 @@ export const AdminCategoriesPage: React.FC = () => {
     loadCategories();
   };
 
+  // Validate and load image file for cropper
+  const processSelectedFile = (file: File) => {
+    const validExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+    const validMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const fileName = file.name.toLowerCase();
+    const isExtensionValid = validExtensions.some((ext) => fileName.endsWith(ext));
+    const isMimeValid = validMimes.includes(file.type);
+
+    if (!isExtensionValid && !isMimeValid) {
+      setInvalidFileError('Please select a valid JPG, PNG, or WEBP image.');
+      return;
+    }
+
+    // Clean up any previously created object URL
+    if (cropObjectUrlRef.current) {
+      URL.revokeObjectURL(cropObjectUrlRef.current);
+      cropObjectUrlRef.current = null;
+    }
+
+    // Create a new object URL for the valid image file
+    const newObjectUrl = URL.createObjectURL(file);
+    cropObjectUrlRef.current = newObjectUrl;
+    setCropSourceImage(newObjectUrl);
+    setIsCropperOpen(true);
+  };
+
   const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setCropSourceImage(reader.result);
-        setIsCropperOpen(true);
-      }
-    };
-    reader.readAsDataURL(file);
-    // Reset file input value so selecting the same file triggers change
+    processSelectedFile(file);
+    // Reset file input value so selecting the same file triggers change again
     e.target.value = '';
+  };
+
+  const handleCloseCropper = () => {
+    if (cropObjectUrlRef.current) {
+      URL.revokeObjectURL(cropObjectUrlRef.current);
+      cropObjectUrlRef.current = null;
+    }
+    setCropSourceImage(null);
+    setIsCropperOpen(false);
   };
 
   const handleCropComplete = (croppedUrl: string) => {
     setImageUrl(croppedUrl);
-    setIsCropperOpen(false);
+    handleCloseCropper();
   };
 
   return (
@@ -196,7 +237,7 @@ export const AdminCategoriesPage: React.FC = () => {
             <div className="relative inline-block mx-auto group">
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden shadow-xl bg-brand-50 cursor-pointer relative flex items-center justify-center transition-transform active:scale-95"
+                className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden shadow-xl bg-brand-50 cursor-pointer relative flex items-center justify-center transition-transform active:scale-95 border-2 border-brand-100"
                 title="Click to choose and crop image"
               >
                 {imageUrl ? (
@@ -241,7 +282,7 @@ export const AdminCategoriesPage: React.FC = () => {
                 className="text-xs font-black text-brand-600 hover:text-brand-700 hover:underline inline-flex items-center gap-1.5"
               >
                 <Camera className="w-3.5 h-3.5" />
-                <span>{imageUrl ? 'Click image to upload or change image' : 'Click to select category image'}</span>
+                <span>{imageUrl ? 'Change Image' : 'Select Category Image'}</span>
               </button>
               <p className="text-[10px] text-charcoal-400 font-semibold">
                 1:1 circular crop preview • Matches website display
@@ -252,7 +293,7 @@ export const AdminCategoriesPage: React.FC = () => {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
               onChange={handleImageFileUpload}
               className="hidden"
             />
@@ -291,9 +332,42 @@ export const AdminCategoriesPage: React.FC = () => {
       <CircularImageCropModal
         isOpen={isCropperOpen}
         imageSrc={cropSourceImage}
-        onClose={() => setIsCropperOpen(false)}
+        onClose={handleCloseCropper}
         onConfirmCrop={handleCropComplete}
+        onSelectNewFile={processSelectedFile}
       />
+
+      {/* INVALID FILE TYPE ALERT MODAL */}
+      {invalidFileError && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in">
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-red-200 transform transition-all flex flex-col p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-charcoal-900 leading-tight">
+                  Unable to load image
+                </h3>
+                <p className="text-xs text-charcoal-600 font-medium leading-relaxed">
+                  {invalidFileError}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setInvalidFileError(null)}
+              className="w-full py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-black text-xs shadow-md transition-all active:scale-95"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* DELETE CATEGORY CONFIRMATION MODAL */}
       <ConfirmationModal
@@ -309,4 +383,3 @@ export const AdminCategoriesPage: React.FC = () => {
     </div>
   );
 };
-
