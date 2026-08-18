@@ -57,13 +57,31 @@ export const INITIAL_CATEGORIES: Category[] = [
     sort_order: 3
   },
   {
+    id: '44444444-4444-4444-4444-444444444444',
+    name_en: 'Tables & Desks',
+    name_ta: 'மேஜைகள்',
+    slug: 'tables-desks',
+    image_url: 'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=600&auto=format&fit=crop&q=80',
+    is_active: true,
+    sort_order: 4
+  },
+  {
     id: '88888888-8888-8888-8888-888888888888',
     name_en: 'Roofing',
     name_ta: 'கூரை ஸ்ட்ரக்சர்',
     slug: 'roofing',
     image_url: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=600&auto=format&fit=crop&q=80',
     is_active: true,
-    sort_order: 4
+    sort_order: 5
+  },
+  {
+    id: '55555555-5555-5555-5555-555555555555',
+    name_en: 'Windows & Frames',
+    name_ta: 'ஜன்னல்கள் & பிரேம்கள்',
+    slug: 'windows-frames',
+    image_url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=600&auto=format&fit=crop&q=80',
+    is_active: true,
+    sort_order: 6
   },
   {
     id: '66666666-6666-6666-6666-666666666666',
@@ -72,16 +90,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     slug: 'custom-welding',
     image_url: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80',
     is_active: true,
-    sort_order: 5
-  },
-  {
-    id: '11111111-1111-1111-1111-111111111111',
-    name_en: 'Lathe Works',
-    name_ta: 'லேத் வேலைகள்',
-    slug: 'lathe-works',
-    image_url: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80',
-    is_active: true,
-    sort_order: 6
+    sort_order: 7
   }
 ];
 

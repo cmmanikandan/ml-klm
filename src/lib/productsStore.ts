@@ -6,6 +6,23 @@ const DELETED_IDS_KEY = 'ml_deleted_product_ids';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Synchronously get cached products for instant initial frame rendering (no flicker)
+export const getCachedProducts = (): Product[] => {
+  try {
+    const cached = localStorage.getItem('ml_cached_products');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    const custom = localStorage.getItem(LOCAL_PRODUCTS_KEY);
+    if (custom) {
+      const parsed = JSON.parse(custom);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return [];
+};
+
 // Fetch all active products directly from Supabase DB (with Offline Cache Fallback)
 export const fetchActiveProducts = async (): Promise<Product[]> => {
   try {

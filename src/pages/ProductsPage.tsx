@@ -5,9 +5,9 @@ import { ProductCard } from '../components/product/ProductCard';
 import { VoiceSearchModal } from '../components/common/VoiceSearchModal';
 import { useLanguage } from '../context/LanguageContext';
 import { Product, Category } from '../types';
-import { supabase, INITIAL_CATEGORIES } from '../lib/supabase';
-import { fetchActiveProducts } from '../lib/productsStore';
-import { fetchActiveCategories } from '../lib/categoriesStore';
+import { supabase } from '../lib/supabase';
+import { fetchActiveProducts, getCachedProducts } from '../lib/productsStore';
+import { fetchActiveCategories, getCachedCategories } from '../lib/categoriesStore';
 
 export const ProductsPage: React.FC = () => {
   const { language, t } = useLanguage();
@@ -16,9 +16,9 @@ export const ProductsPage: React.FC = () => {
 
   const selectedCategorySlug = searchParams.get('category') || 'all';
 
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>(() => getCachedCategories());
+  const [products, setProducts] = useState<Product[]>(() => getCachedProducts());
+  const [loading, setLoading] = useState(() => getCachedProducts().length === 0);
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
 
   // In-page search and sorting state

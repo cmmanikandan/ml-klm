@@ -7,8 +7,9 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { Category, Product, Order } from '../types';
-import { supabase, INITIAL_CATEGORIES } from '../lib/supabase';
-import { fetchActiveProducts } from '../lib/productsStore';
+import { supabase } from '../lib/supabase';
+import { fetchActiveProducts, getCachedProducts } from '../lib/productsStore';
+import { fetchActiveCategories, getCachedCategories } from '../lib/categoriesStore';
 
 export const HomePage: React.FC = () => {
   const { language, t } = useLanguage();
@@ -18,34 +19,41 @@ export const HomePage: React.FC = () => {
 
   const isTamil = language === 'ta';
 
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [pendingPaymentOrders, setPendingPaymentOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Instant offline/cached initial states - Zero delay and Zero layout shift on first frame
+  const [categories, setCategories] = useState<Category[]>(() => getCachedCategories());
+  const [products, setProducts] = useState<Product[]>(() => getCachedProducts());
+  const [pendingPaymentOrders, setPendingPaymentOrders] = useState<Order[]>(() => {
+    try {
+      const cached = localStorage.getItem('ml_cached_pending_orders');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => getCachedProducts().length === 0);
 
   useEffect(() => {
     fetchLiveHomeData();
   }, [user?.id, user?.phone]);
 
   const fetchLiveHomeData = async () => {
-    setLoading(true);
     try {
-      // 1. Fetch Categories
-      const { data: catData } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+      // 1. Fetch Categories (with automatic offline cache sync)
+      const liveCats = await fetchActiveCategories();
+      if (liveCats && liveCats.length > 0) {
+        setCategories(liveCats);
+      }
 
-      if (catData && catData.length > 0) setCategories(catData);
-
-      // 2. Fetch Active Products
+      // 2. Fetch Active Products (with automatic offline cache sync)
       const activeProds = await fetchActiveProducts();
-      setProducts(activeProds);
+      if (activeProds && activeProds.length > 0) {
+        setProducts(activeProds);
+      }
 
       // 3. Fetch Live Orders strictly for this authenticated customer
       if (!user?.id) {
         setPendingPaymentOrders([]);
+        localStorage.removeItem('ml_cached_pending_orders');
         setLoading(false);
         return;
       }
@@ -74,6 +82,9 @@ export const HomePage: React.FC = () => {
       });
 
       setPendingPaymentOrders(pending);
+      try {
+        localStorage.setItem('ml_cached_pending_orders', JSON.stringify(pending));
+      } catch (e) {}
     } catch (e) {
       console.warn('Error fetching home page live data', e);
     } finally {
@@ -247,11 +258,32 @@ export const HomePage: React.FC = () => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {displayProducts.slice(0, 4).map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {loading && displayProducts.length === 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {[1, 2].map((n) => (
+                <div key={n} className="bg-white rounded-3xl h-64 border border-warm-border animate-pulse p-4 flex flex-col justify-between">
+                  <div className="w-full h-36 bg-warm-bg rounded-2xl" />
+                  <div className="space-y-2 pt-2">
+                    <div className="w-3/4 h-4 bg-warm-bg rounded-lg" />
+                    <div className="w-1/2 h-3 bg-warm-bg rounded-lg" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : displayProducts.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {displayProducts.slice(0, 4).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl p-8 text-center border border-warm-border max-w-md mx-auto my-2 space-y-2">
+              <PackageX className="w-8 h-8 text-brand-600 mx-auto" />
+              <h3 className="text-sm font-black text-charcoal-900">
+                {isTamil ? 'தயாரிப்புகள் ஏதும் இல்லை' : 'No Products Currently Listed'}
+              </h3>
+            </div>
+          )}
         </div>
 
         {/* Recently Viewed Products */}

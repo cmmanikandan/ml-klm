@@ -4,6 +4,23 @@ import { Category } from '../types';
 const LOCAL_CATEGORIES_KEY = 'ml_custom_categories';
 const DELETED_CATEGORIES_KEY = 'ml_deleted_categories';
 
+// Synchronously get cached categories for instant initial frame rendering (no flicker)
+export const getCachedCategories = (): Category[] => {
+  try {
+    const cached = localStorage.getItem('ml_cached_categories');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    const custom = localStorage.getItem(LOCAL_CATEGORIES_KEY);
+    if (custom) {
+      const parsed = JSON.parse(custom);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return INITIAL_CATEGORIES;
+};
+
 // Fetch all active categories directly from Supabase DB (with Offline Cache Fallback)
 export const fetchActiveCategories = async (): Promise<Category[]> => {
   try {

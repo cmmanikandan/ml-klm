@@ -6,16 +6,16 @@ import { ProductCard } from '../components/product/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
 import { DEFAULT_SHOP_INFO, supabase, INITIAL_CATEGORIES } from '../lib/supabase';
 import { Product, Category } from '../types';
-import { fetchActiveProducts } from '../lib/productsStore';
-import { fetchActiveCategories } from '../lib/categoriesStore';
+import { fetchActiveProducts, getCachedProducts } from '../lib/productsStore';
+import { fetchActiveCategories, getCachedCategories } from '../lib/categoriesStore';
 
 export const LandingPage: React.FC = () => {
   const { language, t } = useLanguage();
   const isTamil = language === 'ta';
 
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>(() => getCachedCategories());
+  const [products, setProducts] = useState<Product[]>(() => getCachedProducts());
+  const [loading, setLoading] = useState(() => getCachedProducts().length === 0);
 
   useEffect(() => {
     fetchLiveData();
