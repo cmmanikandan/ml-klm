@@ -23,14 +23,17 @@ import {
   Tag,
   QrCode,
   ArrowLeft,
-  Wrench
+  Wrench,
+  Mic
 } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { VoiceSearchModal } from '../../components/common/VoiceSearchModal';
 import { NotificationModal, NotificationState } from '../../components/common/NotificationModal';
 import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
 import { fetchActiveProducts } from '../../lib/productsStore';
+import { filterProductsSmartly } from '../../lib/searchHelper';
 import { Product, Profile, Order } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { generateInvoiceWhatsAppText, sendToWhatsApp, formatINR } from '../../lib/whatsappHelper';
@@ -217,13 +220,18 @@ export const AdminPOSPage: React.FC = () => {
     setShowCustomerDropdown(false);
   };
 
-  // Filter Products
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch = p.name_en.toLowerCase().includes(productSearch.toLowerCase()) ||
-                          p.name_ta.toLowerCase().includes(productSearch.toLowerCase());
-    const matchesCat = selectedCategory === 'all' || p.category_name?.toLowerCase() === selectedCategory.toLowerCase();
-    return matchesSearch && matchesCat;
-  });
+  // Voice Search Modal States
+  const [showVoiceModal, setShowVoiceModal] = useState<boolean>(false);
+  const [showCustomerVoiceModal, setShowCustomerVoiceModal] = useState<boolean>(false);
+
+  // Filter Products Smartly (Supports multi-word, phonetic corrections e.g. gills->grill, Tamil-English keywords)
+  const categoryBaseProducts = selectedCategory === 'all'
+    ? products
+    : products.filter((p) => p.category_name?.toLowerCase() === selectedCategory.toLowerCase());
+
+  const filteredProducts = productSearch.trim()
+    ? filterProductsSmartly(categoryBaseProducts, productSearch)
+    : categoryBaseProducts;
 
   // Determine Product Pricing Type
   const getProductPricingType = (prod: Product): 'weight' | 'sqft' | 'fixed' => {
@@ -830,9 +838,17 @@ export const AdminPOSPage: React.FC = () => {
                         if (!e.target.value) setSelectedCustomer(null);
                       }}
                       onFocus={() => setShowCustomerDropdown(true)}
-                      placeholder="Search existing customer by Name or Mobile No..."
-                      className="w-full pl-10 pr-4 py-2.5 text-xs font-bold border border-warm-border rounded-xl bg-warm-bg focus:ring-2 focus:ring-brand-500"
+                      placeholder={isTamil ? 'வாடிக்கையாளர் பெயர் அல்லது மொபைல் எண் தேடுக...' : 'Search existing customer by Name or Mobile No...'}
+                      className="w-full pl-10 pr-10 py-2.5 text-xs font-bold border border-warm-border rounded-xl bg-warm-bg focus:ring-2 focus:ring-brand-500"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomerVoiceModal(true)}
+                      title={isTamil ? 'குரல் மூலம் வாடிக்கையாளர் தேடு' : 'Voice Search Customer'}
+                      className="absolute right-2.5 top-2 p-1 text-charcoal-400 hover:text-brand-600 transition-colors"
+                    >
+                      <Mic className="w-4 h-4 text-brand-600" />
+                    </button>
                   </div>
 
                   {/* Dropdown Results */}
@@ -922,44 +938,50 @@ export const AdminPOSPage: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="relative w-full sm:w-64">
+                  <div className="relative w-full sm:w-72">
                     <Search className="w-3.5 h-3.5 text-charcoal-400 absolute left-3 top-2.5" />
                     <input
                       type="text"
                       value={productSearch}
                       onChange={(e) => setProductSearch(e.target.value)}
-                      placeholder={isTamil ? 'பொருட்களைத் தேடுக...' : 'Search products...'}
-                      className="w-full pl-8 pr-3 py-1.5 text-xs font-bold border border-warm-border rounded-xl bg-warm-bg"
+                      placeholder={isTamil ? 'பொருட்களைத் தேடுக (எ.கா: கலப்பை)...' : 'Search products (e.g. 7 kallapai)...'}
+                      className="w-full pl-8 pr-8 py-1.5 text-xs font-bold border border-warm-border rounded-xl bg-warm-bg focus:ring-2 focus:ring-brand-500"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowVoiceModal(true)}
+                      title={isTamil ? 'குரல் மூலம் தேடு' : 'Voice Search'}
+                      className="absolute right-2 top-1.5 p-1 text-charcoal-400 hover:text-brand-600 transition-colors"
+                    >
+                      <Mic className="w-4 h-4 text-brand-600" />
+                    </button>
                   </div>
                 </div>
 
                 {/* Product Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-1 pb-24 sm:pb-2">
                   
-                  {/* 1. SPECIAL CUSTOM LATHE / MACHINING / REPAIR WORK CARD (Vibrant Purple / Violet Theme) */}
+                  {/* 1. SPECIAL CUSTOM LATHE WORK CARD (Clean Simple Design) */}
                   <div
                     onClick={() => {
                       setCustomItemName('');
                       setCustomItemPrice('');
                       setShowCustomItemModal(true);
                     }}
-                    className="bg-gradient-to-br from-purple-50 via-indigo-50/70 to-purple-100/80 hover:from-purple-100 hover:to-indigo-100 p-3.5 rounded-2xl border-2 border-dashed border-purple-400 hover:border-purple-600 cursor-pointer flex items-center gap-3 transition-all shadow-sm group relative overflow-hidden"
+                    className="bg-purple-50/70 hover:bg-purple-100/90 p-3 rounded-2xl border border-purple-200 hover:border-purple-500 cursor-pointer flex items-center justify-between gap-2.5 transition-all shadow-sm group"
                   >
-                    <div className="w-14 h-14 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black shrink-0 shadow-md group-hover:scale-105 transition-transform">
-                      <Wrench className="w-7 h-7" />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[9px] font-black uppercase tracking-wider text-purple-700 bg-purple-200/80 px-2 py-0.5 rounded-md inline-block mb-0.5">
-                        ⚡ {isTamil ? 'தனிப்பயன் வேலை' : 'Custom Lathe Work'}
-                      </span>
-                      <h4 className="text-xs font-black text-purple-950 truncate">
-                        {isTamil ? 'தனிப்பயன் லேத் / பழுது வேலை' : 'Custom Lathe / Repair Work'}
-                      </h4>
-                      <span className="text-[11px] font-bold text-purple-700 mt-0.5 block">
-                        {isTamil ? 'விலை நிர்ணயித்து சேர்க்க' : 'Set custom price & add'}
-                      </span>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-11 h-11 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <Wrench className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-black text-charcoal-900 truncate">
+                          {isTamil ? 'தனிப்பயன் லேத் வேலை' : 'Custom Lathe Work'}
+                        </h4>
+                        <span className="text-[11px] font-mono font-bold text-purple-700 block">
+                          {isTamil ? 'தொகை உள்ளிட' : 'Enter Rate (₹)'}
+                        </span>
+                      </div>
                     </div>
 
                     <button
@@ -970,33 +992,29 @@ export const AdminPOSPage: React.FC = () => {
                         setCustomItemPrice('');
                         setShowCustomItemModal(true);
                       }}
-                      className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold px-3 py-2 rounded-xl text-[11px] shadow-sm shrink-0 flex items-center gap-1 transition-colors"
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-sm shrink-0 flex items-center gap-1 transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>{isTamil ? 'சேர்க்க' : 'Add Custom'}</span>
+                      <span>{isTamil ? 'சேர்' : 'Add'}</span>
                     </button>
                   </div>
 
                   {filteredProducts.map((prod) => {
                     const pType = getProductPricingType(prod);
                     
-                    let badgeText = '';
                     let priceText = '';
                     let btnColorClass = '';
                     let iconElement = null;
 
                     if (pType === 'weight') {
-                      badgeText = '⚖️ Weight Based';
                       priceText = `₹${prod.price_per_kg || 160}/kg`;
                       btnColorClass = 'bg-amber-600 hover:bg-amber-700 text-white';
                       iconElement = <Calculator className="w-3.5 h-3.5" />;
                     } else if (pType === 'sqft') {
-                      badgeText = '📐 SqFt Based';
                       priceText = `₹${prod.price_per_sqft || 150}/sqft`;
                       btnColorClass = 'bg-blue-600 hover:bg-blue-700 text-white';
                       iconElement = <Calculator className="w-3.5 h-3.5" />;
                     } else {
-                      badgeText = '🏷️ Fixed Price';
                       priceText = `₹${(prod.admin_price || 1500).toLocaleString('en-IN')}`;
                       btnColorClass = 'bg-emerald-600 hover:bg-emerald-700 text-white';
                       iconElement = <Plus className="w-3.5 h-3.5" />;
@@ -1006,20 +1024,18 @@ export const AdminPOSPage: React.FC = () => {
                       <div
                         key={prod.id}
                         onClick={() => handleProductCardClick(prod)}
-                        className="bg-warm-bg/70 hover:bg-amber-50/80 p-3.5 rounded-2xl border border-warm-border hover:border-brand-500 cursor-pointer flex items-center gap-3 transition-all shadow-sm group"
+                        className="bg-warm-bg/70 hover:bg-amber-50/80 p-3 rounded-2xl border border-warm-border hover:border-brand-500 cursor-pointer flex items-center justify-between gap-2.5 transition-all shadow-sm group"
                       >
-                        <img
-                          src={prod.primary_image || (prod.images && prod.images[0]) || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600'}
-                          alt={prod.name_en}
-                          className="w-14 h-14 rounded-xl object-contain bg-white p-1 border border-warm-border shrink-0 group-hover:scale-105 transition-transform"
-                        />
-
-                        <div className="flex-1 min-w-0">
-                          <span className="text-[9px] font-black uppercase tracking-wider text-brand-600 block">
-                            {badgeText}
-                          </span>
-                          <h4 className="text-xs font-black text-charcoal-900 truncate">{prod.name_en}</h4>
-                          <span className="text-xs font-mono font-black text-charcoal-900 mt-0.5 block">{priceText}</span>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <img
+                            src={prod.primary_image || (prod.images && prod.images[0]) || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600'}
+                            alt={prod.name_en}
+                            className="w-11 h-11 rounded-xl object-contain bg-white p-1 border border-warm-border shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-black text-charcoal-900 truncate">{prod.name_en}</h4>
+                            <span className="text-xs font-mono font-black text-charcoal-800 mt-0.5 block">{priceText}</span>
+                          </div>
                         </div>
 
                         <button
@@ -1028,10 +1044,10 @@ export const AdminPOSPage: React.FC = () => {
                             e.stopPropagation();
                             handleProductCardClick(prod);
                           }}
-                          className={`font-extrabold px-3 py-2 rounded-xl text-[11px] shadow-sm shrink-0 flex items-center gap-1 transition-colors ${btnColorClass}`}
+                          className={`font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-sm shrink-0 flex items-center gap-1 transition-colors ${btnColorClass}`}
                         >
                           {iconElement}
-                          <span>{pType === 'fixed' ? (isTamil ? 'பொருளைச் சேர்' : 'Add Item') : pType === 'weight' ? (isTamil ? 'எடை கணக்கீடு' : 'Calc Weight') : (isTamil ? 'அளவு கணக்கீடு' : 'Calc SqFt')}</span>
+                          <span>{pType === 'fixed' ? (isTamil ? 'சேர்' : 'Add') : pType === 'weight' ? (isTamil ? 'எடை' : 'Weight') : (isTamil ? 'அளவு' : 'SqFt')}</span>
                         </button>
                       </div>
                     );
@@ -1096,18 +1112,18 @@ export const AdminPOSPage: React.FC = () => {
                     </div>
                   ) : (
                     cart.map((item) => (
-                      <div key={item.id} className="bg-warm-bg p-3.5 rounded-2xl border border-warm-border space-y-2">
+                      <div key={item.id} className="bg-warm-bg/90 p-3 rounded-2xl border border-warm-border space-y-2">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <h5 className="text-xs font-black text-charcoal-900 truncate">{item.product.name_en}</h5>
                             {item.pricing_type === 'weight' && item.weight_calculation && (
                               <span className="text-[10px] font-extrabold text-amber-700 block">
-                                ⚖️ Weight: {item.weight_calculation.total_weight_kg} kg @ ₹{item.weight_calculation.rate_per_kg}/kg
+                                ⚖️ {item.weight_calculation.total_weight_kg} kg @ ₹{item.weight_calculation.rate_per_kg}/kg
                               </span>
                             )}
                             {item.pricing_type === 'sqft' && item.sqft_calculation && (
                               <span className="text-[10px] font-extrabold text-blue-700 block">
-                                📐 Area: {item.sqft_calculation.total_sqft} sqft @ ₹{item.sqft_calculation.rate_per_sqft}/sqft
+                                📐 {item.sqft_calculation.total_sqft} sqft @ ₹{item.sqft_calculation.rate_per_sqft}/sqft
                               </span>
                             )}
                             {item.pricing_type === 'fixed' && (
@@ -1126,10 +1142,12 @@ export const AdminPOSPage: React.FC = () => {
                           </button>
                         </div>
 
-                        {/* Quantity & Editable Unit Price Controls */}
+                        {/* Unit Price & Item Discount Controls */}
                         <div className="grid grid-cols-2 gap-2 pt-1 border-t border-warm-muted/60 text-xs">
                           <div>
-                            <label className="block text-[9px] font-bold text-charcoal-500 uppercase">Unit Price (₹)</label>
+                            <label className="block text-[9px] font-bold text-charcoal-500 uppercase mb-0.5">
+                              {isTamil ? 'பொருளின் விலை (₹)' : 'Unit Price (₹)'}
+                            </label>
                             <input
                               type="number"
                               value={item.unit_price}
@@ -1139,7 +1157,9 @@ export const AdminPOSPage: React.FC = () => {
                           </div>
 
                           <div>
-                            <label className="block text-[9px] font-bold text-charcoal-500 uppercase">Item Discount (₹)</label>
+                            <label className="block text-[9px] font-bold text-charcoal-500 uppercase mb-0.5">
+                              {isTamil ? 'பொருள் தள்ளுபடி (₹)' : 'Item Discount (₹)'}
+                            </label>
                             <input
                               type="number"
                               value={item.discount || ''}
@@ -1150,8 +1170,8 @@ export const AdminPOSPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="flex justify-between items-center pt-1 font-mono text-xs font-black text-charcoal-900">
-                          <span>Line Total:</span>
+                        <div className="flex justify-between items-center pt-1 font-mono text-xs font-black text-charcoal-900 border-t border-warm-muted/40">
+                          <span className="text-[11px] text-charcoal-600">Line Total:</span>
                           <span>₹{item.line_total.toLocaleString('en-IN')}</span>
                         </div>
                       </div>
@@ -1159,37 +1179,40 @@ export const AdminPOSPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Overall Bill Discount */}
+                {/* Clean Flat Ledger (Subtotal, Overall Discount, Grand Total) */}
                 {cart.length > 0 && (
-                  <div className="space-y-3 pt-2 border-t border-warm-muted">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-rose-700 uppercase">
-                        {isTamil ? 'தள்ளுபடி தொகை (₹)' : 'Overall Bill Discount (₹)'}
-                      </label>
-                      <input
-                        type="number"
-                        value={cartDiscount || ''}
-                        onChange={(e) => setCartDiscount(parseFloat(e.target.value) || 0)}
-                        placeholder="e.g. 500"
-                        className="w-full px-3 py-2 text-xs font-mono font-black border border-rose-300 rounded-xl bg-rose-50/50 text-rose-700 focus:ring-2 focus:ring-rose-500"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Subtotal & Breakdown Ledger */}
-                {cart.length > 0 && (
-                  <div className="bg-warm-bg p-3 rounded-2xl border border-warm-border space-y-1.5 text-xs">
-                    <div className="flex justify-between font-bold text-charcoal-700">
+                  <div className="space-y-2.5 pt-3 border-t border-warm-muted text-xs">
+                    {/* Subtotal */}
+                    <div className="flex justify-between items-center font-bold text-charcoal-700">
                       <span>{isTamil ? 'கூட்டுத்தொகை' : 'Subtotal'}:</span>
-                      <span className="font-mono">₹{cartSubtotal.toLocaleString('en-IN')}</span>
+                      <span className="font-mono font-black text-sm text-charcoal-900">₹{cartSubtotal.toLocaleString('en-IN')}</span>
                     </div>
-                    {cartDiscount > 0 && (
-                      <div className="flex justify-between font-bold text-rose-600">
-                        <span>{isTamil ? 'தள்ளுபடி' : 'Discount'}:</span>
-                        <span className="font-mono">-₹{cartDiscount.toLocaleString('en-IN')}</span>
+
+                    {/* Overall Bill Discount */}
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-[11px] font-extrabold text-rose-700 uppercase shrink-0">
+                        {isTamil ? 'ஒட்டுமொத்த தள்ளுபடி (₹)' : 'Overall Bill Discount (₹)'}:
+                      </label>
+                      <div className="w-28">
+                        <input
+                          type="number"
+                          value={cartDiscount || ''}
+                          onChange={(e) => setCartDiscount(parseFloat(e.target.value) || 0)}
+                          placeholder="₹ 0"
+                          className="w-full px-2.5 py-1 text-xs font-mono font-black border border-warm-border rounded-lg bg-white text-rose-600 text-right focus:ring-2 focus:ring-brand-500"
+                        />
                       </div>
-                    )}
+                    </div>
+
+                    {/* Grand Total */}
+                    <div className="flex justify-between items-center pt-2.5 border-t border-warm-muted">
+                      <span className="text-xs font-black text-charcoal-900 uppercase">
+                        {isTamil ? 'மொத்த பில் தொகை' : 'Grand Total Bill'}:
+                      </span>
+                      <span className="text-2xl font-black font-mono text-brand-600">
+                        ₹{finalCartGrandTotal.toLocaleString('en-IN')}
+                      </span>
+                    </div>
                   </div>
                 )}
 
@@ -1255,15 +1278,8 @@ export const AdminPOSPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Total & Complete Sale Button */}
-                <div className="pt-3 border-t border-warm-muted space-y-3">
-                  <div className="flex justify-between items-center bg-brand-50 p-3.5 rounded-2xl border border-brand-200">
-                    <span className="text-xs font-black text-brand-900 uppercase">
-                      {isTamil ? 'மொத்த பில் தொகை' : 'Grand Total Bill'}
-                    </span>
-                    <span className="text-2xl font-black font-mono text-brand-600">₹{finalCartGrandTotal.toLocaleString('en-IN')}</span>
-                  </div>
-
+                {/* Complete Sale Button */}
+                <div className="pt-2">
                   {paymentMode === 'upi' ? (
                     <Button
                       type="button"
@@ -2055,6 +2071,7 @@ export const AdminPOSPage: React.FC = () => {
       />
 
       {/* CUSTOM CONFIRMATION MODAL */}
+      {/* CUSTOM CONFIRMATION MODAL */}
       <ConfirmationModal
         isOpen={Boolean(deletePosOrderId)}
         onClose={() => setDeletePosOrderId(null)}
@@ -2063,6 +2080,23 @@ export const AdminPOSPage: React.FC = () => {
         message="Are you sure you want to delete this POS counter sale record from history? This action cannot be undone."
         confirmText="Delete Sale Record"
         isDanger={true}
+      />
+
+      {/* PRODUCT VOICE SEARCH MODAL */}
+      <VoiceSearchModal
+        isOpen={showVoiceModal}
+        onClose={() => setShowVoiceModal(false)}
+        onTranscript={(text) => setProductSearch(text)}
+      />
+
+      {/* CUSTOMER VOICE SEARCH MODAL */}
+      <VoiceSearchModal
+        isOpen={showCustomerVoiceModal}
+        onClose={() => setShowCustomerVoiceModal(false)}
+        onTranscript={(text) => {
+          setCustomerSearch(text);
+          setShowCustomerDropdown(true);
+        }}
       />
 
     </div>
