@@ -33,8 +33,8 @@ interface AuthContextType {
   isAdmin: boolean;
   needsOnboarding: boolean;
   signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUpWithEmail: (email: string, password: string, fullName?: string) => Promise<{ success: boolean; error?: string }>;
+  signInWithEmail: (email: string, password: string, lang?: 'en' | 'ta') => Promise<{ success: boolean; error?: string }>;
+  signUpWithEmail: (email: string, password: string, fullName?: string, lang?: 'en' | 'ta') => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<Profile>) => Promise<void>;
   completeOnboarding: (data: { full_name: string; phone: string; address: string; city_area: string; language: 'en' | 'ta' }) => Promise<void>;
@@ -177,10 +177,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Email & Password Sign-In (For Razorpay Merchant Verification & standard email users)
-  const signInWithEmail = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  // Email & Password Sign-In (Strict credential validation)
+  const signInWithEmail = async (
+    email: string,
+    password: string,
+    lang: 'en' | 'ta' = 'en'
+  ): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
     const cleanEmail = email.trim().toLowerCase();
+    const isTa = lang === 'ta';
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
@@ -188,47 +193,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await syncFirebaseUserWithSupabase(userCredential.user);
         return { success: true };
       }
-      return { success: false, error: 'Failed to sign in. Please check credentials.' };
+      return {
+        success: false,
+        error: isTa
+          ? 'உள்நுழைய முடியவில்லை. மின்னஞ்சல் மற்றும் கடவுச்சொல்லை சரிபார்க்கவும்.'
+          : 'Failed to sign in. Please check your credentials.'
+      };
     } catch (err: any) {
       console.warn('Firebase Email Sign-In error:', err?.code, err?.message);
 
-      // Handle common Firebase Auth error codes with friendly user messages
-      let msg = 'Invalid email or password. Please check and try again.';
-      if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential') {
-        msg = 'No account found with this email or incorrect password.';
-      } else if (err?.code === 'auth/wrong-password') {
-        msg = 'Incorrect password. Please try again.';
-      } else if (err?.code === 'auth/invalid-email') {
-        msg = 'Please enter a valid email address.';
-      } else if (err?.code === 'auth/user-disabled') {
-        msg = 'This user account has been disabled.';
-      } else if (err?.code === 'auth/too-many-requests') {
-        msg = 'Too many failed login attempts. Please try again in a few moments.';
-      }
+      let msg = isTa
+        ? 'தவறான மின்னஞ்சல் அல்லது கடவுச்சொல். தயவுசெய்து சரிபார்க்கவும்.'
+        : 'Invalid email or password. Please check and try again.';
 
-      // Reviewer / Demo Fallback for Razorpay Verification team if Firebase Email Provider is not yet toggled on
-      if (
-        cleanEmail.includes('razorpay') ||
-        cleanEmail.includes('reviewer') ||
-        cleanEmail.includes('tester') ||
-        cleanEmail.includes('demo') ||
-        cleanEmail.includes('manikandan') ||
-        cleanEmail.includes('admin')
-      ) {
-        const isMaster = cleanEmail.includes('admin') || cleanEmail.includes('manikandan');
-        const fallbackProfile: Profile = {
-          id: `usr_${Date.now()}`,
-          full_name: isMaster ? 'MANIKANDAN LATHE Admin' : 'Razorpay Verified Reviewer',
-          email: cleanEmail,
-          language: 'en',
-          role: isMaster ? 'admin' : 'customer',
-          is_profile_completed: true,
-          phone: '+91 96592 86268',
-          city_area: 'Kallimandhayam'
-        };
-        setUser(fallbackProfile);
-        localStorage.setItem('ml_user_profile', JSON.stringify(fallbackProfile));
-        return { success: true };
+      if (err?.code === 'auth/user-not-found') {
+        msg = isTa
+          ? 'இந்த மின்னஞ்சலில் கணக்கு ஏதும் இல்லை. தயவுசெய்து முதலில் புதிய கணக்கை உருவாக்கவும் (Sign Up).'
+          : 'No account found with this email. Please create an account first (Sign Up).';
+      } else if (err?.code === 'auth/wrong-password') {
+        msg = isTa
+          ? 'தவறான கடவுச்சொல். தயவுசெய்து சரியான கடவுச்சொல்லை உள்ளிடவும்.'
+          : 'Incorrect password. Please enter the correct password.';
+      } else if (err?.code === 'auth/invalid-credential') {
+        msg = isTa
+          ? 'தவறான மின்னஞ்சல் அல்லது கடவுச்சொல். நீங்கள் இன்னும் பதிவு செய்யவில்லை என்றால் Sign Up செய்யவும்.'
+          : 'Invalid email or password. If you do not have an account yet, please Sign Up.';
+      } else if (err?.code === 'auth/invalid-email') {
+        msg = isTa
+          ? 'சரியான மின்னஞ்சல் முகவரியை உள்ளிடவும்.'
+          : 'Please enter a valid email address.';
+      } else if (err?.code === 'auth/user-disabled') {
+        msg = isTa
+          ? 'இந்த பயனர் கணக்கு முடக்கப்பட்டுள்ளது.'
+          : 'This user account has been disabled.';
+      } else if (err?.code === 'auth/too-many-requests') {
+        msg = isTa
+          ? 'பலமுறை தவறாக முயற்சிக்கப்பட்டுள்ளது. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.'
+          : 'Too many failed login attempts. Please try again in a few moments.';
+      } else if (err?.code === 'auth/network-request-failed') {
+        msg = isTa
+          ? 'இணைய இணைப்பு பிழை. உங்கள் இணையத்தை சரிபார்க்கவும்.'
+          : 'Network error. Please check your internet connection.';
       }
 
       return { success: false, error: msg };
@@ -237,15 +242,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Email & Password Sign-Up (Account Registration)
+  // Email & Password Sign-Up (Strict account registration)
   const signUpWithEmail = async (
     email: string,
     password: string,
-    fullName?: string
+    fullName?: string,
+    lang: 'en' | 'ta' = 'en'
   ): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
     const cleanEmail = email.trim().toLowerCase();
     const displayName = fullName?.trim() || cleanEmail.split('@')[0];
+    const isTa = lang === 'ta';
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
@@ -259,39 +266,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await syncFirebaseUserWithSupabase(userCredential.user);
         return { success: true };
       }
-      return { success: false, error: 'Registration failed. Please try again.' };
+      return {
+        success: false,
+        error: isTa ? 'கணக்கு உருவாக்க முடியவில்லை.' : 'Registration failed. Please try again.'
+      };
     } catch (err: any) {
       console.warn('Firebase Email Sign-Up error:', err?.code, err?.message);
 
-      let msg = 'Registration failed. Please try again.';
-      if (err?.code === 'auth/email-already-in-use') {
-        msg = 'An account already exists with this email. Please sign in instead.';
-      } else if (err?.code === 'auth/weak-password') {
-        msg = 'Password is too weak. Please use at least 6 characters.';
-      } else if (err?.code === 'auth/invalid-email') {
-        msg = 'Please enter a valid email address.';
-      }
+      let msg = isTa
+        ? 'கணக்கு உருவாக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
+        : 'Registration failed. Please try again.';
 
-      // Reviewer fallback if Firebase Email Auth provider requires console activation
-      if (
-        cleanEmail.includes('razorpay') ||
-        cleanEmail.includes('reviewer') ||
-        cleanEmail.includes('tester') ||
-        cleanEmail.includes('demo')
-      ) {
-        const fallbackProfile: Profile = {
-          id: `usr_${Date.now()}`,
-          full_name: displayName || 'Razorpay Verified Reviewer',
-          email: cleanEmail,
-          language: 'en',
-          role: 'customer',
-          is_profile_completed: true,
-          phone: '+91 96592 86268',
-          city_area: 'Kallimandhayam'
-        };
-        setUser(fallbackProfile);
-        localStorage.setItem('ml_user_profile', JSON.stringify(fallbackProfile));
-        return { success: true };
+      if (err?.code === 'auth/email-already-in-use') {
+        msg = isTa
+          ? 'இந்த மின்னஞ்சலில் ஏற்கனவே கணக்கு உள்ளது. தயவுசெய்து உள்நுழையவும் (Sign In).'
+          : 'An account already exists with this email. Please sign in instead (Sign In).';
+      } else if (err?.code === 'auth/weak-password') {
+        msg = isTa
+          ? 'கடவுச்சொல் மிகவும் எளிமையாக உள்ளது. குறைந்தது 6 எழுத்துகள் பயன்படுத்தவும்.'
+          : 'Password is too weak. Please use at least 6 characters.';
+      } else if (err?.code === 'auth/invalid-email') {
+        msg = isTa
+          ? 'சரியான மின்னஞ்சல் முகவரியை உள்ளிடவும்.'
+          : 'Please enter a valid email address.';
+      } else if (err?.code === 'auth/network-request-failed') {
+        msg = isTa
+          ? 'இணைய இணைப்பு பிழை. உங்கள் இணையத்தை சரிபார்க்கவும்.'
+          : 'Network error. Please check your internet connection.';
       }
 
       return { success: false, error: msg };

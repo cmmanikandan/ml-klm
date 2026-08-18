@@ -52,15 +52,16 @@ export const LoginPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      const currentLang = isTamil ? 'ta' : 'en';
       if (authMode === 'signin') {
-        const res = await signInWithEmail(email, password);
+        const res = await signInWithEmail(email, password, currentLang);
         if (!res.success) {
-          setErrorMessage(res.error || 'Failed to sign in');
+          setErrorMessage(res.error || (isTamil ? 'உள்நுழைய முடியவில்லை' : 'Failed to sign in'));
         }
       } else {
-        const res = await signUpWithEmail(email, password, fullName);
+        const res = await signUpWithEmail(email, password, fullName, currentLang);
         if (!res.success) {
-          setErrorMessage(res.error || 'Failed to create account');
+          setErrorMessage(res.error || (isTamil ? 'கணக்கு உருவாக்க முடியவில்லை' : 'Failed to create account'));
         }
       }
     } catch (err: any) {
