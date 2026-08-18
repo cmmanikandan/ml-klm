@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit, Trash2, CheckCircle2, Upload, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, CheckCircle2, Upload, Camera } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
+import { CircularImageCropModal } from '../../components/common/CircularImageCropModal';
 import { Category } from '../../types';
 import { fetchActiveCategories, saveCategoryToStore, deleteCategoryFromStore } from '../../lib/categoriesStore';
 import { ConfirmationModal } from '../../components/common/ConfirmationModal';
@@ -18,6 +19,10 @@ export const AdminCategoriesPage: React.FC = () => {
   const [nameTa, setNameTa] = useState('');
   const [slug, setSlug] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+
+  // Cropper Modal state
+  const [isCropperOpen, setIsCropperOpen] = useState(false);
+  const [cropSourceImage, setCropSourceImage] = useState<string | null>(null);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -91,12 +96,20 @@ export const AdminCategoriesPage: React.FC = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onload = () => {
       if (typeof reader.result === 'string') {
-        setImageUrl(reader.result);
+        setCropSourceImage(reader.result);
+        setIsCropperOpen(true);
       }
     };
     reader.readAsDataURL(file);
+    // Reset file input value so selecting the same file triggers change
+    e.target.value = '';
+  };
+
+  const handleCropComplete = (croppedUrl: string) => {
+    setImageUrl(croppedUrl);
+    setIsCropperOpen(false);
   };
 
   return (
@@ -134,11 +147,13 @@ export const AdminCategoriesPage: React.FC = () => {
           {categories.map((cat) => (
             <div key={cat.id} className="bg-white p-4 rounded-3xl border border-warm-border shadow-card flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <img
-                  src={cat.image_url || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600&auto=format&fit=crop&q=80'}
-                  alt={cat.name_en}
-                  className="w-12 h-12 rounded-2xl object-cover border border-warm-border shrink-0"
-                />
+                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 shadow-xs bg-brand-50">
+                  <img
+                    src={cat.image_url || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=600&auto=format&fit=crop&q=80'}
+                    alt={cat.name_en}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-charcoal-900">{cat.name_en}</h3>
                   <span className="text-xs text-brand-600 font-bold block">{cat.name_ta}</span>
@@ -167,8 +182,82 @@ export const AdminCategoriesPage: React.FC = () => {
         </div>
       )}
 
+      {/* ADD / EDIT CATEGORY MODAL */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCat ? 'Edit Category' : 'Add Category'} maxWidth="sm">
         <form onSubmit={handleSave} className="space-y-4">
+          
+          {/* Category Image - Large Centered Circular Live Preview with Camera Overlay */}
+          <div className="space-y-2 text-center pb-2">
+            <label className="block text-xs font-black text-charcoal-800 uppercase tracking-wider">
+              Category Image
+            </label>
+
+            {/* Circular Preview Container */}
+            <div className="relative inline-block mx-auto group">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden shadow-xl bg-brand-50 cursor-pointer relative flex items-center justify-center transition-transform active:scale-95"
+                title="Click to choose and crop image"
+              >
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt="Category Preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="text-center p-3 space-y-1">
+                    <Upload className="w-8 h-8 text-brand-500 mx-auto" />
+                    <span className="text-[10px] font-extrabold text-brand-700 block leading-tight">
+                      Upload Image
+                    </span>
+                  </div>
+                )}
+
+                {/* Hover overlay hint */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="text-white text-[11px] font-black uppercase tracking-wider bg-brand-600/90 px-2.5 py-1 rounded-full shadow-sm">
+                    {imageUrl ? 'Change' : 'Upload'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Camera Icon Badge Overlay at Bottom-Right */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-1 right-1 w-9 h-9 rounded-full bg-brand-600 hover:bg-brand-700 text-white border-2 border-white shadow-lg flex items-center justify-center transition-transform active:scale-90"
+                title="Upload or Change Image"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Subtext and Change Image Button */}
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs font-black text-brand-600 hover:text-brand-700 hover:underline inline-flex items-center gap-1.5"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>{imageUrl ? 'Click image to upload or change image' : 'Click to select category image'}</span>
+              </button>
+              <p className="text-[10px] text-charcoal-400 font-semibold">
+                1:1 circular crop preview • Matches website display
+              </p>
+            </div>
+
+            {/* Hidden File Input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageFileUpload}
+              className="hidden"
+            />
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-charcoal-700 mb-1">English Category Name *</label>
             <input
@@ -192,64 +281,19 @@ export const AdminCategoriesPage: React.FC = () => {
             />
           </div>
 
-          {/* Category Image Upload Card & Preview */}
-          <div>
-            <label className="block text-xs font-bold text-charcoal-700 mb-1">Category Image & Live Preview</label>
-            
-            {/* Clickable Image Upload Card */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="p-4 bg-warm-bg/70 rounded-2xl border-2 border-dashed border-warm-border hover:border-brand-500 cursor-pointer text-center space-y-3 transition-colors group"
-            >
-              {imageUrl ? (
-                <div className="space-y-2">
-                  <div className="relative inline-block">
-                    <img
-                      src={imageUrl}
-                      alt="Category Preview"
-                      className="w-32 h-24 object-cover rounded-xl border-2 border-brand-500 shadow-md mx-auto"
-                    />
-                    <span className="absolute -top-2 -right-2 bg-emerald-600 text-white font-extrabold text-[9px] px-2 py-0.5 rounded-full shadow-sm">
-                      Live Preview
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-brand-600 font-extrabold group-hover:underline">
-                    Click card to upload or change image
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-1 py-2">
-                  <div className="w-10 h-10 bg-brand-100 text-brand-600 rounded-xl flex items-center justify-center mx-auto">
-                    <Upload className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs font-extrabold text-charcoal-900">Click card to upload category image</p>
-                  <p className="text-[10px] text-charcoal-400 font-semibold">JPG, PNG, WEBP or GIF supported</p>
-                </div>
-              )}
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageFileUpload}
-                className="hidden"
-              />
-            </div>
-
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="Or paste direct image URL (https://...)"
-              className="w-full mt-2 px-3.5 py-2 text-xs font-bold border border-warm-border rounded-xl bg-white focus:outline-none"
-            />
-          </div>
-
           <Button type="submit" variant="primary" fullWidth size="lg">
             Save Category
           </Button>
         </form>
       </Modal>
+
+      {/* 1:1 CIRCULAR CROP & ADJUSTMENT MODAL */}
+      <CircularImageCropModal
+        isOpen={isCropperOpen}
+        imageSrc={cropSourceImage}
+        onClose={() => setIsCropperOpen(false)}
+        onConfirmCrop={handleCropComplete}
+      />
 
       {/* DELETE CATEGORY CONFIRMATION MODAL */}
       <ConfirmationModal
@@ -265,3 +309,4 @@ export const AdminCategoriesPage: React.FC = () => {
     </div>
   );
 };
+

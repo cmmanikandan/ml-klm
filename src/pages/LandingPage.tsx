@@ -129,29 +129,31 @@ export const LandingPage: React.FC = () => {
             </Link>
           </div>
 
-          {/* Left to Right Horizontal Scrolling Category Carousel */}
-          <div className="flex items-center gap-3.5 overflow-x-auto pb-3 pt-1 scrollbar-none no-scrollbar snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
+          {/* Left to Right Horizontal Scrolling Circular Category Carousel */}
+          <div className="flex items-start gap-4 sm:gap-6 overflow-x-auto pb-3 pt-1 scrollbar-none no-scrollbar snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
             {categories.map((cat) => (
               <Link
                 key={cat.id}
                 to={`/products?category=${cat.slug}`}
-                className="snap-start shrink-0 w-36 sm:w-44 bg-white rounded-3xl p-3 border border-warm-border shadow-card hover:shadow-warm-lg hover:border-brand-400 transition-all flex flex-col items-center text-center group cursor-pointer"
+                className="snap-start shrink-0 flex flex-col items-center text-center group cursor-pointer w-22 sm:w-28 focus:outline-none"
               >
-                <div className="w-full h-24 sm:h-28 rounded-2xl overflow-hidden mb-2.5 bg-brand-50 relative border border-warm-border/60">
+                {/* Perfect Circular Image Container */}
+                <div className="w-20 h-20 sm:w-26 sm:h-26 aspect-square rounded-full overflow-hidden shadow-sm group-hover:shadow-md transition-all duration-300 relative flex items-center justify-center bg-brand-50">
                   {cat.image_url ? (
                     <img
                       src={cat.image_url}
                       alt={cat.name_en}
-                      className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+                      className="w-full h-full rounded-full object-cover group-hover:scale-108 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-brand-600">
+                    <div className="w-full h-full rounded-full bg-brand-50 flex items-center justify-center text-brand-600">
                       <Flame className="w-8 h-8" />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <span className="text-xs sm:text-sm font-black text-charcoal-900 group-hover:text-brand-600 transition-colors line-clamp-1 leading-tight">
+
+                {/* Category Name Below Circle */}
+                <span className="mt-2 text-xs sm:text-sm font-black text-charcoal-900 group-hover:text-brand-600 transition-colors text-center line-clamp-2 leading-tight max-w-[88px] sm:max-w-[110px]">
                   {isTamil ? (cat.name_ta || cat.name_en) : cat.name_en}
                 </span>
               </Link>

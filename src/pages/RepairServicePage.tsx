@@ -235,11 +235,11 @@ export const RepairServicePage: React.FC = () => {
                           : 'border-warm-border bg-white hover:bg-warm-bg'
                       }`}
                     >
-                      <div className="w-full h-14 rounded-xl overflow-hidden bg-warm-bg border border-warm-border/50 flex items-center justify-center">
+                      <div className="w-14 h-14 aspect-square rounded-full overflow-hidden bg-warm-bg border border-brand-300 shadow-xs flex items-center justify-center mx-auto">
                         {catImage ? (
-                          <img src={catImage} alt={catName} className="w-full h-full object-cover" />
+                          <img src={catImage} alt={catName} className="w-full h-full rounded-full object-cover" />
                         ) : (
-                          <Wrench className="w-6 h-6 text-charcoal-400" />
+                          <Wrench className="w-6 h-6 text-brand-600" />
                         )}
                       </div>
                       <span className={`text-[11px] font-black leading-tight line-clamp-2 text-center ${
