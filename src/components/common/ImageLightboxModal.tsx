@@ -159,7 +159,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
           <img
             src={currentImage}
             alt={productTitle}
-            className="max-h-[72vh] max-w-[92vw] object-contain rounded-2xl shadow-2xl transition-all"
+            className="max-h-[80vh] max-w-[95vw] object-contain object-center rounded-2xl shadow-2xl transition-all select-none"
           />
         </div>
 
@@ -185,17 +185,18 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
           {images.map((img, idx) => (
             <button
               key={idx}
+              type="button"
               onClick={() => {
                 setZoomLevel(1);
                 setCurrentIndex(idx);
               }}
-              className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
+              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden border-2 bg-black/50 p-1 transition-all shrink-0 flex items-center justify-center ${
                 currentIndex === idx
                   ? 'border-brand-500 ring-2 ring-brand-400 scale-105 opacity-100'
                   : 'border-white/20 opacity-50 hover:opacity-100'
               }`}
             >
-              <img src={img} alt="" className="w-full h-full object-cover" />
+              <img src={img} alt="" className="w-full h-full object-contain object-center" />
             </button>
           ))}
         </div>

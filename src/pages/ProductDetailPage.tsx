@@ -167,7 +167,7 @@ export const ProductDetailPage: React.FC = () => {
         <div className="bg-white rounded-3xl p-4 sm:p-6 border border-warm-border shadow-card space-y-4">
           <div 
             onClick={() => setIsLightboxOpen(true)}
-            className="relative aspect-square sm:aspect-video rounded-2xl overflow-hidden bg-warm-bg border border-warm-border cursor-pointer group"
+            className="relative w-full min-h-[280px] sm:min-h-[380px] md:min-h-[440px] max-h-[540px] aspect-[4/3] sm:aspect-[16/10] rounded-2xl overflow-hidden bg-white border border-warm-border cursor-pointer group flex items-center justify-center p-2 sm:p-4"
             title="Click to view full image & zoom"
           >
             <img
@@ -176,11 +176,11 @@ export const ProductDetailPage: React.FC = () => {
               onError={(e) => {
                 (e.target as HTMLImageElement).src = fallbackImage;
               }}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-contain object-center transition-transform duration-300 group-hover:scale-[1.02]"
             />
 
             {/* Click to Zoom Badge */}
-            <div className="absolute bottom-3 right-3 bg-black/70 hover:bg-black text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-xs shadow-lg transition-all">
+            <div className="absolute bottom-3 right-3 bg-slate-900/80 hover:bg-slate-900 text-white text-xs font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md shadow-lg transition-all border border-white/20">
               <Maximize2 className="w-3.5 h-3.5 text-brand-400" />
               <span>{isTamil ? 'பெரிதாக்குக' : 'Click to Zoom'}</span>
             </div>
@@ -188,18 +188,21 @@ export const ProductDetailPage: React.FC = () => {
 
           {/* Thumbnail Selector */}
           {images.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-none pt-1">
               {images.map((img, idx) => (
                 <button
                   key={idx}
+                  type="button"
                   onClick={() => {
                     setSelectedImageIndex(idx);
                   }}
-                  className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
-                    selectedImageIndex === idx ? 'border-brand-600 ring-2 ring-brand-500/30' : 'border-warm-border opacity-70 hover:opacity-100'
+                  className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 bg-white p-1 transition-all shrink-0 flex items-center justify-center cursor-pointer ${
+                    selectedImageIndex === idx
+                      ? 'border-brand-600 ring-2 ring-brand-500/30 shadow-sm'
+                      : 'border-warm-border opacity-70 hover:opacity-100 hover:border-brand-300'
                   }`}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img src={img} alt="" className="w-full h-full object-contain object-center" />
                 </button>
               ))}
             </div>
