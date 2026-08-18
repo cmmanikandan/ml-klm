@@ -56,6 +56,11 @@ export const Footer: React.FC = () => {
                   {isTamil ? 'தொடர்பு கொள்ள' : 'Contact Us'}
                 </Link>
               </li>
+              <li>
+                <Link to="/terms" className="hover:text-brand-400 font-semibold transition-colors">
+                  {isTamil ? 'விதிமுறைகள்' : 'Terms & Conditions'}
+                </Link>
+              </li>
             </ul>
           </div>
 

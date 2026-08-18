@@ -32,6 +32,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { HelpPage } from './pages/HelpPage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
+import { TermsPage } from './pages/TermsPage';
 import { InvoicePage } from './pages/InvoicePage';
 import { CustomerInvoicePage } from './pages/CustomerInvoicePage';
 import { RepairServicePage } from './pages/RepairServicePage';
@@ -89,11 +90,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isInvoicePage = location.pathname.startsWith('/invoice/') || location.pathname.startsWith('/admin/invoice/');
   const isAuthPage = location.pathname === '/login' || location.pathname === '/onboarding';
   
-  // Public static pages (Landing, About, Contact)
+  // Public static pages (Landing, About, Contact, Terms)
   const isPublicPage =
     location.pathname === '/' ||
     location.pathname === '/about' ||
-    location.pathname === '/contact';
+    location.pathname === '/contact' ||
+    location.pathname === '/terms';
 
   // Guest browsing products without logging in
   const isGuestProductBrowse = !user && location.pathname.startsWith('/products');
@@ -182,6 +184,7 @@ export const App: React.FC = () => {
                     <Route path="/" element={<LandingGuard />} />
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="/contact" element={<ContactPage />} />
+                    <Route path="/terms" element={<TermsPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/onboarding" element={<OnboardingPage />} />
 

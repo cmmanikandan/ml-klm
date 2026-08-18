@@ -21,12 +21,17 @@ import {
   Send,
   Plus,
   Check,
-  RefreshCw
+  RefreshCw,
+  Wrench,
+  Maximize2,
+  Tag,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { NotificationModal } from '../../components/common/NotificationModal';
+import { ImageLightboxModal } from '../../components/common/ImageLightboxModal';
 import { InvoicePreviewModal } from '../../components/invoice/InvoicePreviewModal';
 import { OrderStatus, PaymentStatus } from '../../types';
 import { DEFAULT_SHOP_INFO, supabase } from '../../lib/supabase';
@@ -58,6 +63,10 @@ export const AdminOrderDetailPage: React.FC = () => {
   const [customPayNotes, setCustomPayNotes] = useState<string>('Payment collected at workshop');
   const [showGeneratedQr, setShowGeneratedQr] = useState(false);
   const [showInvoicePreviewModal, setShowInvoicePreviewModal] = useState(false);
+
+  // Fullscreen Damage Photos Lightbox
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // Custom Card Popup Notification Modal State
   const [notifyModal, setNotifyModal] = useState<{
@@ -327,6 +336,21 @@ export const AdminOrderDetailPage: React.FC = () => {
           ? Number(ordRecord.remaining_amount) 
           : (Number(ordRecord.total_amount) > 0 ? (ordRecord.remaining_amount ?? computedTotal) : computedTotal);
 
+        // Fetch linked enquiry (for repair problem description and damage photos)
+        let linkedEnquiry: any = null;
+        if (ordRecord.enquiry_id) {
+          try {
+            const { data: enq } = await supabase.from('enquiries').select('*').eq('id', ordRecord.enquiry_id).maybeSingle();
+            if (enq) linkedEnquiry = enq;
+          } catch {}
+        }
+        if (!linkedEnquiry && ordRecord.order_number) {
+          try {
+            const { data: enq } = await supabase.from('enquiries').select('*').eq('converted_order_id', ordRecord.order_number).maybeSingle();
+            if (enq) linkedEnquiry = enq;
+          } catch {}
+        }
+
         const hydrated = {
           ...ordRecord,
           total_amount: computedTotal,
@@ -336,7 +360,8 @@ export const AdminOrderDetailPage: React.FC = () => {
           customerAddress: ordRecord.customerAddress || ordRecord.delivery_location || prof?.address || prof?.city_area || 'Kallimandhayam, Dindigul',
           productName: ordRecord.productName || ordRecord.product_name || prod?.name_en || 'Custom Lathe Fabricated Item',
           productImage: ordRecord.productImage || prod?.primary_image || (prod?.images && prod.images[0]) || 'https://images.unsplash.com/photo-1580481072645-022f9a6d1270?w=800&auto=format&fit=crop&q=80',
-          productId: ordRecord.product_id || prod?.id || 'demo-prod-1'
+          productId: ordRecord.product_id || prod?.id || 'demo-prod-1',
+          linkedEnquiry: linkedEnquiry
         };
         setOrder(hydrated);
         setCustomPayAmount(hydrated.remaining_amount || 0);
@@ -1251,6 +1276,105 @@ export const AdminOrderDetailPage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* REPAIR & MACHINING DIAGNOSIS REPORT */}
+          {(() => {
+            const isRepairProduct = String(order.productName || order.product_name || '').toLowerCase().includes('repair') ||
+              String(order.productName || order.product_name || '').toLowerCase().includes('machining') ||
+              String(order.productName || order.product_name || '').toLowerCase().includes('service') ||
+              String(order.productName || order.product_name || '').toLowerCase().includes('பழுது');
+
+            const rawNotes = order.linkedEnquiry?.custom_notes || order.specifications;
+            const cleanProblem = rawNotes
+              ? String(rawNotes).replace(/^Scope:\s*/i, '').replace(/\.?\s*Photos:\s*\d+\.?$/i, '').trim()
+              : '';
+
+            const damagePhotos: string[] = (order.linkedEnquiry?.images && Array.isArray(order.linkedEnquiry.images) && order.linkedEnquiry.images.length > 0)
+              ? order.linkedEnquiry.images
+              : (order.linkedEnquiry?.primary_image ? [order.linkedEnquiry.primary_image] : (order.productImage ? [order.productImage] : []));
+
+            const urgencyLabel = order.linkedEnquiry?.size_requirement 
+              ? String(order.linkedEnquiry.size_requirement).replace(/^Urgency:\s*/i, '').trim() 
+              : null;
+
+            if (!order.linkedEnquiry && !isRepairProduct && !cleanProblem && damagePhotos.length === 0) {
+              return null;
+            }
+
+            return (
+              <div className="bg-amber-50/80 rounded-3xl p-6 border-2 border-amber-300 shadow-card space-y-4">
+                <div className="flex items-center justify-between gap-3 border-b border-amber-200 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-2xl bg-amber-200 text-amber-900 flex items-center justify-center font-bold shadow-xs">
+                      <Wrench className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-amber-950 uppercase tracking-wider">
+                        Machining & Repair Diagnosis Details
+                      </h3>
+                      {order.linkedEnquiry?.enquiry_number && (
+                        <span className="text-[10px] font-mono font-extrabold text-amber-800 block">
+                          Linked Enquiry / Repair Ticket: #{order.linkedEnquiry.enquiry_number}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {urgencyLabel && (
+                    <span className="bg-amber-200 text-amber-900 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-amber-400/50 shadow-xs">
+                      ⚡ {urgencyLabel}
+                    </span>
+                  )}
+                </div>
+
+                {/* Problem Description */}
+                {cleanProblem && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black text-amber-900 uppercase block">
+                      Reported Machine Defect / Issue:
+                    </span>
+                    <p className="text-xs sm:text-sm text-charcoal-900 font-medium bg-white/95 p-3.5 rounded-2xl border border-amber-200 leading-relaxed shadow-xs">
+                      {cleanProblem}
+                    </p>
+                  </div>
+                )}
+
+                {/* Damaged Part Photos */}
+                {damagePhotos.length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-amber-900 uppercase">
+                        Damaged Part Photos ({damagePhotos.length}) — Click to Inspect:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { setLightboxImages(damagePhotos); setLightboxOpen(true); }}
+                        className="text-[10px] font-black text-brand-600 flex items-center gap-1 hover:underline"
+                      >
+                        <Maximize2 className="w-3 h-3" /> Fullscreen Lightbox
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-3 overflow-x-auto pb-1">
+                      {damagePhotos.map((imgUrl: string, i: number) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => { setLightboxImages(damagePhotos); setLightboxOpen(true); }}
+                          className="group relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-amber-300 shadow-sm shrink-0 bg-white"
+                        >
+                          <img src={imgUrl} alt={`Damage photo ${i+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <Maximize2 className="w-6 h-6 text-white" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* PRICING SECTION: FIXED PRICE & DISCOUNT MANAGER OR WEIGHT CALCULATOR */}
           {pricingMode === 'fixed' ? (
@@ -2462,6 +2586,14 @@ export const AdminOrderDetailPage: React.FC = () => {
         isOpen={showInvoicePreviewModal}
         onClose={() => setShowInvoicePreviewModal(false)}
         order={order}
+      />
+
+      {/* FULLSCREEN DAMAGE PHOTO LIGHTBOX */}
+      <ImageLightboxModal
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        images={lightboxImages}
+        productTitle={order?.productName || 'Repair Inspection'}
       />
 
       <NotificationModal

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles, Flame, ThumbsUp, Clock, PackageX, CreditCard, ShieldCheck, Wrench } from 'lucide-react';
+import { ArrowRight, Sparkles, Flame, ThumbsUp, Clock, PackageX, CreditCard, ShieldCheck, Wrench, Phone, MapPin, MessageSquare, Navigation } from 'lucide-react';
 import { SearchCard } from '../components/common/SearchCard';
 import { ProductCard } from '../components/product/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { Category, Product, Order } from '../types';
-import { supabase } from '../lib/supabase';
+import { DEFAULT_SHOP_INFO, supabase } from '../lib/supabase';
 import { fetchActiveProducts, getCachedProducts } from '../lib/productsStore';
 import { fetchActiveCategories, getCachedCategories } from '../lib/categoriesStore';
 
@@ -303,6 +303,76 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* GET IN TOUCH & WORKSHOP LOCATION CARD */}
+        <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-2xl space-y-6 relative overflow-hidden mt-6">
+          <div className="absolute top-0 right-0 w-72 h-72 bg-brand-500/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="bg-brand-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm">
+                {isTamil ? 'நேரடி பட்டறை தொடர்பு' : 'GET IN TOUCH WITH WORKSHOP'}
+              </span>
+            </div>
+
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-2 max-w-xl">
+                <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  {isTamil
+                    ? 'விவசாய கருவிகள் & லேத் வேலைகளுக்கு எங்களை தொடர்பு கொள்ளவும்'
+                    : 'Visit Our Workshop or Order Custom Lathe Work Directly'}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
+                  {isTamil
+                    ? 'கள்ளிமந்தையம் பட்டறையில் நேரடி பார்வைக்கு ஏர் கலப்பைகள் மற்றும் மாதிரி பொருட்கள் தயார் நிலையில் உள்ளன. போனில் அழைத்து விபரங்கள் அறியலாம்.'
+                    : 'Heavy duty Kallapai, gates, and lathe turned shafts fabricated with extreme precision in Kallimandhayam. Call us or visit directly.'}
+                </p>
+                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-1">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <MapPin className="w-4 h-4 text-brand-400 shrink-0" />
+                    <span>{DEFAULT_SHOP_INFO.address}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>{isTamil ? DEFAULT_SHOP_INFO.working_hours_ta : DEFAULT_SHOP_INFO.working_hours_en}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
+                <a
+                  href={`tel:${DEFAULT_SHOP_INFO.phone}`}
+                  className="inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-black px-5 py-3.5 rounded-2xl shadow-lg shadow-brand-600/30 transition-all text-xs active:scale-95"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span>Call: {DEFAULT_SHOP_INFO.phone}</span>
+                </a>
+
+                <a
+                  href={`https://wa.me/${DEFAULT_SHOP_INFO.whatsapp}?text=${encodeURIComponent('வணக்கம் மணிகண்டன் லேத் பட்டறை, எனக்கு லேத் / கலப்பை தயாரிப்பு பற்றிய விபரம் தேவை.')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 py-3.5 rounded-2xl shadow-lg shadow-emerald-600/30 transition-all text-xs active:scale-95"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>WhatsApp Inquiry</span>
+                </a>
+
+                <a
+                  href={DEFAULT_SHOP_INFO.google_maps_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="col-span-1 sm:col-span-2 inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-black px-5 py-3 rounded-2xl border border-white/20 transition-all text-xs"
+                >
+                  <Navigation className="w-4 h-4 text-brand-400" />
+                  <span>Google Maps Directions (Kallimandhayam)</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
 
       </div>
     </div>
